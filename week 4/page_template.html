@@ -123,6 +123,17 @@ ul{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3rem}
 code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--line-soft);
   padding:.08em .32em;color:var(--ink)}
 .foot{border-top:1px solid var(--line);padding-top:1rem;font-size:.84rem;color:var(--faint)}
+.credits{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:1.6rem;
+  border-top:2px solid var(--ink);padding-top:1.4rem}
+.cred{display:flex;flex-direction:column;gap:.35rem}
+.credlab{font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--faint)}
+.credname{font-family:Newsreader,Georgia,serif;font-size:1.3rem;font-weight:600;
+  color:var(--ink);line-height:1.15}
+.cred p{font-size:.88rem;color:var(--muted);line-height:1.5}
+.cred a{font-size:.86rem;color:var(--accent);font-weight:600;text-decoration:none;
+  width:fit-content;border-bottom:1px solid transparent}
+.cred a:hover,.cred a:focus-visible{border-bottom-color:var(--accent)}
 @media (max-width:560px){body{font-size:16px}.tile .v{font-size:1.8rem}}
 </style>
 
@@ -222,6 +233,24 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
   <p class="foot">Every figure regenerates from the analysis scripts. Twenty-five known defects are
     tracked with their measured sizes; none of them moves a headline, which is the most persuasive
     thing this study can say.</p>
+
+  <footer class="credits">
+    <div class="cred">
+      <span class="credlab">Written by</span>
+      <span class="credname">Giacomo Collesei</span>
+      <p>Analysis, code and write-up. Every figure here regenerates from the scripts,
+        and the known defects are published with their measured sizes rather than
+        left for a reader to find.</p>
+      <a href="https://github.com/gcolle6/European-job-adverts---Karimi.AI">Read the code &rarr;</a>
+    </div>
+    <div class="cred">
+      <span class="credlab">Data from</span>
+      <span class="credname">Karimi</span>
+      <p>The app to boost your career &#129365; Become the best at your job &#129365;
+        Get great opportunities &#129365; Grow your network</p>
+      <a href="https://www.karimi.ai/">karimi.ai &rarr;</a>
+    </div>
+  </footer>
 </div>
 
 <script id="D" type="application/json">__DATA__</script>
