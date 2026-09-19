@@ -1,0 +1,498 @@
+<title>What Employers Ask For</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;700&display=swap">
+
+<style>
+:root{
+  --ground:#fcfcfb; --panel:#ffffff; --ink:#0b0b0b; --body:#3a3936;
+  --muted:#52514e; --faint:#8a8985; --line:#e3e2dd; --line-soft:#eeede9;
+  --accent:#2a78d6; --accent-soft:#e8f0fc; --accent-pale:#9ec5f4;
+  --dim:#c2c1bc;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100;
+  --warn:#8f6231; --warn-soft:#f6efe4; --warn-line:#dcc39c;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#1a1a19; --panel:#232322; --ink:#ffffff; --body:#c3c2b7;
+  --muted:#a3a29a; --faint:#7d7c75; --line:#33332f; --line-soft:#2a2a27;
+  --accent:#3987e5; --accent-soft:#16283c; --accent-pale:#1c5cab;
+  --dim:#4d4c47;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+  --warn:#d3a066; --warn-soft:#262019; --warn-line:#5a4830;
+}}
+:root[data-theme="dark"]{
+  --ground:#1a1a19; --panel:#232322; --ink:#ffffff; --body:#c3c2b7;
+  --muted:#a3a29a; --faint:#7d7c75; --line:#33332f; --line-soft:#2a2a27;
+  --accent:#3987e5; --accent-soft:#16283c; --accent-pale:#1c5cab;
+  --dim:#4d4c47;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+  --warn:#d3a066; --warn-soft:#262019; --warn-line:#5a4830;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--body);
+  font-family:"Source Sans 3",system-ui,sans-serif;font-size:16.5px;line-height:1.6;
+  margin:0;padding-block:clamp(2rem,5vw,3.5rem);padding-left:20px;padding-right:20px}
+.wrap{max-width:56rem;margin:0 auto;display:flex;flex-direction:column;gap:3.5rem}
+
+.mast{display:flex;flex-direction:column;gap:.7rem;border-bottom:2px solid var(--ink);padding-bottom:1.5rem}
+.kicker{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted)}
+h1{font-family:Newsreader,Georgia,serif;font-weight:600;
+  font-size:clamp(2rem,5.5vw,3.1rem);line-height:1.06;color:var(--ink);margin:0;text-wrap:balance}
+.dek{font-size:1.12rem;color:var(--muted);margin:0;max-width:44rem}
+
+h2{font-family:Newsreader,Georgia,serif;font-weight:600;font-size:1.5rem;line-height:1.2;
+  color:var(--ink);margin:0;text-wrap:balance}
+h3{font-family:"Source Sans 3",sans-serif;font-weight:600;font-size:.95rem;color:var(--ink);margin:0}
+p{margin:0}
+section{display:flex;flex-direction:column;gap:1.1rem}
+.sechead{display:flex;align-items:baseline;gap:.8rem;border-bottom:1px solid var(--line);padding-bottom:.5rem}
+.num{font-family:"JetBrains Mono",monospace;font-size:.75rem;font-weight:700;color:var(--accent);flex:none}
+
+/* tiles */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.7rem}
+.tile{background:var(--panel);border:1px solid var(--line);padding:1rem 1.1rem;
+  display:flex;flex-direction:column;gap:.25rem}
+.tile .v{font-family:"JetBrains Mono",monospace;font-size:2.1rem;font-weight:700;
+  color:var(--ink);line-height:1;font-variant-numeric:tabular-nums}
+.tile .r{font-family:"JetBrains Mono",monospace;font-size:.74rem;color:var(--accent)}
+.tile .l{font-size:.86rem;color:var(--muted);line-height:1.35}
+
+/* method */
+.steps{display:flex;flex-direction:column;border-top:1px solid var(--line-soft)}
+.step{display:grid;grid-template-columns:1.6rem 1fr;gap:.9rem;padding:.55rem 0;
+  border-bottom:1px solid var(--line-soft);align-items:baseline}
+.step .s{font-family:"JetBrains Mono",monospace;font-size:.72rem;color:var(--faint)}
+.step .t{font-size:.95rem}
+.step .t b{color:var(--ink);font-weight:600}
+.step .t em{color:var(--muted);font-style:normal}
+
+/* charts */
+.card{background:var(--panel);border:1px solid var(--line);padding:1.3rem 1.4rem 1.1rem;
+  display:flex;flex-direction:column;gap:.85rem}
+.card.door{border-top:3px solid var(--accent)}
+.ctitle{font-family:Newsreader,Georgia,serif;font-size:1.28rem;font-weight:600;color:var(--ink);line-height:1.25}
+.cnote{font-size:.85rem;color:var(--muted);line-height:1.45}
+.chartbox{position:relative;width:100%;overflow-x:auto}
+svg{display:block;max-width:100%;height:auto;overflow:visible}
+.axis text{font-family:"JetBrains Mono",monospace;font-size:10px;fill:var(--faint)}
+.axis line{stroke:var(--line);stroke-width:1}
+.rowlab{font-family:"Source Sans 3",sans-serif;font-size:12.5px;fill:var(--body)}
+.rowval{font-family:"JetBrains Mono",monospace;font-size:11px;fill:var(--ink)}
+.gridline{stroke:var(--line-soft);stroke-width:1}
+.reflabel{font-family:"Source Sans 3",sans-serif;font-size:10.5px;fill:var(--faint)}
+.legend{display:flex;flex-wrap:wrap;gap:.9rem;font-size:.82rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:.35rem}
+.sw{width:11px;height:11px;border-radius:2px;flex:none}
+.door-cta{font-size:.87rem;color:var(--accent);font-weight:600;
+  border-top:1px solid var(--line-soft);padding-top:.7rem}
+
+/* tooltip */
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--ground);
+  font-size:.78rem;line-height:1.35;padding:.4rem .55rem;border-radius:3px;
+  max-width:16rem;z-index:5;opacity:0;transition:opacity .1s}
+.tip b{font-weight:600}
+.tip.on{opacity:1}
+
+/* weighting */
+.weight{background:var(--accent-soft);border-left:3px solid var(--accent);padding:1.2rem 1.3rem;
+  display:flex;flex-direction:column;gap:.8rem}
+.wopts{display:flex;flex-wrap:wrap;gap:.4rem}
+.wopts button{font-family:"Source Sans 3",sans-serif;font-size:.87rem;cursor:pointer;
+  border:1px solid var(--line);background:var(--panel);color:var(--body);padding:.4rem .8rem}
+.wopts button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.wopts button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wopts button .pub{display:block;font-size:.68rem;font-weight:400;opacity:.85}
+.wresult{background:var(--panel);border:1px solid var(--line);padding:.85rem .95rem;
+  display:flex;flex-direction:column;gap:.35rem}
+.wcap{font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--accent);font-weight:700}
+.wrow{display:flex;align-items:baseline;gap:.75rem;flex-wrap:wrap}
+.wout{font-family:"JetBrains Mono",monospace;font-size:2rem;font-weight:700;color:var(--ink);
+  font-variant-numeric:tabular-nums;line-height:1;flex:none}
+.wsub{font-size:.85rem;color:var(--muted);line-height:1.4;flex:1 1 16rem;min-width:0}
+.wcount{font-family:"JetBrains Mono",monospace;font-size:.72rem;color:var(--faint)}
+.wexplain{font-size:.93rem;color:var(--body);background:var(--panel);
+  border:1px solid var(--line);padding:.7rem .85rem;line-height:1.5}
+
+.limits{border-left:3px solid var(--warn-line);background:var(--warn-soft);padding:1rem 1.2rem;
+  display:flex;flex-direction:column;gap:.45rem;font-size:.92rem}
+.limits .tag{font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--warn);font-weight:700}
+ul{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3rem}
+code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--line-soft);
+  padding:.08em .32em;color:var(--ink)}
+.foot{border-top:1px solid var(--line);padding-top:1rem;font-size:.84rem;color:var(--faint)}
+@media (max-width:560px){body{font-size:16px}.tile .v{font-size:1.8rem}}
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <div class="kicker">Karimi.ai · 25,800 European job adverts · May–August 2026</div>
+    <h1>What employers ask for, when the job stays the same</h1>
+    <p class="dek">Hold the role fixed, change the context around it, and see which requirements
+      actually move. Two job families, eleven industries, and an honest account of what the
+      numbers will and will not carry.</p>
+  </header>
+
+  <section>
+    <div class="sechead"><span class="num">METHOD</span><h2>How the numbers were made</h2></div>
+    <p>Six steps, each one guarding against a specific way this kind of analysis goes wrong.</p>
+    <div class="steps">
+      <div class="step"><span class="s">1</span><span class="t"><b>28,487 adverts → 25,800 kept.</b>
+        <em>Only a missing industry removes an advert — nothing is dropped for being awkward.</em></span></div>
+      <div class="step"><span class="s">2</span><span class="t"><b>Requirement text → 349,061 single requirements.</b>
+        <em>So two demands written in one sentence are counted as two.</em></span></div>
+      <div class="step"><span class="s">3</span><span class="t"><b>Each requirement → 384 numbers.</b>
+        <em>So wording stops mattering and meaning starts: <code>Kenntnisse in SQL</code> and <code>SQL knowledge</code> land together.</em></span></div>
+      <div class="step"><span class="s">4</span><span class="t"><b>Numbers → 594 groups.</b>
+        <em>Learned once, on one period, so a later month can be compared rather than re-invented.</em></span></div>
+      <div class="step"><span class="s">5</span><span class="t"><b>Groups → core and shell.</b>
+        <em>A group's share in one cell against the job family's own baseline.</em></span></div>
+      <div class="step"><span class="s">6</span><span class="t"><b>Every number, twice.</b>
+        <em>Once per advert, once per distinct advert. Both are published.</em></span></div>
+    </div>
+  </section>
+
+  <div class="weight" id="weight">
+    <h3 id="wlabel"></h3>
+    <p class="cnote" id="wnote"></p>
+    <div class="wopts" id="wopts"></div>
+    <div class="wresult">
+      <span class="wcap" id="wcap"></span>
+      <div class="wrow"><span class="wout" id="wout">—</span><span class="wsub" id="wsub"></span></div>
+      <span class="wcount" id="wcount"></span>
+    </div>
+    <p class="wexplain" id="wexplain"></p>
+  </div>
+
+  <section>
+    <div class="sechead"><span class="num">01</span><h2>Industry, country, seniority — which one really changes the job?</h2></div>
+    <div class="card door">
+      <div class="ctitle" id="c1title"></div>
+      <div class="chartbox"><svg id="c1"></svg><div class="tip" id="tip1"></div></div>
+      <div class="legend" id="c1legend"></div>
+      <p class="cnote" id="c1note"></p>
+      <p class="door-cta">Read the article: why the raw table said country, and why it was wrong →</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead"><span class="num">02</span><h2>What travels with you between industries, and what stays behind?</h2></div>
+    <div class="card door">
+      <div class="ctitle" id="c2title"></div>
+      <div class="chartbox"><svg id="c2"></svg><div class="tip" id="tip2"></div></div>
+      <div class="legend" id="c2legend"></div>
+      <p class="cnote" id="c2note"></p>
+      <p class="door-cta">Read the article: the seven things that travel, and the twenty-times demands →</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead"><span class="num">03</span><h2>Europe keeps an official list of workplace skills. Is what employers ask for on it?</h2></div>
+    <div class="card door">
+      <div class="ctitle" id="c3title"></div>
+      <div class="chartbox"><svg id="c3"></svg><div class="tip" id="tip3"></div></div>
+      <div class="legend" id="c3legend"></div>
+      <p class="cnote" id="c3note"></p>
+      <p class="door-cta">Read the article: what the European skills catalogue misses, and why →</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead"><span class="num">04</span><h2>Which employers actually repeat themselves?</h2></div>
+    <div class="card">
+      <div class="ctitle" id="c4title"></div>
+      <div class="chartbox"><svg id="c4"></svg><div class="tip" id="tip4"></div></div>
+      <p class="cnote" id="c4note"></p>
+    </div>
+  </section>
+
+  <div class="limits">
+    <span class="tag">What these numbers will not carry</span>
+    <ul>
+      <li>These are <b>advertised</b> requirements, not the labour market. Posted is not the same as existing, and large employers are over-represented by construction.</li>
+      <li>Extraction finds about <b>80%</b> of requirements, and misses them unevenly. Every figure here is a <b>share of adverts</b>, never a count of requirements per advert.</li>
+      <li>One requirement type — domain knowledge — is correctly identified <b>27%</b> of the time. Any claim resting on it carries that number.</li>
+      <li><b>A third of the uncatalogued demand has no reason assigned</b>, and part of it is our own grouping rather than a gap in the catalogue.</li>
+      <li>Every magnitude is a <b>range</b>. The consistent shape of these results is a stable direction over an unstable size.</li>
+    </ul>
+  </div>
+
+  <p class="foot">Every figure regenerates from the analysis scripts. Twenty-five known defects are
+    tracked with their measured sizes; none of them moves a headline, which is the most persuasive
+    thing this study can say.</p>
+</div>
+
+<script id="D" type="application/json">__DATA__</script>
+<script>
+(function(){
+  "use strict";
+  var D = JSON.parse(document.getElementById("D").textContent);
+  var css = getComputedStyle(document.documentElement);
+  function v(n){ return css.getPropertyValue(n).trim(); }
+
+  function svg(el, w, h){
+    var s = document.getElementById(el);
+    s.setAttribute("viewBox", "0 0 " + w + " " + h);
+    s.setAttribute("width", w); s.setAttribute("height", h);
+    s.textContent = "";
+    return s;
+  }
+  function mk(tag, attrs){
+    var e = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function tipFor(boxId, tipId){
+    var tip = document.getElementById(tipId);
+    var box = tip.parentNode;
+    return {
+      show: function(evt, html){
+        tip.innerHTML = html; tip.classList.add("on");
+        var r = box.getBoundingClientRect();
+        var x = evt.clientX - r.left + 12, y = evt.clientY - r.top + 12;
+        if (x + 240 > r.width) x = Math.max(4, r.width - 250);
+        tip.style.left = x + "px"; tip.style.top = y + "px";
+      },
+      hide: function(){ tip.classList.remove("on"); }
+    };
+  }
+
+  /* ---------------- tiles ---------------- */
+  /* the three headline numbers were removed from the top of the page: a figure
+     with no chart around it reads as a claim, and each of them belongs inside
+     the chart that earns it. */
+
+  /* ---------------- weighting ---------------- */
+  var W = D.weighting, wopts = document.getElementById("wopts");
+  document.getElementById("wlabel").textContent = W.label;
+  document.getElementById("wnote").textContent = W.note;
+  function setW(o){
+    document.getElementById("wcap").textContent = W.measures;
+    document.getElementById("wout").textContent = o.ratio.toFixed(3) + "×";
+    document.getElementById("wsub").textContent = W.meaning;
+    document.getElementById("wcount").textContent =
+      o.adverts.toLocaleString() + " adverts counted under this rule";
+    document.getElementById("wexplain").textContent = o.explain;
+    [].forEach.call(wopts.children, function(b){
+      b.setAttribute("aria-pressed", b.dataset.k === o.key ? "true" : "false");
+    });
+  }
+  W.options.forEach(function(o){
+    var b = document.createElement("button");
+    b.type = "button"; b.dataset.k = o.key;
+    b.appendChild(document.createTextNode(o.label));
+    if (o.published) {
+      var pub = document.createElement("span");
+      pub.className = "pub"; pub.textContent = "what this study publishes";
+      b.appendChild(pub);
+    }
+    b.id = "w_" + o.key;
+    b.addEventListener("click", function(){ setW(o); });
+    wopts.appendChild(b);
+  });
+  setW(W.options.filter(function(o){ return o.default; })[0] || W.options[0]);
+
+  /* ---------------- chart 1: dumbbell ---------------- */
+  (function(){
+    var d = D.c1, rows = d.rows, n = rows.length;
+    document.getElementById("c1title").textContent = d.title;
+    document.getElementById("c1note").textContent = d.note;
+    var lg1 = document.getElementById("c1legend");
+    [[v("--accent-pale"), d.dot_a], [v("--accent"), d.dot_b]].forEach(function(p){
+      var sp = document.createElement("span");
+      var i2 = document.createElement("i"); i2.className = "sw";
+      i2.style.background = p[0]; i2.style.borderRadius = "50%";
+      sp.appendChild(i2); sp.appendChild(document.createTextNode(p[1]));
+      lg1.appendChild(sp);
+    });
+    var W0 = 760, L = 190, R = 60, rowH = 44, H = n * rowH + 64;
+    var s = svg("c1", W0, H), tip = tipFor("c1", "tip1");
+    var lo = 0.26, hi = 0.44, iw = W0 - L - R;
+    function X(x){ return L + (x - lo) / (hi - lo) * iw; }
+    [0.28,0.32,0.36,0.40,0.44].forEach(function(t){
+      s.appendChild(mk("line",{x1:X(t),x2:X(t),y1:26,y2:H-20,class:"gridline"}));
+      var lb = mk("text",{x:X(t),y:18,"text-anchor":"middle",class:"axis"});
+      lb.textContent = t.toFixed(2); s.appendChild(lb);
+    });
+    rows.forEach(function(r, i){
+      var y = 40 + i * rowH;
+      var lab = mk("text",{x:L-14,y:y+4,"text-anchor":"end",class:"rowlab"});
+      lab.textContent = r.factor; s.appendChild(lab);
+      s.appendChild(mk("line",{x1:X(r.raw),x2:X(r.controlled),y1:y,y2:y,
+        stroke:r.confounded ? v("--accent") : v("--dim"),
+        "stroke-width":r.confounded ? 3 : 2,"stroke-linecap":"round"}));
+      [[r.raw, v("--accent-pale"), "as measured"],
+       [r.controlled, v("--accent"), "language held constant"]].forEach(function(p){
+        var c = mk("circle",{cx:X(p[0]),cy:y,r:6,fill:p[1],
+          stroke:v("--panel"),"stroke-width":2});
+        c.style.cursor = "pointer";
+        c.addEventListener("mousemove", function(e){
+          tip.show(e, "<b>" + r.factor + "</b><br>" + p[2] + ": " + p[0].toFixed(3) +
+            (r.confounded ? "<br>loses " + Math.abs(r.shift_pct) + "% when language is held constant" : ""));
+        });
+        c.addEventListener("mouseleave", tip.hide);
+        s.appendChild(c);
+      });
+      if (r.confounded){
+        var mid = (X(r.raw) + X(r.controlled)) / 2;
+        var t2 = mk("text",{x:mid,y:y-13,"text-anchor":"middle",class:"reflabel",
+          fill:v("--accent")});
+        t2.textContent = "most of this gap was just the advert's language";
+        s.appendChild(t2);
+      }
+      var val = mk("text",{x:W0-R+8,y:y+4,class:"rowval"});
+      val.textContent = r.controlled.toFixed(3); s.appendChild(val);
+    });
+    var xl1 = mk("text",{x:L,y:H-6,class:"axis"});
+    xl1.textContent = d.x_label; s.appendChild(xl1);
+  })();
+
+  /* ---------------- chart 2: dot strip ---------------- */
+  (function(){
+    var d = D.c2, g = d.groups;
+    document.getElementById("c2title").textContent = d.title;
+    document.getElementById("c2note").textContent = d.note;
+    var W0 = 760, L = 40, R = 40, H = 300, top = 34, bot = H - 40;
+    var s = svg("c2", W0, H), tip = tipFor("c2", "tip2");
+    var lo = Math.log(0.6), hi = Math.log(24), iw = W0 - L - R;
+    function X(x){ return L + (Math.log(Math.max(x,0.6)) - lo) / (hi - lo) * iw; }
+    [1,2,5,10,20].forEach(function(t){
+      s.appendChild(mk("line",{x1:X(t),x2:X(t),y1:top-8,y2:bot,class:"gridline"}));
+      var lb = mk("text",{x:X(t),y:bot+16,"text-anchor":"middle",class:"axis"});
+      lb.textContent = t + "×"; s.appendChild(lb);
+    });
+    s.appendChild(mk("line",{x1:X(1),x2:X(1),y1:top-8,y2:bot,
+      stroke:v("--muted"),"stroke-width":1.5,"stroke-dasharray":"3 3"}));
+    var rl = mk("text",{x:X(1),y:top-14,"text-anchor":"middle",class:"reflabel"});
+    rl.textContent = d.reference.label; s.appendChild(rl);
+    var COL = {core:v("--accent"), shell:v("--s2"), neither:v("--dim")};
+    var lg2 = document.getElementById("c2legend");
+    ["core","shell","neither"].forEach(function(k){
+      var sp = document.createElement("span");
+      var i2 = document.createElement("i"); i2.className = "sw";
+      i2.style.background = COL[k]; i2.style.borderRadius = "50%";
+      sp.appendChild(i2); sp.appendChild(document.createTextNode(d.keys[k]));
+      lg2.appendChild(sp);
+    });
+    var band = bot - top - 16, seed = 7;
+    function rnd(){ seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; }
+    g.slice().sort(function(a,b){ return (a.kind==="neither"?0:1)-(b.kind==="neither"?0:1); })
+      .forEach(function(x){
+      var cy = top + 10 + rnd() * band;
+      var c = mk("circle",{cx:X(x.lift),cy:cy,r:x.kind==="neither"?3.2:4.6,
+        fill:COL[x.kind],opacity:x.kind==="neither"?0.5:0.92});
+      if (x.kind !== "neither"){ c.setAttribute("stroke", v("--panel")); c.setAttribute("stroke-width", 1.4); }
+      c.style.cursor = "pointer";
+      c.addEventListener("mousemove", function(e){
+        tip.show(e, "<b>" + x.group + "</b><br>" + x.lift + "× in " + x.cell +
+          "<br>asked by " + (x.employers || "—") + " different employers");
+      });
+      c.addEventListener("mouseleave", tip.hide);
+      s.appendChild(c);
+    });
+    var xl = mk("text",{x:L,y:H-6,class:"axis"}); xl.textContent = d.x_label; s.appendChild(xl);
+  })();
+
+  /* ---------------- chart 3: stacked bar ---------------- */
+  (function(){
+    var d = D.c3, fam = d.families;
+    document.getElementById("c3title").textContent = d.title;
+    document.getElementById("c3note").textContent = d.note;
+    var W0 = 760, L = 96, R = 70, H = 190, barH = 46, gap = 34;
+    var s = svg("c3", W0, H), tip = tipFor("c3", "tip3");
+    var max = 0.32, iw = W0 - L - R;
+    function X(x){ return x / max * iw; }
+    var COLS = [v("--s1"), v("--s2"), v("--s3"), v("--s4")];
+    [0,0.1,0.2,0.3].forEach(function(t){
+      s.appendChild(mk("line",{x1:L+X(t),x2:L+X(t),y1:22,y2:H-34,class:"gridline"}));
+      var lb = mk("text",{x:L+X(t),y:14,"text-anchor":"middle",class:"axis"});
+      lb.textContent = Math.round(t*100) + "%"; s.appendChild(lb);
+    });
+    fam.forEach(function(f, i){
+      var y = 30 + i * (barH + gap), off = 0;
+      var lab = mk("text",{x:L-14,y:y+barH/2+5,"text-anchor":"end",class:"rowlab"});
+      lab.textContent = f.family; s.appendChild(lab);
+      f.segments.forEach(function(sg, k){
+        var w = X(sg.share_of_family);
+        if (w <= 0) return;
+        var r = mk("rect",{x:L+off+ (k?1:0), y:y, width:Math.max(w-2,1), height:barH,
+          fill:COLS[k], rx:2});
+        r.style.cursor = "pointer";
+        r.addEventListener("mousemove", function(e){
+          tip.show(e, "<b>" + f.family + "</b><br>" + sg.reason + "<br>" +
+            (sg.share_of_family*100).toFixed(1) + "% of this family's requirements");
+        });
+        r.addEventListener("mouseleave", tip.hide);
+        s.appendChild(r);
+        if (w > 46){
+          var t2 = mk("text",{x:L+off+w/2, y:y+barH/2+4,"text-anchor":"middle",
+            class:"axis", fill:"#fff"});
+          t2.textContent = (sg.share_of_family*100).toFixed(1) + "%";
+          s.appendChild(t2);
+        }
+        off += w;
+      });
+      var tot = mk("text",{x:L+off+10,y:y+barH/2+5,class:"rowval"});
+      tot.textContent = (f.residual_share*100).toFixed(1) + "% total";
+      s.appendChild(tot);
+    });
+    var lg = document.getElementById("c3legend");
+    fam[0].segments.forEach(function(sg, k){
+      var sp = document.createElement("span");
+      var i2 = document.createElement("i"); i2.className = "sw";
+      i2.style.background = COLS[k];
+      sp.appendChild(i2); sp.appendChild(document.createTextNode(sg.reason));
+      lg.appendChild(sp);
+    });
+  })();
+
+  /* ---------------- chart 4: emphasis scatter ---------------- */
+  (function(){
+    var d = D.c4, e = d.employers;
+    document.getElementById("c4title").textContent = d.title;
+    document.getElementById("c4note").textContent = d.note;
+    var W0 = 760, L = 52, R = 30, H = 300, top = 26, bot = H - 42;
+    var s = svg("c4", W0, H), tip = tipFor("c4", "tip4");
+    var xlo = Math.log(18), xhi = Math.log(1100), iw = W0 - L - R;
+    function X(x){ return L + (Math.log(x) - xlo) / (xhi - xlo) * iw; }
+    function Y(y){ return bot - Math.min(y,1) * (bot - top); }
+    [0,0.25,0.5,0.75,1].forEach(function(t){
+      s.appendChild(mk("line",{x1:L,x2:W0-R,y1:Y(t),y2:Y(t),class:"gridline"}));
+      var lb = mk("text",{x:L-8,y:Y(t)+4,"text-anchor":"end",class:"axis"});
+      lb.textContent = t; s.appendChild(lb);
+    });
+    [20,50,100,300,1000].forEach(function(t){
+      var lb = mk("text",{x:X(t),y:bot+16,"text-anchor":"middle",class:"axis"});
+      lb.textContent = t; s.appendChild(lb);
+    });
+    s.appendChild(mk("line",{x1:L,x2:W0-R,y1:Y(d.control_line),y2:Y(d.control_line),
+      stroke:v("--muted"),"stroke-width":1.5,"stroke-dasharray":"3 3"}));
+    var cl = mk("text",{x:W0-R,y:Y(d.control_line)-6,"text-anchor":"end",class:"reflabel"});
+    cl.textContent = "two adverts from different employers"; s.appendChild(cl);
+    e.slice().sort(function(a,b){ return a.highlight - b.highlight; }).forEach(function(x){
+      var c = mk("circle",{cx:X(x.adverts),cy:Y(x.self_similarity),
+        r:x.highlight?7:3.4, fill:x.highlight?v("--accent"):v("--dim"),
+        opacity:x.highlight?1:0.55});
+      if (x.highlight){ c.setAttribute("stroke", v("--panel")); c.setAttribute("stroke-width", 2); }
+      c.style.cursor = "pointer";
+      c.addEventListener("mousemove", function(ev){
+        tip.show(ev, "<b>" + x.name + "</b><br>" + x.adverts.toLocaleString() +
+          " adverts<br>its own adverts resemble each other: " + x.self_similarity);
+      });
+      c.addEventListener("mouseleave", tip.hide);
+      s.appendChild(c);
+      if (x.highlight){
+        var t3 = mk("text",{x:X(x.adverts)+ (x.adverts>400?-12:12),
+          y:Y(x.self_similarity)+4, class:"rowval",
+          "text-anchor": x.adverts>400 ? "end" : "start"});
+        t3.textContent = x.name; s.appendChild(t3);
+      }
+    });
+    var xl = mk("text",{x:L,y:H-6,class:"axis"}); xl.textContent = d.x_label; s.appendChild(xl);
+    var yl = mk("text",{x:6,y:top+2,class:"axis"}); yl.textContent = d.y_label;
+    s.appendChild(yl);
+  })();
+})();
+</script>

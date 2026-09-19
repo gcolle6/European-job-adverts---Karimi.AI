@@ -25,11 +25,8 @@ import pathlib
 import shutil
 import sys
 
-W4 = pathlib.Path(r"C:\Users\giaco\OneDrive\Desktop\Karimi.ai\week 4")
-ROOT = pathlib.Path(r"C:\Users\giaco\OneDrive\Desktop\Karimi.ai")
-SCRATCH = pathlib.Path(r"C:\Users\giaco\AppData\Local\Temp\claude"
-                       r"\c--Users-giaco-OneDrive-Desktop-Karimi-ai"
-                       r"\4b6971b1-348b-41fb-bfd2-11115c9bf682\scratchpad")
+W4 = pathlib.Path(__file__).resolve().parent
+ROOT = W4.parent
 
 KEEP_NAMED = "--named" in sys.argv
 
@@ -49,7 +46,7 @@ if not KEEP_NAMED:
                            "distribution.")
     print(f"anonymised {n} employers; {len(data['c4']['employers']) - n} kept named")
 
-tpl = (SCRATCH / "dash.html").read_text(encoding="utf-8")
+tpl = (W4 / "page_template.html").read_text(encoding="utf-8")
 blob = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
 page = tpl.replace("__DATA__", blob)
 

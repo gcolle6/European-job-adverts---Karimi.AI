@@ -9,10 +9,7 @@ nothing against a 16 MB budget.
 import json
 import pathlib
 
-SCRATCH = pathlib.Path(r"C:\Users\giaco\AppData\Local\Temp\claude"
-                       r"\c--Users-giaco-OneDrive-Desktop-Karimi-ai"
-                       r"\4b6971b1-348b-41fb-bfd2-11115c9bf682\scratchpad")
-W4 = pathlib.Path(r"C:\Users\giaco\OneDrive\Desktop\Karimi.ai\week 4")
+W4 = pathlib.Path(__file__).resolve().parent
 
 data = {
     "tiles": json.loads((W4 / "data" / "tiles.json").read_text(encoding="utf-8")),
@@ -23,12 +20,10 @@ data = {
     "c4": json.loads((W4 / "data" / "chart4_employers.json").read_text(encoding="utf-8")),
 }
 
-tpl = (SCRATCH / "dash.html").read_text(encoding="utf-8")
+tpl = (W4 / "page_template.html").read_text(encoding="utf-8")
 # `</script>` inside a JSON string would close the host tag early
 blob = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
 page = tpl.replace("__DATA__", blob)
-
-(SCRATCH / "dash_built.html").write_text(page, encoding="utf-8")
 
 local = """<!doctype html>
 <html lang="en">
@@ -45,5 +40,5 @@ print(f"data inlined: {len(blob)/1024:.0f} KB")
 print(f"  chart 2 groups   : {len(data['c2']['groups'])}")
 print(f"  chart 4 employers: {len(data['c4']['employers'])}")
 print(f"page: {len(page)/1024:.0f} KB")
-print(f"\nartifact source: dash_built.html")
-print(f"local copy:      week 4/dashboard.html")
+print(f"\nlocal copy: week 4/dashboard.html  (names all 311 employers)")
+print("public build with the cloud anonymised: python \"week 4/build_public.py\"")

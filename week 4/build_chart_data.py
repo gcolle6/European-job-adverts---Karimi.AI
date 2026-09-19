@@ -63,12 +63,15 @@ NICE = {"seniority": "How senior the role is", "company_industry": "Which indust
         "geo_country": "Which country", "company_type": "What kind of company",
         "company_size": "How big the company is"}
 write("chart1_drivers.json", {
-    "title": "Which of these changes what you are asked for?",
-    "note": ("Each factor is tested the same way: hold the job fixed, change only "
-             "that one thing, and see how much the list of requirements moves. "
-             "Further right means it changes more. The pale dot is what we first "
-             "measured; the solid dot is after removing the effect of the language "
-             "the advert happens to be written in."),
+    "title": "Country looked like the strongest — until the advert's language was taken out",
+    "note": ("Every factor is tested the same way: hold the job fixed, change only that "
+             "one thing, and measure how much the list of requirements moves. Further "
+             "right means it moves more. The pale dot is the first measurement. The "
+             "solid dot is the same measurement after removing the effect of the "
+             "language the advert happens to be written in — adverts from one country "
+             "tend to share a language, so an untreated country comparison is partly "
+             "just a comparison of languages. Only country moves when that is taken "
+             "out, which is how you can tell it was the confounded one."),
     "x_label": "how much the list of requirements changes when this factor changes  →",
     "dot_a": "what we first measured",
     "dot_b": "after removing the language effect",
@@ -139,9 +142,15 @@ LABEL = {"novelty": "names something not yet catalogued",
          "structural": "ESCO does not model it at all",
          "other": "no reason assigned"}
 write("chart3_residual.json", {
-    "title": "A quarter of demand has no concept in the European catalogue",
-    "note": ("Share of each job family's requirements with no ESCO concept, "
-             "split by why. The unassigned quarter is a segment like any other."),
+    "title": "About a quarter is not — and the two jobs fall off the list for different reasons",
+    "note": ("ESCO is the European Union's official classification of skills and "
+             "occupations: the reference list used to compare jobs across countries. "
+             "Each bar is one job family's requirements that match no concept in it, "
+             "split by why they do not. Software falls off through novelty — it names "
+             "things the list has not caught up with. Sales falls off through vagueness "
+             "— it names nothing specific enough to match. 'No reason assigned' is the "
+             "largest piece of both, and part of it is our own grouping rather than a "
+             "gap in the catalogue."),
     "families": [{
         "family": "software" if fn == "SOFTWARE_DATA" else "sales",
         "residual_share": round(float(rr[rr["macro_function"] == fn].shape[0] / tot[fn]), 4),
@@ -184,27 +193,31 @@ write("tiles.json", {"tiles": [
 ]})
 
 write("weighting.json", {
-    "label": "How much does one advert count?",
-    "note": ("The same question answered three ways. The middle is what this study "
-             "publishes: two adverts from one employer that ask for the same things "
-             "are one demand, not two."),
+    "label": "One retailer posted the same advert 474 times. Should it count 474 times?",
+    "note": ("Pick a rule and the headline number is recomputed under it. The point is "
+             "not which rule is correct — it is that the answer stays above 1 whichever "
+             "you pick, so the finding does not depend on this choice."),
+    # The result is a ratio, and a ratio is unreadable without its pair. Both halves
+    # are stated on the page next to the number rather than left to the note.
+    "measures": "sales vs software",
+    "meaning": ("a sales role's list of requirements shifts this much more than a "
+                "software role's when the industry changes"),
     "options": [
-        {"key": "advert", "label": "every advert counts",
-         "explain": ("Count all 25,800. One retailer posted 474 near-identical adverts, "
-                     "and here they count 474 times — so a single company's template can "
-                     "look like an industry-wide pattern."),
+        {"key": "advert", "label": "count every advert",
+         "explain": ("All 25,800 adverts count once each. That retailer's 474 "
+                     "near-identical adverts count 474 times, so one company's template "
+                     "can look like an industry-wide pattern."),
          "ratio": 1.240, "adverts": 25800},
-        {"key": "dedup", "label": "collapse repeated adverts",
-         "explain": ("If one employer posts the same advert twice, count it once. That "
-                     "retailer's 474 adverts become 26 genuinely different ones. 17% of "
-                     "the corpus turns out to be a repost. This is what the study "
-                     "publishes."),
-         "ratio": 1.168, "adverts": 21356, "default": True},
-        {"key": "employer", "label": "each employer counts once",
-         "explain": ("Every company gets one vote regardless of how much it posts. Safe "
-                     "against templates, but it also throws away 975 genuinely different "
-                     "adverts from the largest poster to neutralise 86 copies from a "
-                     "smaller one."),
+        {"key": "dedup", "label": "count repeated adverts once",
+         "explain": ("When an employer posts the same advert twice, count it once. Those "
+                     "474 adverts become 26 genuinely different ones, and 17% of the "
+                     "whole corpus turns out to be a repost."),
+         "ratio": 1.168, "adverts": 21356, "default": True, "published": True},
+        {"key": "employer", "label": "count every employer once",
+         "explain": ("Each company gets one vote however much it posts. Safe against "
+                     "templates, but it throws away 975 genuinely different adverts from "
+                     "the largest poster in order to neutralise 86 copies from a smaller "
+                     "one."),
          "ratio": 1.196, "adverts": 2420},
     ],
 })
