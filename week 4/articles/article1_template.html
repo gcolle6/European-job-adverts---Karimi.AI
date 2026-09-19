@@ -1,0 +1,384 @@
+<title>What Changes The Job</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;700&display=swap">
+
+<style>
+:root{
+  --ground:#fcfcfb; --panel:#ffffff; --ink:#0b0b0b; --body:#3a3936;
+  --muted:#52514e; --faint:#8a8985; --line:#e3e2dd; --line-soft:#eeede9;
+  --accent:#2a78d6; --accent-soft:#e8f0fc; --accent-pale:#9ec5f4;
+  --dim:#c2c1bc; --neutral:#b6b5b0;
+  --s1:#2a78d6; --s2:#eb6834;
+  --warn:#8f6231; --warn-soft:#f6efe4; --warn-line:#dcc39c;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#1a1a19; --panel:#232322; --ink:#ffffff; --body:#c3c2b7;
+  --muted:#a3a29a; --faint:#7d7c75; --line:#33332f; --line-soft:#2a2a27;
+  --accent:#3987e5; --accent-soft:#16283c; --accent-pale:#1c5cab;
+  --dim:#4d4c47; --neutral:#5f5e58;
+  --s1:#3987e5; --s2:#d95926;
+  --warn:#d3a066; --warn-soft:#262019; --warn-line:#5a4830;
+}}
+:root[data-theme="dark"]{
+  --ground:#1a1a19; --panel:#232322; --ink:#ffffff; --body:#c3c2b7;
+  --muted:#a3a29a; --faint:#7d7c75; --line:#33332f; --line-soft:#2a2a27;
+  --accent:#3987e5; --accent-soft:#16283c; --accent-pale:#1c5cab;
+  --dim:#4d4c47; --neutral:#5f5e58;
+  --s1:#3987e5; --s2:#d95926;
+  --warn:#d3a066; --warn-soft:#262019; --warn-line:#5a4830;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--body);
+  font-family:"Source Sans 3",system-ui,sans-serif;font-size:16.5px;line-height:1.6;
+  margin:0;padding-block:clamp(2rem,5vw,3.5rem);padding-left:20px;padding-right:20px}
+.wrap{max-width:56rem;margin:0 auto;display:flex;flex-direction:column;gap:3rem}
+
+.mast{display:flex;flex-direction:column;gap:.7rem;border-bottom:2px solid var(--ink);padding-bottom:1.4rem}
+.kicker{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted)}
+h1{font-family:Newsreader,Georgia,serif;font-weight:600;
+  font-size:clamp(1.9rem,5vw,2.9rem);line-height:1.07;color:var(--ink);margin:0;text-wrap:balance}
+.dek{font-size:1.1rem;color:var(--muted);margin:0;max-width:44rem}
+p{margin:0}
+
+/* the connective tissue between figures — deliberately short */
+.beat{display:flex;gap:.9rem;align-items:baseline;max-width:46rem}
+.beat .n{font-family:"JetBrains Mono",monospace;font-size:.72rem;font-weight:700;
+  color:var(--accent);flex:none;padding-top:.2rem}
+.beat p{font-size:1.02rem;color:var(--body);text-wrap:pretty}
+.beat b{color:var(--ink);font-weight:600}
+
+.card{background:var(--panel);border:1px solid var(--line);padding:1.25rem 1.35rem 1rem;
+  display:flex;flex-direction:column;gap:.8rem}
+.ctitle{font-family:Newsreader,Georgia,serif;font-size:1.25rem;font-weight:600;
+  color:var(--ink);line-height:1.25}
+.cnote{font-size:.85rem;color:var(--muted);line-height:1.45}
+.chartbox{position:relative;width:100%;overflow-x:auto}
+svg{display:block;max-width:100%;height:auto;overflow:visible}
+.axis text{font-family:"JetBrains Mono",monospace;font-size:10px;fill:var(--faint)}
+.axis line{stroke:var(--line);stroke-width:1}
+.gridline{stroke:var(--line-soft);stroke-width:1}
+.rowlab{font-family:"Source Sans 3",sans-serif;font-size:12.5px;fill:var(--body)}
+.rowlab.on{fill:var(--ink);font-weight:600}
+.rowval{font-family:"JetBrains Mono",monospace;font-size:10.5px;fill:var(--ink)}
+.rowval.q{fill:var(--faint)}
+.seglab{font-family:"JetBrains Mono",monospace;font-size:9.5px;fill:#fff;font-weight:700}
+.legend{display:flex;flex-wrap:wrap;gap:.9rem;font-size:.82rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:.35rem}
+.sw{width:11px;height:11px;border-radius:2px;flex:none}
+.sw.round{border-radius:50%}
+
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--ground);
+  font-size:.78rem;line-height:1.35;padding:.4rem .55rem;border-radius:3px;
+  max-width:17rem;z-index:5;opacity:0;transition:opacity .1s}
+.tip b{font-weight:600}
+.tip.on{opacity:1}
+
+.limits{border-left:3px solid var(--warn-line);background:var(--warn-soft);padding:1rem 1.2rem;
+  display:flex;flex-direction:column;gap:.45rem;font-size:.92rem}
+.limits .tag{font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--warn);font-weight:700}
+ul{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3rem}
+.foot{border-top:1px solid var(--line);padding-top:1rem;font-size:.84rem;color:var(--faint)}
+@media (max-width:560px){body{font-size:16px}}
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <div class="kicker">Article 1 of 3 · draft · not published</div>
+    <h1>What actually changes the job</h1>
+    <p class="dek">Hold the role fixed. Six things still vary around it — the industry, the
+      country, the seniority, the kind of company, its size, and whether the work is remote.
+      Which of them changes what employers ask for, and which only looked like it did?</p>
+  </header>
+
+  <div class="beat"><span class="n">01</span><p>Measure each factor the same way: take three
+    levels of it, hold the job family fixed, and see how far apart the resulting requirement
+    profiles sit. <b>Country comes out on top in both job families.</b></p></div>
+
+  <div class="card">
+    <div class="ctitle" id="atitle"></div>
+    <div class="chartbox"><svg id="ca"></svg><div class="tip" id="tipa"></div></div>
+    <div class="legend" id="alegend"></div>
+    <p class="cnote" id="anote"></p>
+  </div>
+
+  <div class="beat"><span class="n">02</span><p>Before believing that, one thing about these
+    adverts has to be faced. <b>A country is not only a country — it is also a language</b>,
+    and the requirement text is what was read and grouped.</p></div>
+
+  <div class="card">
+    <div class="ctitle" id="btitle"></div>
+    <div class="chartbox"><svg id="cb"></svg><div class="tip" id="tipb"></div></div>
+    <div class="legend" id="blegend"></div>
+    <p class="cnote" id="bnote"></p>
+  </div>
+
+  <div class="beat"><span class="n">03</span><p>So run it again on English adverts only. If
+    country's lead were real it should survive. <b>It does not — and nothing else moves.</b></p></div>
+
+  <div class="card">
+    <div class="ctitle" id="ctitle"></div>
+    <div class="chartbox"><svg id="cc"></svg><div class="tip" id="tipc"></div></div>
+    <div class="legend" id="clegend"></div>
+    <p class="cnote" id="cnote"></p>
+  </div>
+
+  <div class="beat"><span class="n">04</span><p>One confound invites the next. Industries are
+    not spread evenly across countries, so is an industry step partly a country step in
+    disguise? <b>Blocking on country makes the industry step larger, not smaller.</b></p></div>
+
+  <div class="card">
+    <div class="ctitle" id="dtitle"></div>
+    <div class="chartbox"><svg id="cd"></svg><div class="tip" id="tipd"></div></div>
+    <div class="legend" id="dlegend"></div>
+    <p class="cnote" id="dnote"></p>
+  </div>
+
+  <div class="beat"><span class="n">05</span><p>Last, the counting rule. One employer posting
+    the same advert hundreds of times inflates every distance at once. <b>Give each employer
+    one vote and the numbers shrink together, without changing places.</b></p></div>
+
+  <div class="card">
+    <div class="ctitle" id="etitle"></div>
+    <div class="chartbox"><svg id="ce"></svg><div class="tip" id="tipe"></div></div>
+    <div class="legend" id="elegend"></div>
+    <p class="cnote" id="enote"></p>
+  </div>
+
+  <div class="limits">
+    <span class="tag">What this article does not settle</span>
+    <ul>
+      <li>Three levels per factor, chosen for having enough adverts on both sides. A factor
+        with more levels could rank differently on all of them.</li>
+      <li>The language control removes language by <b>dropping</b> non-English adverts, so what
+        survives is the English-writing part of each country, not a translated whole corpus.</li>
+      <li><b>Country still moves the profile after the control.</b> It falls from first to
+        fourth; it does not fall to nothing.</li>
+      <li>Seniority and industry finish level within their intervals. The honest reading is a
+        tie, not a winner.</li>
+    </ul>
+  </div>
+
+  <p class="foot">Figures A, C, D and E are read from the Week 3 output tables rather than
+    recomputed here, so this page cannot quietly disagree with them. Figure B is computed in
+    <code>article1_data.py</code>.</p>
+</div>
+
+<script id="D" type="application/json">__DATA__</script>
+<script>
+(function(){
+  "use strict";
+  var D = JSON.parse(document.getElementById("D").textContent);
+  var css = getComputedStyle(document.documentElement);
+  function v(n){ return css.getPropertyValue(n).trim(); }
+  function svg(el, w, h){
+    var s = document.getElementById(el);
+    s.setAttribute("viewBox", "0 0 " + w + " " + h);
+    s.setAttribute("width", w); s.setAttribute("height", h);
+    s.textContent = "";
+    return s;
+  }
+  function mk(t, a){
+    var e = document.createElementNS("http://www.w3.org/2000/svg", t);
+    for (var k in a) e.setAttribute(k, a[k]);
+    return e;
+  }
+  function txt(e, s){ e.textContent = s; return e; }
+  function legend(el, items){
+    var g = document.getElementById(el);
+    items.forEach(function(it){
+      var sp = document.createElement("span");
+      var i = document.createElement("i");
+      i.className = "sw" + (it[2] ? " round" : "");
+      i.style.background = it[0];
+      sp.appendChild(i); sp.appendChild(document.createTextNode(it[1]));
+      g.appendChild(sp);
+    });
+  }
+  function hover(svgEl, tipEl, shape, html){
+    shape.addEventListener("mousemove", function(ev){
+      var box = svgEl.parentNode.getBoundingClientRect();
+      tipEl.innerHTML = html;
+      tipEl.classList.add("on");
+      tipEl.style.left = Math.min(ev.clientX - box.left + 12, box.width - 190) + "px";
+      tipEl.style.top  = (ev.clientY - box.top + 12) + "px";
+    });
+    shape.addEventListener("mouseleave", function(){ tipEl.classList.remove("on"); });
+  }
+  function head(id, d){
+    document.getElementById(id + "title").textContent = d.title;
+    document.getElementById(id + "note").textContent = d.note;
+  }
+
+  /* ---- A: six factors, two families, with intervals ---- */
+  (function(){
+    var d = D.a; head("a", d);
+    var rows = d.factors, L = 178, R = 58, top = 26, rh = 46, H = top + rows.length*rh + 34, W = 860;
+    var s = svg("ca", W, H), tip = document.getElementById("tipa");
+    var hi = 0.50, X = function(t){ return L + (t/hi) * (W-L-R); };
+    [0,0.1,0.2,0.3,0.4,0.5].forEach(function(t){
+      s.appendChild(mk("line",{x1:X(t),x2:X(t),y1:top-8,y2:H-30,class:"gridline"}));
+      s.appendChild(txt(mk("text",{x:X(t),y:H-16,"text-anchor":"middle",class:"axis"}), t.toFixed(1)));
+    });
+    s.appendChild(txt(mk("text",{x:L,y:16,class:"axis"}), d.x_label));
+    var COL = {software: v("--s1"), sales: v("--s2")};
+    rows.forEach(function(r, i){
+      var y0 = top + i*rh + 14;
+      s.appendChild(txt(mk("text",{x:L-10,y:y0+8,"text-anchor":"end",class:"rowlab"}), r.factor));
+      r.series.forEach(function(p, j){
+        var y = y0 + (j ? 15 : 1);
+        s.appendChild(mk("line",{x1:X(p.lo),x2:X(p.hi),y1:y,y2:y,
+          stroke:COL[p.family],"stroke-width":2,"stroke-linecap":"round",opacity:.45}));
+        var c = mk("circle",{cx:X(p.js),cy:y,r:5,fill:COL[p.family],
+          stroke:v("--panel"),"stroke-width":2});
+        hover(s, tip, c, "<b>" + r.factor + "</b><br>" + p.family + " &middot; " +
+          p.js.toFixed(3) + "<br>interval " + p.lo.toFixed(3) + "–" + p.hi.toFixed(3));
+        s.appendChild(c);
+        s.appendChild(txt(mk("text",{x:X(p.hi)+8,y:y+4,class:"rowval"}), p.js.toFixed(3)));
+      });
+    });
+    legend("alegend", [[COL.software,"software",1],[COL.sales,"sales",1]]);
+  })();
+
+  /* ---- B: the language mixture of each country ---- */
+  (function(){
+    var d = D.b; head("b", d);
+    var rows = d.rows, L = 150, R = 74, top = 26, rh = 27, H = top + rows.length*rh + 30, W = 860;
+    var s = svg("cb", W, H), tip = document.getElementById("tipb");
+    var span = W - L - R, X = function(p){ return L + (p/100)*span; };
+    [0,25,50,75,100].forEach(function(t){
+      s.appendChild(mk("line",{x1:X(t),x2:X(t),y1:top-8,y2:H-26,class:"gridline"}));
+      s.appendChild(txt(mk("text",{x:X(t),y:H-12,"text-anchor":"middle",class:"axis"}), t + "%"));
+    });
+    var C = {english: v("--s1"), local: v("--s2"), other: v("--neutral")};
+    rows.forEach(function(r, i){
+      var y = top + i*rh, bh = 17;
+      var lab = mk("text",{x:L-10,y:y+13,"text-anchor":"end",
+        class:"rowlab" + (r.compared ? " on" : "")});
+      s.appendChild(txt(lab, r.country + (r.compared ? "  ◆" : "")));
+      var acc = 0;
+      [["english",r.english],["local",r.local],["other",r.other]].forEach(function(p){
+        if (p[1] <= 0) return;
+        var x = X(acc), w = Math.max(0, X(acc+p[1]) - x - 2);
+        var rect = mk("rect",{x:x,y:y,width:w,height:bh,fill:C[p[0]],rx:2});
+        var name = p[0] === "local" ? (r.local_name || "local") :
+                   p[0] === "english" ? "English" : "any other language";
+        hover(s, tip, rect, "<b>" + r.country + "</b><br>" + name + " &middot; " +
+          p[1].toFixed(1) + "%<br>" + r.adverts.toLocaleString() + " adverts");
+        s.appendChild(rect);
+        if (p[1] >= 14) s.appendChild(txt(mk("text",{x:x+6,y:y+12,class:"seglab"}),
+          Math.round(p[1]) + "%"));
+        acc += p[1];
+      });
+      if (r.local_name) s.appendChild(txt(mk("text",{x:W-R+8,y:y+13,class:"rowval q"}), r.local_name));
+    });
+    legend("blegend", d.keys.map(function(k){ return [C[k.key], k.label]; })
+      .concat([["transparent","◆ used in the comparison above"]]));
+  })();
+
+  /* ---- C: raw vs English-only ---- */
+  (function(){
+    var d = D.c; head("c", d);
+    var rows = d.rows, L = 178, R = 96, top = 26, rh = 40, H = top + rows.length*rh + 32, W = 860;
+    var s = svg("cc", W, H), tip = document.getElementById("tipc");
+    var hi = 0.50, X = function(t){ return L + (t/hi)*(W-L-R); };
+    [0,0.1,0.2,0.3,0.4,0.5].forEach(function(t){
+      s.appendChild(mk("line",{x1:X(t),x2:X(t),y1:top-8,y2:H-28,class:"gridline"}));
+      s.appendChild(txt(mk("text",{x:X(t),y:H-14,"text-anchor":"middle",class:"axis"}), t.toFixed(1)));
+    });
+    s.appendChild(txt(mk("text",{x:L,y:16,class:"axis"}), d.x_label));
+    rows.forEach(function(r, i){
+      var y = top + i*rh + 12;
+      s.appendChild(txt(mk("text",{x:L-10,y:y+4,"text-anchor":"end",
+        class:"rowlab" + (r.confounded ? " on" : "")}), r.factor));
+      s.appendChild(mk("line",{x1:X(r.raw),x2:X(r.controlled),y1:y,y2:y,
+        stroke:r.confounded ? v("--s2") : v("--dim"),"stroke-width":r.confounded?3:2}));
+      var a = mk("circle",{cx:X(r.raw),cy:y,r:5,fill:v("--accent-pale"),
+        stroke:v("--panel"),"stroke-width":2});
+      var b = mk("circle",{cx:X(r.controlled),cy:y,r:5.5,
+        fill:r.confounded ? v("--s2") : v("--accent"),stroke:v("--panel"),"stroke-width":2});
+      hover(s, tip, a, "<b>" + r.factor + "</b><br>all adverts &middot; " + r.raw.toFixed(3));
+      hover(s, tip, b, "<b>" + r.factor + "</b><br>English only &middot; " +
+        r.controlled.toFixed(3) + "<br>change " + r.shift_pct.toFixed(1) + "%");
+      s.appendChild(a); s.appendChild(b);
+      var sh = (r.shift_pct > 0 ? "+" : "") + r.shift_pct.toFixed(1) + "%";
+      s.appendChild(txt(mk("text",{x:W-R+10,y:y+4,
+        class:"rowval" + (r.confounded ? "" : " q")}), sh));
+    });
+    legend("clegend", [[v("--accent-pale"),"all adverts",1],
+                       [v("--accent"),"English text only",1],
+                       [v("--s2"),"moved by more than 10%"]]);
+  })();
+
+  /* ---- D: the industry step, pooled and inside one country ---- */
+  (function(){
+    var d = D.d; head("d", d);
+    var rows = d.rows, L = 56, R = 20, top = 30, bot = 62, H = 300, W = 860;
+    var s = svg("cd", W, H), tip = document.getElementById("tipd");
+    var Y = function(p){ return H - bot - (p/80)*(H - bot - top); };
+    [0,20,40,60,80].forEach(function(t){
+      s.appendChild(mk("line",{x1:L,x2:W-R,y1:Y(t),y2:Y(t),class:"gridline"}));
+      s.appendChild(txt(mk("text",{x:L-8,y:Y(t)+4,"text-anchor":"end",class:"axis"}), t + "%"));
+    });
+    s.appendChild(txt(mk("text",{x:L,y:16,class:"axis"}), d.y_label));
+    var slot = (W - L - R) / rows.length;
+    rows.forEach(function(r, i){
+      var cx = L + slot*i + slot/2, bw = 34, gap = 5;
+      [["pooled", r.pooled, v("--accent-pale"), "anywhere"],
+       ["within", r.within, r.control ? v("--dim") : v("--s2"), "inside one country"]
+      ].forEach(function(p, j){
+        var x = cx - bw - gap/2 + j*(bw+gap), y = Y(p[1]);
+        var rect = mk("rect",{x:x,y:y,width:bw,height:(H-bot)-y,fill:p[2],rx:2});
+        hover(s, tip, rect, "<b>" + r.family + " &middot; " + r.move + "</b><br>" +
+          p[3] + " &middot; " + p[1].toFixed(1) + "%");
+        s.appendChild(rect);
+        s.appendChild(txt(mk("text",{x:x+bw/2,y:y-6,"text-anchor":"middle",class:"rowval"}),
+          p[1].toFixed(1)));
+      });
+      s.appendChild(txt(mk("text",{x:cx,y:H-bot+18,"text-anchor":"middle",class:"rowlab"}), r.move));
+      s.appendChild(txt(mk("text",{x:cx,y:H-bot+34,"text-anchor":"middle",class:"axis"}), r.family));
+      var d2 = (r.shift > 0 ? "+" : "") + r.shift.toFixed(1);
+      s.appendChild(txt(mk("text",{x:cx,y:H-bot+50,"text-anchor":"middle",
+        class:"rowval" + (r.control ? " q" : "")}), d2 + " pts"));
+    });
+    legend("dlegend", [[v("--accent-pale"),"measured anywhere"],
+                       [v("--s2"),"measured inside one country"],
+                       [v("--dim"),"the control move (climbing a level)"]]);
+  })();
+
+  /* ---- E: advert-weighted vs employer-weighted, as two slopes ---- */
+  (function(){
+    var d = D.e; head("e", d);
+    var fams = ["software","sales"], W = 860, H = 340, top = 34, bot = 44;
+    var s = svg("ce", W, H), tip = document.getElementById("tipe");
+    var panelW = (W - 40) / 2;
+    var Y = function(t){ return H - bot - (t/0.50)*(H - bot - top); };
+    fams.forEach(function(fam, fi){
+      var x0 = 118 + fi*(panelW + 8), x1 = x0 + panelW - 186;
+      s.appendChild(txt(mk("text",{x:x0,y:16,class:"rowlab on"}), fam));
+      [[x0,"per advert"],[x1,"per employer"]].forEach(function(p){
+        s.appendChild(mk("line",{x1:p[0],x2:p[0],y1:top-6,y2:H-bot,class:"axis"}));
+        s.appendChild(txt(mk("text",{x:p[0],y:H-bot+16,"text-anchor":"middle",class:"axis"}), p[1]));
+      });
+      d.rows.filter(function(r){ return r.family === fam; }).forEach(function(r){
+        var ya = Y(r.advert), yb = Y(r.employer);
+        var ln = mk("line",{x1:x0,x2:x1,y1:ya,y2:yb,stroke:v("--accent"),
+          "stroke-width":2,opacity:.55});
+        hover(s, tip, ln, "<b>" + r.factor + "</b><br>" + fam + "<br>per advert " +
+          r.advert.toFixed(3) + "<br>per employer " + r.employer.toFixed(3) +
+          "<br>change " + r.drop_pct.toFixed(1) + "%");
+        s.appendChild(ln);
+        s.appendChild(mk("circle",{cx:x0,cy:ya,r:4,fill:v("--accent-pale")}));
+        s.appendChild(mk("circle",{cx:x1,cy:yb,r:4,fill:v("--accent")}));
+        if (fi === 0) s.appendChild(txt(mk("text",{x:x0-10,y:ya+4,"text-anchor":"end",
+          class:"rowlab"}), r.factor));
+        s.appendChild(txt(mk("text",{x:x1+8,y:yb+4,class:"rowval q"}), r.employer.toFixed(3)));
+      });
+    });
+    legend("elegend", [[v("--accent-pale"),"counting every advert",1],
+                       [v("--accent"),"counting every employer once",1]]);
+  })();
+})();
+</script>

@@ -84,6 +84,13 @@ week 3/*.txt
 
 # chart datasets are built by week 4/build_chart_data.py
 week 4/data/
+week 4/articles/data/
+
+# article drafts stay local until they are published. The scripts and templates
+# that make them are committed; the built pages are not, so an unfinished draft
+# cannot be read from the repository before it is finished.
+week 4/articles/*.html
+!week 4/articles/*_template.html
 
 # internal working notes: the handover file, the defect register, unpublished
 # drafts, planning documents and speaking notes
