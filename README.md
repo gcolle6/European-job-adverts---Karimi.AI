@@ -8,7 +8,8 @@ the industry you happen to be in. Separating the two is the deliverable.
 25,800 European job adverts, two role families (software and data; sales and
 business development), eleven industries, four weeks.
 
-**→ The findings, with the charts: https://gcolle6.github.io/**
+**→ The findings, with the charts:
+https://gcolle6.github.io/European-job-adverts---Karimi.AI/**
 
 This repository holds the code behind that page.
 
