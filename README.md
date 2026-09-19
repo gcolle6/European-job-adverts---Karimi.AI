@@ -1,12 +1,12 @@
 # Same title, different job
 
 Hold the role fixed and change the industry around it: how much of what employers
-ask for actually moves? The part that stays is the **core** — what travels with
+ask for actually changes? The part that stays is the **core** — what travels with
 you between industries. The part that moves is the **shell** — what belongs to
 the industry you happen to be in. Separating the two is the deliverable.
 
 25,800 European job adverts, two role families (software and data; sales and
-business development), eleven industries, four weeks.
+business development), eleven industries.
 
 **→ The findings, with the charts:
 https://gcolle6.github.io/European-job-adverts---Karimi.AI/**
@@ -17,25 +17,24 @@ This repository holds the code behind that page.
 
 The data is not here, and neither is anything a model produced from it.
 
-1. **The source export is licensed, not ours to redistribute.** 28,487 adverts
+1. **The source export is licensed, not to redistribute.** 28,487 adverts
    delivered by a third party.
 2. **The intermediate tables name employers and quote adverts verbatim.** Cluster
    member lists, review sheets and the employer-concentration tables all carry
-   text straight from the source. Aggregates are publishable; the sentences are
-   not ours to publish.
+   text straight from the source. Aggregates are publishable; the sentences not publishable.
 3. **Size.** The ESCO taxonomy source is 1.3 GB and the embedding stores are
    ~290 MB each — past what GitHub accepts.
 
 Everything excluded regenerates from the scripts that are here, given the export.
 
-The weekly write-ups are also held back until they are published in full. Each
+The weekly write-ups will be published sequentially. Each
 has been rewritten several times as later measurements corrected earlier ones,
 and a half-published record is worse than none: a reader landing on a figure that
 a later section retracts has no way to know which one stands.
 
 ## Method, in one paragraph
 
-Requirements are split out of each advert into single units, typed six ways
+Requirements are split out of each advert into single units, categorized in six types
 (technical, domain, soft, credential, language, availability), embedded with a
 multilingual model, and clustered. Each cell of the industry × function grid gets
 a profile over those clusters, and the distance between profiles is one number
