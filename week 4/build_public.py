@@ -22,8 +22,11 @@ Run with `--named` to build the version that keeps all 311, if that is decided.
 """
 import json
 import pathlib
-import shutil
+import re
 import sys
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import pagecopy
 
 W4 = pathlib.Path(__file__).resolve().parent
 ROOT = W4.parent
@@ -47,6 +50,30 @@ if not KEEP_NAMED:
     print(f"anonymised {n} employers; {len(data['c4']['employers']) - n} kept named")
 
 tpl = (W4 / "page_template.html").read_text(encoding="utf-8")
+
+# every word on the page comes from pagecopy.md; the template holds only structure
+C = pagecopy.load()
+fill = {k: pagecopy.inline(v) for k, v in C.items()}
+fill["method.steps"] = "".join(
+    f'<div class="step"><span class="s">{i+1}</span><span class="t">'
+    f'<b>{st["lead"]}</b> <em>{st["rest"]}</em></span></div>'
+    for i, st in enumerate(pagecopy.steps(C["method.steps"])))
+fill["limits.items"] = "".join(f"<li>{pagecopy.inline(x)}</li>"
+                               for x in pagecopy.items(C["limits.items"]))
+for who in ("author", "data"):
+    ln = pagecopy.link(C[f"credits.{who}.link"])
+    fill[f"credits.{who}.link"] = (
+        f'<a href="{ln["url"]}">{pagecopy.inline(ln["label"])}</a>' if ln["url"]
+        else pagecopy.inline(ln["label"]))
+
+missing = re.findall(r"{{([a-z0-9_.]+)}}", tpl)
+absent = [k for k in missing if k not in fill]
+if absent:
+    raise SystemExit(f"pagecopy.md has no slot for: {', '.join(sorted(set(absent)))}")
+for k, v in fill.items():
+    tpl = tpl.replace("{{" + k + "}}", v)
+left = re.findall(r"{{[a-z0-9_.]+}}", tpl)
+assert not left, f"unfilled placeholders: {set(left)}"
 blob = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
 page = tpl.replace("__DATA__", blob)
 

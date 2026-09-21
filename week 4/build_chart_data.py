@@ -35,28 +35,53 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 pathlib.Path(W4, "data").mkdir(parents=True, exist_ok=True)
 
 
-import chart_points                      # the bullets under each chart, prose only
+import pagecopy                              # pagecopy.md — every word the page shows
+
+C = pagecopy.load()
+CHART = {"chart1_drivers": "chart1", "chart2_core_shell": "chart2",
+         "chart3_residual": "chart3", "chart4_employers": "chart4"}
+
+
+# Figures typed into pagecopy.md by hand go stale when the data moves. The ones that
+# can be re-derived are re-derived, and a mismatch is reported rather than
+# published: a drifted number usually means the sentence beside it has drifted
+# too, so the warning names the bullet instead of quietly correcting it.
+def _c1(d):
+    r = {x["factor"]: x for x in d["rows"]}["Which country"]
+    return f"{r['raw']:.3f} → {r['controlled']:.3f}"
+
+
+def _c2(kind):
+    return lambda d: (f"{sum(1 for g in d['groups'] if g['kind'] == kind)} "
+                      f"of {len(d['groups'])}")
+
+
+CHECKS = {
+    "chart1": {0: _c1},
+    "chart2": {0: _c2("core"), 1: _c2("shell")},
+    "chart3": {0: lambda d: " and ".join(f"{f['residual_share']*100:.1f}%"
+                                         for f in d["families"])},
+    "chart4": {0: lambda d: f"{len(d['employers'])} employers"},
+}
 
 
 def write(name, obj):
-    """Attach the chart's bullets, check the figures in them, and write it out.
-
-    The bullets live in chart_points.py as hand-typed text so that file stays
-    readable and editable without touching analysis code. The cost of typing a
-    figure by hand is that it can go stale when the data moves, so the ones that
-    can be re-derived are re-derived here and a mismatch is reported loudly
-    rather than published quietly.
-    """
-    key = name.replace(".json", "")
-    pts = [dict(b) for b in chart_points.POINTS.get(key, [])]
-    for i, fn in chart_points.CHECKS.get(key, {}).items():
-        want = fn(obj)
-        if i < len(pts) and pts[i]["stat"] != want:
-            print(f"  !! {key} bullet {i}: stat reads {pts[i]['stat']!r}, "
-                  f"data now says {want!r} — reread the sentence beside it")
-            pts[i]["stat"] = want
-    if pts:
-        obj = dict(obj, points=pts)
+    """Attach this chart's pagecopy from pagecopy.md, check its figures, and write it."""
+    key = CHART.get(name.replace(".json", ""))
+    pts = []
+    if key:
+        for slot in ("title", "note", "x_label", "y_label", "dot_a", "dot_b"):
+            if C.get(f"{key}.{slot}"):
+                obj = dict(obj, **{slot: C[f"{key}.{slot}"]})
+        pts = pagecopy.points(C.get(f"{key}.points", ""))
+        for i, fn in CHECKS.get(key, {}).items():
+            want = fn(obj)
+            if i < len(pts) and pts[i]["stat"] != want:
+                print(f"  !! {key} bullet {i}: pagecopy.md says {pts[i]['stat']!r}, "
+                      f"the data says {want!r} — reread the sentence beside it")
+                pts[i]["stat"] = want
+        if pts:
+            obj = dict(obj, points=pts)
     p = pathlib.Path(W4, "data", name)
     p.write_text(json.dumps(obj, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"  {name:<28} {p.stat().st_size/1024:>6.1f} KB"
@@ -87,18 +112,6 @@ NICE = {"seniority": "How senior the role is", "company_industry": "Which indust
         "geo_country": "Which country", "company_type": "What kind of company",
         "company_size": "How big the company is"}
 write("chart1_drivers.json", {
-    "title": "Country looked like the strongest — until the advert's language was taken out",
-    "note": ("Every factor is tested the same way: hold the job fixed, change only that "
-             "one thing, and measure how much the list of requirements moves. Further "
-             "right means it moves more. The pale dot is the first measurement. The "
-             "solid dot is the same measurement after removing the effect of the "
-             "language the advert happens to be written in — adverts from one country "
-             "tend to share a language, so an untreated country comparison is partly "
-             "just a comparison of languages. Only country moves when that is taken "
-             "out, which is how you can tell it was the confounded one."),
-    "x_label": "how much the list of requirements changes when this factor changes  →",
-    "dot_a": "what we first measured",
-    "dot_b": "after removing the language effect",
     "rows": [{
         "factor": NICE.get(i, i),
         "raw": round(float(r["raw"]), 4),
@@ -136,12 +149,6 @@ for r in peak.itertuples():
     })
 rows.sort(key=lambda x: -x["lift"])
 write("chart2_core_shell.json", {
-    "title": "Most of what you know travels. A few things belong to one industry.",
-    "note": ("Every dot is one requirement, placed where employers ask for it most. "
-             "1× means it is asked just as often there as anywhere else in the same "
-             "job — so it travels with you. 20× means it is asked twenty times more "
-             "often there than anywhere else. Hover any dot to see what it is."),
-    "x_label": "asked for how much more often here than in the same job elsewhere  →",
     "reference": {"value": 1.0, "label": "asked just as often everywhere"},
     "keys": {"core": "asked everywhere, equally",
              "shell": "belongs to one industry",
@@ -166,15 +173,6 @@ LABEL = {"novelty": "names something not yet catalogued",
          "structural": "ESCO does not model it at all",
          "other": "no reason assigned"}
 write("chart3_residual.json", {
-    "title": "About a quarter is not — and the two jobs fall off the list for different reasons",
-    "note": ("ESCO is the European Union's official classification of skills and "
-             "occupations: the reference list used to compare jobs across countries. "
-             "Each bar is one job family's requirements that match no concept in it, "
-             "split by why they do not. Software falls off through novelty — it names "
-             "things the list has not caught up with. Sales falls off through vagueness "
-             "— it names nothing specific enough to match. 'No reason assigned' is the "
-             "largest piece of both, and part of it is our own grouping rather than a "
-             "gap in the catalogue."),
     "families": [{
         "family": "software" if fn == "SOFTWARE_DATA" else "sales",
         "residual_share": round(float(rr[rr["macro_function"] == fn].shape[0] / tot[fn]), 4),
@@ -189,14 +187,6 @@ write("chart3_residual.json", {
 # ---------------------------------------------------------------- chart 4 ---
 tpl = pd.read_csv(W3 + r"\employer_templates.csv")
 write("chart4_employers.json", {
-    "title": "Posting a lot is not the same as posting the same thing",
-    "note": ("Each dot is one employer that posted 20 adverts or more. Higher up "
-             "means that employer keeps re-posting the same advert: 1.0 would mean "
-             "every one of its adverts asks for exactly the same things. The dashed "
-             "line is how alike two adverts from DIFFERENT employers usually are — "
-             "so anything near it is writing genuinely different adverts."),
-    "x_label": "how many adverts this employer posted  →",
-    "y_label": "how alike its own adverts are to each other  ↑",
     "control_line": round(float(tpl["control"].median()), 3),
     "employers": [{
         "name": str(r.company),
@@ -216,34 +206,21 @@ write("tiles.json", {"tiles": [
      "label": "of demand has no concept in the European skills catalogue"},
 ]})
 
+# The ratios and the advert counts are measurements and stay here; every word
+# belongs to pagecopy.md, including the three button labels and their explanations.
+_wopt = [("advert", 1.240, 25800, {}),
+         ("dedup", 1.168, 21356, {"default": True, "published": True}),
+         ("employer", 1.196, 2420, {})]
 write("weighting.json", {
-    "label": "One retailer posted the same advert 474 times. Should it count 474 times?",
-    "note": ("Pick a rule and the headline number is recomputed under it. The point is "
-             "not which rule is correct — it is that the answer stays above 1 whichever "
-             "you pick, so the finding does not depend on this choice."),
-    # The result is a ratio, and a ratio is unreadable without its pair. Both halves
-    # are stated on the page next to the number rather than left to the note.
-    "measures": "sales vs software",
-    "meaning": ("a sales role's list of requirements shifts this much more than a "
-                "software role's when the industry changes"),
-    "options": [
-        {"key": "advert", "label": "count every advert",
-         "explain": ("All 25,800 adverts count once each. That retailer's 474 "
-                     "near-identical adverts count 474 times, so one company's template "
-                     "can look like an industry-wide pattern."),
-         "ratio": 1.240, "adverts": 25800},
-        {"key": "dedup", "label": "count repeated adverts once",
-         "explain": ("When an employer posts the same advert twice, count it once. Those "
-                     "474 adverts become 26 genuinely different ones, and 17% of the "
-                     "whole corpus turns out to be a repost."),
-         "ratio": 1.168, "adverts": 21356, "default": True, "published": True},
-        {"key": "employer", "label": "count every employer once",
-         "explain": ("Each company gets one vote however much it posts. Safe against "
-                     "templates, but it throws away 975 genuinely different adverts from "
-                     "the largest poster in order to neutralise 86 copies from a smaller "
-                     "one."),
-         "ratio": 1.196, "adverts": 2420},
-    ],
+    "label": C["weighting.label"],
+    "note": C["weighting.note"],
+    # A ratio is unreadable without its pair, so both halves are stated on the
+    # page beside the number rather than left to the note.
+    "measures": C["weighting.measures"],
+    "meaning": C["weighting.meaning"],
+    "options": [dict(pagecopy.option(C[f"weighting.option.{k}"]),
+                     key=k, ratio=r, adverts=n, **extra)
+                for k, r, n, extra in _wopt],
 })
 
 print("")

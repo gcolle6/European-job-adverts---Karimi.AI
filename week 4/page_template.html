@@ -32,7 +32,26 @@
 body{background:var(--ground);color:var(--body);
   font-family:"Source Sans 3",system-ui,sans-serif;font-size:16.5px;line-height:1.6;
   margin:0;padding-block:clamp(2rem,5vw,3.5rem);padding-left:20px;padding-right:20px}
-.wrap{max-width:56rem;margin:0 auto;display:flex;flex-direction:column;gap:3.5rem}
+.wrap{max-width:64rem;margin:0 auto;display:flex;flex-direction:column;gap:3.5rem}
+.mast,.steps,.limits,.lede,.weight,.foot{max-width:52rem}
+
+/* Three treatments, chosen by what each chart needs rather than for variety:
+   a five-row dumbbell wants a narrow column, a 580-dot strip and a 311-dot
+   scatter want the full width, and a two-bar chart leaves room beside it. */
+.card{max-width:56rem}
+.card.wide{max-width:none}
+.card.wide .points{display:grid;grid-template-columns:repeat(auto-fit,minmax(19rem,1fr));
+  gap:.6rem 2rem}
+.card.split{max-width:none;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.85fr);
+  column-gap:1.8rem;align-items:start}
+.card.split .ctitle{grid-column:1/-1}
+.card.split .chartbox,.card.split .legend,.card.split .cnote{grid-column:1}
+.card.split .points{grid-column:2;grid-row:2/5;border-top:none;padding-top:.2rem}
+.card.split .door-cta{grid-column:1/-1}
+@media (max-width:760px){
+  .card.split{display:flex;flex-direction:column}
+  .card.split .points{border-top:1px solid var(--line-soft);padding-top:.9rem}
+}
 
 .mast{display:flex;flex-direction:column;gap:.7rem;border-bottom:2px solid var(--ink);padding-bottom:1.5rem}
 .kicker{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.14em;
@@ -150,30 +169,15 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
 
 <div class="wrap">
   <header class="mast">
-    <div class="kicker">Giacomo Collesei &amp; Karimi.AI · published September 2026 · 25,800 European job adverts posted May–August 2026</div>
-    <h1>What employers ask for, when the job stays the same</h1>
-    <p class="dek">Hold the role fixed, change the context around it, and see which requirements
-      actually move. Two job families, eleven industries, and an honest account of what the
-      numbers will and will not carry.</p>
+    <div class="kicker">{{masthead.kicker}}</div>
+    <h1>{{masthead.title}}</h1>
+    <p class="dek">{{masthead.dek}}</p>
   </header>
 
-  <section>
-    <div class="sechead"><span class="num">METHOD</span><h2>How the numbers were made</h2></div>
-    <p>Six steps, each one guarding against a specific way this kind of analysis goes wrong.</p>
-    <div class="steps">
-      <div class="step"><span class="s">1</span><span class="t"><b>28,487 adverts → 25,800 kept.</b>
-        <em>Only a missing industry removes an advert — nothing is dropped for being awkward.</em></span></div>
-      <div class="step"><span class="s">2</span><span class="t"><b>Requirement text → 349,061 single requirements.</b>
-        <em>So two demands written in one sentence are counted as two.</em></span></div>
-      <div class="step"><span class="s">3</span><span class="t"><b>Each requirement → 384 numbers.</b>
-        <em>So wording stops mattering and meaning starts: <code>Kenntnisse in SQL</code> and <code>SQL knowledge</code> land together.</em></span></div>
-      <div class="step"><span class="s">4</span><span class="t"><b>Numbers → 594 groups.</b>
-        <em>Learned once, on one period, so a later month can be compared rather than re-invented.</em></span></div>
-      <div class="step"><span class="s">5</span><span class="t"><b>Groups → core and shell.</b>
-        <em>A group's share in one cell against the job family's own baseline.</em></span></div>
-      <div class="step"><span class="s">6</span><span class="t"><b>Every number, twice.</b>
-        <em>Once per advert, once per distinct advert. Both are published.</em></span></div>
-    </div>
+  <section class="method">
+    <div class="sechead"><span class="num">METHOD</span><h2>{{method.title}}</h2></div>
+    <p class="lede">{{method.intro}}</p>
+    <div class="steps">{{method.steps}}</div>
   </section>
 
   <div class="weight" id="weight">
@@ -189,44 +193,44 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
   </div>
 
   <section>
-    <div class="sechead"><span class="num">01</span><h2>Industry, country, seniority — which one really changes the job?</h2></div>
-    <div class="card door">
+    <div class="sechead"><span class="num">01</span><h2>{{section.01}}</h2></div>
+    <div class="card  door">
       <div class="ctitle" id="c1title"></div>
       <div class="chartbox"><svg id="c1"></svg><div class="tip" id="tip1"></div></div>
       <div class="legend" id="c1legend"></div>
       <p class="cnote" id="c1note"></p>
       <ul class="points" id="c1points"></ul>
-      <p class="door-cta">Read the article: why the raw table said country, and why it was wrong →</p>
+      <p class="door-cta">{{cta.01}}</p>
     </div>
   </section>
 
   <section>
-    <div class="sechead"><span class="num">02</span><h2>What travels with you between industries, and what stays behind?</h2></div>
-    <div class="card door">
+    <div class="sechead"><span class="num">02</span><h2>{{section.02}}</h2></div>
+    <div class="card wide door">
       <div class="ctitle" id="c2title"></div>
       <div class="chartbox"><svg id="c2"></svg><div class="tip" id="tip2"></div></div>
       <div class="legend" id="c2legend"></div>
       <p class="cnote" id="c2note"></p>
       <ul class="points" id="c2points"></ul>
-      <p class="door-cta">Read the article: the seven things that travel, and the twenty-times demands →</p>
+      <p class="door-cta">{{cta.02}}</p>
     </div>
   </section>
 
   <section>
-    <div class="sechead"><span class="num">03</span><h2>Europe keeps an official list of workplace skills. Is what employers ask for on it?</h2></div>
-    <div class="card door">
+    <div class="sechead"><span class="num">03</span><h2>{{section.03}}</h2></div>
+    <div class="card split door">
       <div class="ctitle" id="c3title"></div>
       <div class="chartbox"><svg id="c3"></svg><div class="tip" id="tip3"></div></div>
       <div class="legend" id="c3legend"></div>
       <p class="cnote" id="c3note"></p>
       <ul class="points" id="c3points"></ul>
-      <p class="door-cta">Read the article: what the European skills catalogue misses, and why →</p>
+      <p class="door-cta">{{cta.03}}</p>
     </div>
   </section>
 
   <section>
-    <div class="sechead"><span class="num">04</span><h2>Which employers actually repeat themselves?</h2></div>
-    <div class="card">
+    <div class="sechead"><span class="num">04</span><h2>{{section.04}}</h2></div>
+    <div class="card wide">
       <div class="ctitle" id="c4title"></div>
       <div class="chartbox"><svg id="c4"></svg><div class="tip" id="tip4"></div></div>
       <p class="cnote" id="c4note"></p>
@@ -235,35 +239,24 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
   </section>
 
   <div class="limits">
-    <span class="tag">What these numbers will not carry</span>
-    <ul>
-      <li>These are <b>advertised</b> requirements, not the labour market. Posted is not the same as existing, and large employers are over-represented by construction.</li>
-      <li>Extraction finds about <b>80%</b> of requirements, and misses them unevenly. Every figure here is a <b>share of adverts</b>, never a count of requirements per advert.</li>
-      <li>One requirement type — domain knowledge — is correctly identified <b>27%</b> of the time. Any claim resting on it carries that number.</li>
-      <li><b>A third of the uncatalogued demand has no reason assigned</b>, and part of it is our own grouping rather than a gap in the catalogue.</li>
-      <li>Every magnitude is a <b>range</b>. The consistent shape of these results is a stable direction over an unstable size.</li>
-    </ul>
+    <span class="tag">{{limits.title}}</span>
+    <ul>{{limits.items}}</ul>
   </div>
 
-  <p class="foot">Every figure regenerates from the analysis scripts. Twenty-five known defects are
-    tracked with their measured sizes; none of them moves a headline, which is the most persuasive
-    thing this study can say.</p>
+  <p class="foot">{{foot}}</p>
 
   <footer class="credits">
     <div class="cred">
-      <span class="credlab">Written by</span>
-      <span class="credname">Giacomo Collesei</span>
-      <p>Analysis, code and write-up. Every figure here regenerates from the scripts,
-        and the known defects are published with their measured sizes rather than
-        left for a reader to find.</p>
-      <a href="https://github.com/gcolle6/European-job-adverts---Karimi.AI">Read the code &rarr;</a>
+      <span class="credlab">{{credits.author.label}}</span>
+      <span class="credname">{{credits.author.name}}</span>
+      <p>{{credits.author.text}}</p>
+      {{credits.author.link}}
     </div>
     <div class="cred">
-      <span class="credlab">Data from</span>
-      <span class="credname">Karimi</span>
-      <p>The app to boost your career &#129365; Become the best at your job &#129365;
-        Get great opportunities &#129365; Grow your network</p>
-      <a href="https://www.karimi.ai/">karimi.ai &rarr;</a>
+      <span class="credlab">{{credits.data.label}}</span>
+      <span class="credname">{{credits.data.name}}</span>
+      <p>{{credits.data.text}}</p>
+      {{credits.data.link}}
     </div>
   </footer>
 </div>
