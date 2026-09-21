@@ -30,13 +30,37 @@ pd.set_option("display.width", 250)
 t0 = time.time()
 
 import pathlib
+import sys
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 pathlib.Path(W4, "data").mkdir(parents=True, exist_ok=True)
 
 
+import chart_points                      # the bullets under each chart, prose only
+
+
 def write(name, obj):
+    """Attach the chart's bullets, check the figures in them, and write it out.
+
+    The bullets live in chart_points.py as hand-typed text so that file stays
+    readable and editable without touching analysis code. The cost of typing a
+    figure by hand is that it can go stale when the data moves, so the ones that
+    can be re-derived are re-derived here and a mismatch is reported loudly
+    rather than published quietly.
+    """
+    key = name.replace(".json", "")
+    pts = [dict(b) for b in chart_points.POINTS.get(key, [])]
+    for i, fn in chart_points.CHECKS.get(key, {}).items():
+        want = fn(obj)
+        if i < len(pts) and pts[i]["stat"] != want:
+            print(f"  !! {key} bullet {i}: stat reads {pts[i]['stat']!r}, "
+                  f"data now says {want!r} — reread the sentence beside it")
+            pts[i]["stat"] = want
+    if pts:
+        obj = dict(obj, points=pts)
     p = pathlib.Path(W4, "data", name)
     p.write_text(json.dumps(obj, ensure_ascii=False, indent=1), encoding="utf-8")
-    print(f"  {name:<28} {p.stat().st_size/1024:>6.1f} KB")
+    print(f"  {name:<28} {p.stat().st_size/1024:>6.1f} KB"
+          + (f"  +{len(pts)} bullets" if pts else ""))
 
 
 reqs = pd.read_parquet(W1 + r"\requirements.parquet")

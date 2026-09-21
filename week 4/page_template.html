@@ -86,6 +86,17 @@ svg{display:block;max-width:100%;height:auto;overflow:visible}
 .sw{width:11px;height:11px;border-radius:2px;flex:none}
 .door-cta{font-size:.87rem;color:var(--accent);font-weight:600;
   border-top:1px solid var(--line-soft);padding-top:.7rem}
+.points{list-style:none;margin:0;padding:.9rem 0 0;display:flex;flex-direction:column;
+  gap:.6rem;border-top:1px solid var(--line-soft)}
+.points li{display:grid;grid-template-columns:auto 1fr;gap:.8rem;align-items:baseline}
+.points .stat{font-family:"JetBrains Mono",monospace;font-size:.8rem;font-weight:700;
+  color:var(--ink);background:var(--line-soft);padding:.16rem .45rem;border-radius:2px;
+  white-space:nowrap}
+.points .txt{font-size:.93rem;color:var(--body);line-height:1.5;text-wrap:pretty}
+@media (max-width:560px){
+  .points li{grid-template-columns:1fr;gap:.25rem}
+  .points .stat{justify-self:start}
+}
 
 /* tooltip */
 .tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--ground);
@@ -184,6 +195,7 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
       <div class="chartbox"><svg id="c1"></svg><div class="tip" id="tip1"></div></div>
       <div class="legend" id="c1legend"></div>
       <p class="cnote" id="c1note"></p>
+      <ul class="points" id="c1points"></ul>
       <p class="door-cta">Read the article: why the raw table said country, and why it was wrong →</p>
     </div>
   </section>
@@ -195,6 +207,7 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
       <div class="chartbox"><svg id="c2"></svg><div class="tip" id="tip2"></div></div>
       <div class="legend" id="c2legend"></div>
       <p class="cnote" id="c2note"></p>
+      <ul class="points" id="c2points"></ul>
       <p class="door-cta">Read the article: the seven things that travel, and the twenty-times demands →</p>
     </div>
   </section>
@@ -206,6 +219,7 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
       <div class="chartbox"><svg id="c3"></svg><div class="tip" id="tip3"></div></div>
       <div class="legend" id="c3legend"></div>
       <p class="cnote" id="c3note"></p>
+      <ul class="points" id="c3points"></ul>
       <p class="door-cta">Read the article: what the European skills catalogue misses, and why →</p>
     </div>
   </section>
@@ -216,6 +230,7 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
       <div class="ctitle" id="c4title"></div>
       <div class="chartbox"><svg id="c4"></svg><div class="tip" id="tip4"></div></div>
       <p class="cnote" id="c4note"></p>
+      <ul class="points" id="c4points"></ul>
     </div>
   </section>
 
@@ -260,6 +275,17 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
   var D = JSON.parse(document.getElementById("D").textContent);
   var css = getComputedStyle(document.documentElement);
   function v(n){ return css.getPropertyValue(n).trim(); }
+
+  function points(id, d){
+    var ul = document.getElementById(id + "points");
+    if (!ul || !d.points) return;
+    d.points.forEach(function(b){
+      var li = document.createElement("li");
+      var a = document.createElement("span"); a.className = "stat"; a.textContent = b.stat;
+      var t = document.createElement("span"); t.className = "txt";  t.textContent = b.text;
+      li.appendChild(a); li.appendChild(t); ul.appendChild(li);
+    });
+  }
 
   function svg(el, w, h){
     var s = document.getElementById(el);
@@ -328,6 +354,7 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
     var d = D.c1, rows = d.rows, n = rows.length;
     document.getElementById("c1title").textContent = d.title;
     document.getElementById("c1note").textContent = d.note;
+    points("c1", d);
     var lg1 = document.getElementById("c1legend");
     [[v("--accent-pale"), d.dot_a], [v("--accent"), d.dot_b]].forEach(function(p){
       var sp = document.createElement("span");
@@ -383,6 +410,7 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
     var d = D.c2, g = d.groups;
     document.getElementById("c2title").textContent = d.title;
     document.getElementById("c2note").textContent = d.note;
+    points("c2", d);
     var W0 = 760, L = 40, R = 40, H = 300, top = 34, bot = H - 40;
     var s = svg("c2", W0, H), tip = tipFor("c2", "tip2");
     var lo = Math.log(0.6), hi = Math.log(24), iw = W0 - L - R;
@@ -429,6 +457,7 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
     var d = D.c3, fam = d.families;
     document.getElementById("c3title").textContent = d.title;
     document.getElementById("c3note").textContent = d.note;
+    points("c3", d);
     var W0 = 760, L = 96, R = 70, H = 190, barH = 46, gap = 34;
     var s = svg("c3", W0, H), tip = tipFor("c3", "tip3");
     var max = 0.32, iw = W0 - L - R;
@@ -482,6 +511,7 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
     var d = D.c4, e = d.employers;
     document.getElementById("c4title").textContent = d.title;
     document.getElementById("c4note").textContent = d.note;
+    points("c4", d);
     var W0 = 760, L = 52, R = 30, H = 300, top = 26, bot = H - 42;
     var s = svg("c4", W0, H), tip = tipFor("c4", "tip4");
     var xlo = Math.log(18), xhi = Math.log(1100), iw = W0 - L - R;
