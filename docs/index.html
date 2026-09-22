@@ -104,8 +104,8 @@ section{display:flex;flex-direction:column;gap:1.1rem}
 .cnote{font-size:.85rem;color:var(--muted);line-height:1.45}
 .chartbox{position:relative;width:100%;overflow-x:auto}
 svg{display:block;max-width:100%;height:auto;overflow:visible}
-.axis text{font-family:"JetBrains Mono",monospace;font-size:10px;fill:var(--faint)}
-.axis line{stroke:var(--line);stroke-width:1}
+text.axis{font-family:"JetBrains Mono",monospace;font-size:10px;fill:var(--faint)}
+line.axis{stroke:var(--line);stroke-width:1}
 .rowlab{font-family:"Source Sans 3",sans-serif;font-size:12.5px;fill:var(--body)}
 .rowval{font-family:"JetBrains Mono",monospace;font-size:11px;fill:var(--ink)}
 .gridline{stroke:var(--line-soft);stroke-width:1}
@@ -170,7 +170,8 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
 
   <section>
     <div class="sechead"><span class="num">DATA</span><h2>An intro to the job postings</h2></div>
-    <p class="lede">These are job adverts posted in Europe from May to August 2026, for software and data roles and for sales and business development. Karimi provided them. They were collected from public listings on company pages.</p>
+    <p class="lede">Karimi (www.karimi.ai) builds a database of European companies and the jobs they advertise, taken from public listings on company pages. It holds more than 5,600 companies and hundreds of thousands of postings.</p>
+    <p class="lede">This page uses one slice of that database. The adverts were posted from May to August 2026 for two kinds of role, software and data, and sales and business development, across eleven industries.</p>
     <div class="card">
       <div class="chartbox"><svg id="c0"></svg><div class="tip" id="tip0"></div></div>
       <p class="cnote">Each circle is one industry. The area is the number of postings, and the count is written beside the circle. Hover a circle for how many companies posted them.</p>
@@ -504,7 +505,8 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
         s.appendChild(r);
         if (w > 46){
           var t2 = mk("text",{x:L+off+w/2, y:y+barH/2+4,"text-anchor":"middle",
-            class:"axis", fill:"#fff"});
+            class:"axis"});
+          t2.style.fill = "#fff";
           t2.textContent = (sg.share_of_family*100).toFixed(1) + "%";
           s.appendChild(t2);
         }

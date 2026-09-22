@@ -94,8 +94,8 @@ section{display:flex;flex-direction:column;gap:1.1rem}
 .cnote{font-size:.85rem;color:var(--muted);line-height:1.45}
 .chartbox{position:relative;width:100%;overflow-x:auto}
 svg{display:block;max-width:100%;height:auto;overflow:visible}
-.axis text{font-family:"JetBrains Mono",monospace;font-size:10px;fill:var(--faint)}
-.axis line{stroke:var(--line);stroke-width:1}
+text.axis{font-family:"JetBrains Mono",monospace;font-size:10px;fill:var(--faint)}
+line.axis{stroke:var(--line);stroke-width:1}
 .rowlab{font-family:"Source Sans 3",sans-serif;font-size:12.5px;fill:var(--body)}
 .rowval{font-family:"JetBrains Mono",monospace;font-size:11px;fill:var(--ink)}
 .gridline{stroke:var(--line-soft);stroke-width:1}
@@ -161,6 +161,7 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
   <section>
     <div class="sechead"><span class="num">DATA</span><h2>{{corpus.title}}</h2></div>
     <p class="lede">{{corpus.intro}}</p>
+    <p class="lede">{{corpus.more}}</p>
     <div class="card">
       <div class="chartbox"><svg id="c0"></svg><div class="tip" id="tip0"></div></div>
       <p class="cnote">{{corpus.note}}</p>
@@ -494,7 +495,8 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
         s.appendChild(r);
         if (w > 46){
           var t2 = mk("text",{x:L+off+w/2, y:y+barH/2+4,"text-anchor":"middle",
-            class:"axis", fill:"#fff"});
+            class:"axis"});
+          t2.style.fill = "#fff";
           t2.textContent = (sg.share_of_family*100).toFixed(1) + "%";
           s.appendChild(t2);
         }

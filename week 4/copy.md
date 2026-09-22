@@ -52,7 +52,10 @@ How the methodology works
 An intro to the job postings
 
 ## corpus.intro
-These are job adverts posted in Europe from May to August 2026, for software and data roles and for sales and business development. Karimi provided them. They were collected from public listings on company pages.
+Karimi (www.karimi.ai) builds a database of European companies and the jobs they advertise, taken from public listings on company pages. It holds more than 5,600 companies and hundreds of thousands of postings.
+
+## corpus.more
+This page uses one slice of that database. The adverts were posted from May to August 2026 for two kinds of role, software and data, and sales and business development, across eleven industries.
 
 ## corpus.note
 Each circle is one industry. The area is the number of postings, and the count is written beside the circle. Hover a circle for how many companies posted them.
