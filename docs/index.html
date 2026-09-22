@@ -159,22 +159,21 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
 <div class="wrap">
   <header class="mast">
     <div class="kicker">Giacomo Collesei &amp; Karimi.AI · published September 2026 · 25,800 European job adverts posted May–August 2026</div>
-    <h1>What employers ask for, when the job stays the same</h1>
-    <p class="dek">Hold the role fixed, change the context around it, and see which requirements move. Two job families, eleven industries, and an honest account of what the numbers will and will not carry.</p>
+    <h1>What different employers ask, when hiring for the same job</h1>
+    <p class="dek">Which requirements follow the job, and which follow the industry? An analysis of software and sales roles, each posted across eleven industries.</p>
   </header>
 
   <section class="method">
-    <div class="sechead"><span class="num">METHOD</span><h2>How the numbers were made</h2></div>
-    <p class="lede">Six steps, each one guarding against a specific way this kind of analysis goes wrong.</p>
-    <div class="steps"><div class="step"><span class="s">1</span><span class="t"><b>28,487 adverts → 25,800 kept.</b> <em>Only a missing industry removes an advert — nothing is dropped for being awkward.</em></span></div><div class="step"><span class="s">2</span><span class="t"><b>Requirement text → 349,061 single requirements.</b> <em>So two demands written in one sentence are counted as two.</em></span></div><div class="step"><span class="s">3</span><span class="t"><b>Each requirement → 384 numbers.</b> <em>So wording stops mattering and meaning starts: <code>Kenntnisse in SQL</code> and <code>SQL knowledge</code> land together.</em></span></div><div class="step"><span class="s">4</span><span class="t"><b>Numbers → 594 groups.</b> <em>Learned once, on one period, so a later month can be compared rather than re-invented.</em></span></div><div class="step"><span class="s">5</span><span class="t"><b>Groups → core and shell.</b> <em>A group's share in one cell against the job family's own baseline.</em></span></div><div class="step"><span class="s">6</span><span class="t"><b>Every number, twice.</b> <em>Once per advert, once per distinct advert. Both are published.</em></span></div></div>
+    <div class="sechead"><span class="num">METHOD</span><h2>How the methodology works</h2></div>
+    <div class="steps"><div class="step"><span class="s">1</span><span class="t"><b>Requirement text → 349,061 single requirements.</b> <em>I split the requirements into single strings, at times splitting one sentence into multiple in order to be as specific as possible.</em></span></div><div class="step"><span class="s">2</span><span class="t"><b>Each requirement → 384 numbers.</b> <em>I represented semantically the single requirements: <code>Kenntnisse in SQL</code> and <code>SQL knowledge</code> have similar values.</em></span></div><div class="step"><span class="s">3</span><span class="t"><b>Numbers → 594 groups.</b> <em>Semantic representations are here grouped into clusters.</em></span></div><div class="step"><span class="s">4</span><span class="t"><b>Groups → core and shell.</b> <em>I compared a group's share in one cell against the job family's own baseline.</em></span></div></div>
   </section>
 
   <section>
-    <div class="sechead"><span class="num">DATA</span><h2>Software piles into one industry. Sales does not.</h2></div>
+    <div class="sechead"><span class="num">DATA</span><h2>An intro to the job postings</h2></div>
+    <p class="lede">These are job adverts posted in Europe from May to August 2026, for software and data roles and for sales and business development. Karimi provided them. They were collected from public listings on company pages.</p>
     <div class="card">
       <div class="chartbox"><svg id="c0"></svg><div class="tip" id="tip0"></div></div>
-      <p class="cnote">Each circle is one industry. The area is the number of postings among the 28,487 adverts as delivered, and the count is written beside the circle. Hover a circle for how many companies posted them. The last row has no industry.</p>
-      <ul class="points"><li><span class="stat">5,663</span><span class="txt">Software postings in AI, Data &amp; Software, the largest cell. Sales in that industry is 1,535, less than a third as many.</span></li><li><span class="stat">1,854 vs 477</span><span class="txt">Commerce &amp; Retail runs the other way. Sales postings there outnumber software ones by about four to one.</span></li><li><span class="stat">554</span><span class="txt">Postings with no industry: 359 software and 195 sales. They are drawn last, and they are not one of the eleven industries compared below.</span></li></ul>
+      <p class="cnote">Each circle is one industry. The area is the number of postings, and the count is written beside the circle. Hover a circle for how many companies posted them.</p>
     </div>
   </section>
 
@@ -299,7 +298,7 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
      the chart that earns it. */
 
   /* ---------------- corpus: postings by industry ----------------
-     Counts are the delivered export (28,487), not the 25,800 analysis base.
+     Counts are the delivered export, without the adverts that name no industry.
      Area is proportional to postings. Companies are tooltip-only. */
   (function(){
     var rows = [
@@ -313,8 +312,7 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
       {industry:"Climate & Energy", software:815, sales:734, swCo:142, saCo:113},
       {industry:"Health & Life Sciences", software:643, sales:423, swCo:160, saCo:120},
       {industry:"Agriculture & Food", software:330, sales:707, swCo:101, saCo:109},
-      {industry:"Think Tank & Research", software:492, sales:90, swCo:93, saCo:33},
-      {industry:"No industry", software:359, sales:195, swCo:173, saCo:112, missing:true}
+      {industry:"Think Tank & Research", software:492, sales:90, swCo:93, saCo:33}
     ];
     var W0 = 700, labX = 268, rowH = 50, head = 28;
     var xS = 430, xB = 600, maxN = 5663;
@@ -330,18 +328,12 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
     headLabel(xB, "sales", v("--s2"));
     rows.forEach(function(r, i){
       var y = head + i * rowH + rowH / 2;
-      if (r.missing) {
-        s.appendChild(mk("line", {x1:12, x2:W0 - 12, y1:y - rowH / 2 + 1, y2:y - rowH / 2 + 1,
-          class:"gridline"}));
-      }
       var lab = mk("text", {x:labX, y:y + 4, "text-anchor":"end", class:"rowlab"});
-      if (r.missing) lab.setAttribute("fill", v("--faint"));
       lab.textContent = r.industry; s.appendChild(lab);
       [["software", r.software, r.swCo, xS, v("--s1")],
        ["sales", r.sales, r.saCo, xB, v("--s2")]].forEach(function(p){
         var rad = Math.max(R(p[1]), 2.4);
-        var c = mk("circle", {cx:p[3], cy:y, r:rad, fill:p[4],
-          opacity: r.missing ? "0.45" : "0.92"});
+        var c = mk("circle", {cx:p[3], cy:y, r:rad, fill:p[4], opacity:"0.92"});
         c.style.cursor = "pointer";
         c.addEventListener("mousemove", function(e){
           tip.show(e, "<b>" + r.industry + "</b><br>" + p[0] + "<br>" +
@@ -351,7 +343,6 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
         c.addEventListener("mouseleave", tip.hide);
         s.appendChild(c);
         var val = mk("text", {x:p[3] + rad + 6, y:y + 4, class:"rowval"});
-        if (r.missing) val.setAttribute("fill", v("--faint"));
         val.textContent = p[1].toLocaleString();
         s.appendChild(val);
       });

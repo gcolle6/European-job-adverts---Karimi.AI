@@ -49,15 +49,13 @@ How the methodology works
 # The corpus
 
 ## corpus.title
-Software piles into one industry. Sales does not.
+An intro to the job postings
+
+## corpus.intro
+These are job adverts posted in Europe from May to August 2026, for software and data roles and for sales and business development. Karimi provided them. They were collected from public listings on company pages.
 
 ## corpus.note
-Each circle is one industry. The area is the number of postings among the 28,487 adverts as delivered, and the count is written beside the circle. Hover a circle for how many companies posted them. The last row has no industry.
-
-## corpus.points
-- `5,663` Software postings in AI, Data & Software, the largest cell. Sales in that industry is 1,535, less than a third as many.
-- `1,854 vs 477` Commerce & Retail runs the other way. Sales postings there outnumber software ones by about four to one.
-- `554` Postings with no industry: 359 software and 195 sales. They are drawn last, and they are not one of the eleven industries compared below.
+Each circle is one industry. The area is the number of postings, and the count is written beside the circle. Hover a circle for how many companies posted them.
 
 ## section.01
 Industry, country, seniority — which one really changes the job?

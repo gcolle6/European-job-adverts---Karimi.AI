@@ -60,10 +60,6 @@ fill["method.steps"] = "".join(
     for i, st in enumerate(pagecopy.steps(C["method.steps"])))
 fill["limits.items"] = "".join(f"<li>{pagecopy.inline(x)}</li>"
                                for x in pagecopy.items(C["limits.items"]))
-fill["corpus.points"] = "".join(
-    f'<li><span class="stat">{pagecopy.inline(p["stat"])}</span>'
-    f'<span class="txt">{pagecopy.inline(p["text"])}</span></li>'
-    for p in pagecopy.points(C.get("corpus.points", "")))
 for who in ("author", "data"):
     ln = pagecopy.link(C[f"credits.{who}.link"])
     fill[f"credits.{who}.link"] = (

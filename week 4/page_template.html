@@ -155,16 +155,15 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
 
   <section class="method">
     <div class="sechead"><span class="num">METHOD</span><h2>{{method.title}}</h2></div>
-    <p class="lede">{{method.intro}}</p>
     <div class="steps">{{method.steps}}</div>
   </section>
 
   <section>
     <div class="sechead"><span class="num">DATA</span><h2>{{corpus.title}}</h2></div>
+    <p class="lede">{{corpus.intro}}</p>
     <div class="card">
       <div class="chartbox"><svg id="c0"></svg><div class="tip" id="tip0"></div></div>
       <p class="cnote">{{corpus.note}}</p>
-      <ul class="points">{{corpus.points}}</ul>
     </div>
   </section>
 
@@ -289,7 +288,7 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
      the chart that earns it. */
 
   /* ---------------- corpus: postings by industry ----------------
-     Counts are the delivered export (28,487), not the 25,800 analysis base.
+     Counts are the delivered export, without the adverts that name no industry.
      Area is proportional to postings. Companies are tooltip-only. */
   (function(){
     var rows = [
@@ -303,8 +302,7 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
       {industry:"Climate & Energy", software:815, sales:734, swCo:142, saCo:113},
       {industry:"Health & Life Sciences", software:643, sales:423, swCo:160, saCo:120},
       {industry:"Agriculture & Food", software:330, sales:707, swCo:101, saCo:109},
-      {industry:"Think Tank & Research", software:492, sales:90, swCo:93, saCo:33},
-      {industry:"No industry", software:359, sales:195, swCo:173, saCo:112, missing:true}
+      {industry:"Think Tank & Research", software:492, sales:90, swCo:93, saCo:33}
     ];
     var W0 = 700, labX = 268, rowH = 50, head = 28;
     var xS = 430, xB = 600, maxN = 5663;
@@ -320,18 +318,12 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
     headLabel(xB, "sales", v("--s2"));
     rows.forEach(function(r, i){
       var y = head + i * rowH + rowH / 2;
-      if (r.missing) {
-        s.appendChild(mk("line", {x1:12, x2:W0 - 12, y1:y - rowH / 2 + 1, y2:y - rowH / 2 + 1,
-          class:"gridline"}));
-      }
       var lab = mk("text", {x:labX, y:y + 4, "text-anchor":"end", class:"rowlab"});
-      if (r.missing) lab.setAttribute("fill", v("--faint"));
       lab.textContent = r.industry; s.appendChild(lab);
       [["software", r.software, r.swCo, xS, v("--s1")],
        ["sales", r.sales, r.saCo, xB, v("--s2")]].forEach(function(p){
         var rad = Math.max(R(p[1]), 2.4);
-        var c = mk("circle", {cx:p[3], cy:y, r:rad, fill:p[4],
-          opacity: r.missing ? "0.45" : "0.92"});
+        var c = mk("circle", {cx:p[3], cy:y, r:rad, fill:p[4], opacity:"0.92"});
         c.style.cursor = "pointer";
         c.addEventListener("mousemove", function(e){
           tip.show(e, "<b>" + r.industry + "</b><br>" + p[0] + "<br>" +
@@ -341,7 +333,6 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
         c.addEventListener("mouseleave", tip.hide);
         s.appendChild(c);
         var val = mk("text", {x:p[3] + rad + 6, y:y + 4, class:"rowval"});
-        if (r.missing) val.setAttribute("fill", v("--faint"));
         val.textContent = p[1].toLocaleString();
         s.appendChild(val);
       });
