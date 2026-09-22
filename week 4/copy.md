@@ -32,24 +32,32 @@ the sentence beside the number usually needs rereading too, not just the number.
 Giacomo Collesei & Karimi.AI · published September 2026 · 25,800 European job adverts posted May–August 2026
 
 ## masthead.title
-What employers ask for, when the job stays the same
+What different employers ask, when hiring for the same job
 
 ## masthead.dek
-Hold the role fixed, change the context around it, and see which requirements actually move. Two job families, eleven industries, and an honest account of what the numbers will and will not carry.
+Which requirements follow the job, and which follow the industry? An analysis of software and sales roles, each posted across eleven industries.
 
 ## method.title
-How the numbers were made
-
-## method.intro
-Six steps, each one guarding against a specific way this kind of analysis goes wrong.
+How the methodology works
 
 ## method.steps
-- **28,487 adverts → 25,800 kept.** Only a missing industry removes an advert — nothing is dropped for being awkward.
-- **Requirement text → 349,061 single requirements.** So two demands written in one sentence are counted as two.
-- **Each requirement → 384 numbers.** So wording stops mattering and meaning starts: `Kenntnisse in SQL` and `SQL knowledge` land together.
-- **Numbers → 594 groups.** Learned once, on one period, so a later month can be compared rather than re-invented.
-- **Groups → core and shell.** A group's share in one cell against the job family's own baseline.
-- **Every number, twice.** Once per advert, once per distinct advert. Both are published.
+- **Requirement text → 349,061 single requirements.** I split the requirements into single strings, at times splitting one sentence into multiple in order to be as specific as possible.
+- **Each requirement → 384 numbers.** I represented semantically the single requirements: `Kenntnisse in SQL` and `SQL knowledge` have similar values.
+- **Numbers → 594 groups.** Semantic representations are here grouped into clusters.
+- **Groups → core and shell.** I compared a group's share in one cell against the job family's own baseline.
+
+# The corpus
+
+## corpus.title
+Software piles into one industry. Sales does not.
+
+## corpus.note
+Each circle is one industry. The area is the number of postings among the 28,487 adverts as delivered, and the count is written beside the circle. Hover a circle for how many companies posted them. The last row has no industry.
+
+## corpus.points
+- `5,663` Software postings in AI, Data & Software, the largest cell. Sales in that industry is 1,535, less than a third as many.
+- `1,854 vs 477` Commerce & Retail runs the other way. Sales postings there outnumber software ones by about four to one.
+- `554` Postings with no industry: 359 software and 195 sales. They are drawn last, and they are not one of the eleven industries compared below.
 
 ## section.01
 Industry, country, seniority — which one really changes the job?
@@ -61,7 +69,7 @@ What travels with you between industries, and what stays behind?
 Europe keeps an official list of workplace skills. Is what employers ask for on it?
 
 ## section.04
-Which employers actually repeat themselves?
+Which employers repeat themselves?
 
 ## cta.01
 Read the article: why the raw table said country, and why it was wrong →
@@ -108,31 +116,6 @@ The app to boost your career 🥕 Become the best at your job 🥕 Get great opp
 
 ## credits.data.link
 karimi.ai → https://www.karimi.ai/
-
----
-
-# The weighting control
-
-## weighting.label
-One retailer posted the same advert 474 times. Should it count 474 times?
-
-## weighting.note
-Pick a rule and the headline number is recomputed under it. The point is not which rule is correct — it is that the answer stays above 1 whichever you pick, so the finding does not depend on this choice.
-
-## weighting.measures
-sales vs software
-
-## weighting.meaning
-a sales role's list of requirements shifts this much more than a software role's when the industry changes
-
-## weighting.option.advert
-count every advert | All 25,800 adverts count once each. That retailer's 474 near-identical adverts count 474 times, so one company's template can look like an industry-wide pattern.
-
-## weighting.option.dedup
-count repeated adverts once | When an employer posts the same advert twice, count it once. Those 474 adverts become 26 genuinely different ones, and 17% of the whole corpus turns out to be a repost.
-
-## weighting.option.employer
-count every employer once | Each company gets one vote however much it posts. Safe against templates, but it throws away 975 genuinely different adverts from the largest poster in order to neutralise 86 copies from a smaller one.
 
 ---
 

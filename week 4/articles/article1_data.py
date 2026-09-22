@@ -1,7 +1,7 @@
-"""Datasets for article 1 — what actually changes the job.
+"""Datasets for article 1 — what changes the job.
 
 Scope discipline: this article answers one question only. Which of the things
-that vary around a fixed role actually changes what employers ask for, and what
+that vary around a fixed role changes what employers ask for, and what
 had to be removed before that ranking could be believed. Core and shell, the
 ESCO residual and the sales-versus-software headline belong to articles 2 and 3
 and are deliberately absent, so the three pieces stay separable.
@@ -77,7 +77,7 @@ post = base.drop_duplicates("vacancy_id")
 ct = pd.crosstab(post["geo_country"], post["text_lang"])
 tot = ct.sum(axis=1).sort_values(ascending=False)
 
-# which three countries actually entered the comparison — same rule as the run
+# which three countries entered the comparison — same rule as the run
 eng = post[post["text_lang"] == "English"]
 ct_all = pd.crosstab(post["geo_country"], post["macro_function"])
 ct_en = pd.crosstab(eng["geo_country"], eng["macro_function"])
@@ -118,7 +118,7 @@ out["b"] = {
              "English while France is 56.7% French and Germany 59.0% German — so "
              "comparing those countries is partly comparing those languages, and the "
              "requirement text is what was embedded and grouped. The three outlined "
-             "rows are the countries the comparison above actually ran on, which is the "
+             "rows are the countries the comparison above ran on, which is the "
              "worst case: they are the three most sharply separated by language. "
              "Detection covers eight languages; a country whose own language is not "
              "among them, such as Poland, shows its adverts as English because that "

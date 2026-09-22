@@ -210,22 +210,5 @@ write("tiles.json", {"tiles": [
      "label": "of demand has no concept in the European skills catalogue"},
 ]})
 
-# The ratios and the advert counts are measurements and stay here; every word
-# belongs to pagecopy.md, including the three button labels and their explanations.
-_wopt = [("advert", 1.240, 25800, {}),
-         ("dedup", 1.168, 21356, {"default": True, "published": True}),
-         ("employer", 1.196, 2420, {})]
-write("weighting.json", {
-    "label": C["weighting.label"],
-    "note": C["weighting.note"],
-    # A ratio is unreadable without its pair, so both halves are stated on the
-    # page beside the number rather than left to the note.
-    "measures": C["weighting.measures"],
-    "meaning": C["weighting.meaning"],
-    "options": [dict(pagecopy.option(C[f"weighting.option.{k}"]),
-                     key=k, ratio=r, adverts=n, **extra)
-                for k, r, n, extra in _wopt],
-})
-
 print("")
 print(f"total {time.time()-t0:.0f}s")

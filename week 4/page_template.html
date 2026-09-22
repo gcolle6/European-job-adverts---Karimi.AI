@@ -33,7 +33,7 @@ body{background:var(--ground);color:var(--body);
   font-family:"Source Sans 3",system-ui,sans-serif;font-size:16.5px;line-height:1.6;
   margin:0;padding-block:clamp(2rem,5vw,3.5rem);padding-left:20px;padding-right:20px}
 .wrap{max-width:64rem;margin:0 auto;display:flex;flex-direction:column;gap:3.5rem}
-.mast,.steps,.limits,.lede,.weight,.foot{max-width:52rem}
+.mast,.steps,.limits,.lede,.foot{max-width:52rem}
 
 /* Three treatments, chosen by what each chart needs rather than for variety:
    a five-row dumbbell wants a narrow column, a 580-dot strip and a 311-dot
@@ -124,27 +124,6 @@ svg{display:block;max-width:100%;height:auto;overflow:visible}
 .tip b{font-weight:600}
 .tip.on{opacity:1}
 
-/* weighting */
-.weight{background:var(--accent-soft);border-left:3px solid var(--accent);padding:1.2rem 1.3rem;
-  display:flex;flex-direction:column;gap:.8rem}
-.wopts{display:flex;flex-wrap:wrap;gap:.4rem}
-.wopts button{font-family:"Source Sans 3",sans-serif;font-size:.87rem;cursor:pointer;
-  border:1px solid var(--line);background:var(--panel);color:var(--body);padding:.4rem .8rem}
-.wopts button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
-.wopts button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.wopts button .pub{display:block;font-size:.68rem;font-weight:400;opacity:.85}
-.wresult{background:var(--panel);border:1px solid var(--line);padding:.85rem .95rem;
-  display:flex;flex-direction:column;gap:.35rem}
-.wcap{font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.12em;
-  text-transform:uppercase;color:var(--accent);font-weight:700}
-.wrow{display:flex;align-items:baseline;gap:.75rem;flex-wrap:wrap}
-.wout{font-family:"JetBrains Mono",monospace;font-size:2rem;font-weight:700;color:var(--ink);
-  font-variant-numeric:tabular-nums;line-height:1;flex:none}
-.wsub{font-size:.85rem;color:var(--muted);line-height:1.4;flex:1 1 16rem;min-width:0}
-.wcount{font-family:"JetBrains Mono",monospace;font-size:.72rem;color:var(--faint)}
-.wexplain{font-size:.93rem;color:var(--body);background:var(--panel);
-  border:1px solid var(--line);padding:.7rem .85rem;line-height:1.5}
-
 .limits{border-left:3px solid var(--warn-line);background:var(--warn-soft);padding:1rem 1.2rem;
   display:flex;flex-direction:column;gap:.45rem;font-size:.92rem}
 .limits .tag{font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.12em;
@@ -180,17 +159,14 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
     <div class="steps">{{method.steps}}</div>
   </section>
 
-  <div class="weight" id="weight">
-    <h3 id="wlabel"></h3>
-    <p class="cnote" id="wnote"></p>
-    <div class="wopts" id="wopts"></div>
-    <div class="wresult">
-      <span class="wcap" id="wcap"></span>
-      <div class="wrow"><span class="wout" id="wout">—</span><span class="wsub" id="wsub"></span></div>
-      <span class="wcount" id="wcount"></span>
+  <section>
+    <div class="sechead"><span class="num">DATA</span><h2>{{corpus.title}}</h2></div>
+    <div class="card">
+      <div class="chartbox"><svg id="c0"></svg><div class="tip" id="tip0"></div></div>
+      <p class="cnote">{{corpus.note}}</p>
+      <ul class="points">{{corpus.points}}</ul>
     </div>
-    <p class="wexplain" id="wexplain"></p>
-  </div>
+  </section>
 
   <section>
     <div class="sechead"><span class="num">01</span><h2>{{section.01}}</h2></div>
@@ -312,35 +288,65 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
      with no chart around it reads as a claim, and each of them belongs inside
      the chart that earns it. */
 
-  /* ---------------- weighting ---------------- */
-  var W = D.weighting, wopts = document.getElementById("wopts");
-  document.getElementById("wlabel").textContent = W.label;
-  document.getElementById("wnote").textContent = W.note;
-  function setW(o){
-    document.getElementById("wcap").textContent = W.measures;
-    document.getElementById("wout").textContent = o.ratio.toFixed(3) + "×";
-    document.getElementById("wsub").textContent = W.meaning;
-    document.getElementById("wcount").textContent =
-      o.adverts.toLocaleString() + " adverts counted under this rule";
-    document.getElementById("wexplain").textContent = o.explain;
-    [].forEach.call(wopts.children, function(b){
-      b.setAttribute("aria-pressed", b.dataset.k === o.key ? "true" : "false");
-    });
-  }
-  W.options.forEach(function(o){
-    var b = document.createElement("button");
-    b.type = "button"; b.dataset.k = o.key;
-    b.appendChild(document.createTextNode(o.label));
-    if (o.published) {
-      var pub = document.createElement("span");
-      pub.className = "pub"; pub.textContent = "what this study publishes";
-      b.appendChild(pub);
+  /* ---------------- corpus: postings by industry ----------------
+     Counts are the delivered export (28,487), not the 25,800 analysis base.
+     Area is proportional to postings. Companies are tooltip-only. */
+  (function(){
+    var rows = [
+      {industry:"AI, Data & Software", software:5663, sales:1535, swCo:456, saCo:318},
+      {industry:"Financial Services", software:2740, sales:1673, swCo:310, saCo:246},
+      {industry:"Industrial & Deep Tech", software:2366, sales:1687, swCo:288, saCo:265},
+      {industry:"Commerce & Retail", software:477, sales:1854, swCo:92, saCo:118},
+      {industry:"Enterprise, Legal & Work", software:1157, sales:793, swCo:192, saCo:169},
+      {industry:"Consumer, Lifestyle & Hospitality", software:783, sales:1159, swCo:160, saCo:190},
+      {industry:"Mobility & Transport", software:1054, sales:758, swCo:155, saCo:147},
+      {industry:"Climate & Energy", software:815, sales:734, swCo:142, saCo:113},
+      {industry:"Health & Life Sciences", software:643, sales:423, swCo:160, saCo:120},
+      {industry:"Agriculture & Food", software:330, sales:707, swCo:101, saCo:109},
+      {industry:"Think Tank & Research", software:492, sales:90, swCo:93, saCo:33},
+      {industry:"No industry", software:359, sales:195, swCo:173, saCo:112, missing:true}
+    ];
+    var W0 = 700, labX = 268, rowH = 50, head = 28;
+    var xS = 430, xB = 600, maxN = 5663;
+    var H = head + rows.length * rowH + 8;
+    function R(n){ return 22 * Math.sqrt(n / maxN); }
+    var s = svg("c0", W0, H), tip = tipFor("c0", "tip0");
+    function headLabel(x, label, color){
+      var t = mk("text", {x:x, y:16, "text-anchor":"middle", class:"rowlab"});
+      t.style.fill = color;
+      t.textContent = label; s.appendChild(t);
     }
-    b.id = "w_" + o.key;
-    b.addEventListener("click", function(){ setW(o); });
-    wopts.appendChild(b);
-  });
-  setW(W.options.filter(function(o){ return o.default; })[0] || W.options[0]);
+    headLabel(xS, "software", v("--s1"));
+    headLabel(xB, "sales", v("--s2"));
+    rows.forEach(function(r, i){
+      var y = head + i * rowH + rowH / 2;
+      if (r.missing) {
+        s.appendChild(mk("line", {x1:12, x2:W0 - 12, y1:y - rowH / 2 + 1, y2:y - rowH / 2 + 1,
+          class:"gridline"}));
+      }
+      var lab = mk("text", {x:labX, y:y + 4, "text-anchor":"end", class:"rowlab"});
+      if (r.missing) lab.setAttribute("fill", v("--faint"));
+      lab.textContent = r.industry; s.appendChild(lab);
+      [["software", r.software, r.swCo, xS, v("--s1")],
+       ["sales", r.sales, r.saCo, xB, v("--s2")]].forEach(function(p){
+        var rad = Math.max(R(p[1]), 2.4);
+        var c = mk("circle", {cx:p[3], cy:y, r:rad, fill:p[4],
+          opacity: r.missing ? "0.45" : "0.92"});
+        c.style.cursor = "pointer";
+        c.addEventListener("mousemove", function(e){
+          tip.show(e, "<b>" + r.industry + "</b><br>" + p[0] + "<br>" +
+            p[1].toLocaleString() + " postings<br>" +
+            p[2].toLocaleString() + " companies");
+        });
+        c.addEventListener("mouseleave", tip.hide);
+        s.appendChild(c);
+        var val = mk("text", {x:p[3] + rad + 6, y:y + 4, class:"rowval"});
+        if (r.missing) val.setAttribute("fill", v("--faint"));
+        val.textContent = p[1].toLocaleString();
+        s.appendChild(val);
+      });
+    });
+  })();
 
   /* ---------------- chart 1: dumbbell ---------------- */
   (function(){
@@ -424,7 +430,7 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
       lb.textContent = (t*100).toFixed(t < 0.01 ? 1 : 0) + "%"; s.appendChild(lb);
     });
 
-    // the two rules, drawn where they actually sit
+    // the two rules, drawn where they sit
     s.appendChild(mk("line",{x1:X(1),x2:X(1),y1:top,y2:bot,
       stroke:v("--muted"),"stroke-width":1.5,"stroke-dasharray":"3 3"}));
     var rl = mk("text",{x:X(1),y:top-10,"text-anchor":"middle",class:"reflabel"});

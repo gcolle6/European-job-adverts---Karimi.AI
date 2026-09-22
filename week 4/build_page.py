@@ -1,4 +1,4 @@
-"""Inline the six datasets into the page, and write a standalone local copy.
+"""Inline the chart datasets into the page, and write a standalone local copy.
 
 The data is embedded rather than fetched. Two reasons: the published page's
 policy blocks cross-origin requests and a same-origin fetch is one more thing
@@ -13,7 +13,6 @@ W4 = pathlib.Path(__file__).resolve().parent
 
 data = {
     "tiles": json.loads((W4 / "data" / "tiles.json").read_text(encoding="utf-8")),
-    "weighting": json.loads((W4 / "data" / "weighting.json").read_text(encoding="utf-8")),
     "c1": json.loads((W4 / "data" / "chart1_drivers.json").read_text(encoding="utf-8")),
     "c2": json.loads((W4 / "data" / "chart2_core_shell.json").read_text(encoding="utf-8")),
     "c3": json.loads((W4 / "data" / "chart3_residual.json").read_text(encoding="utf-8")),

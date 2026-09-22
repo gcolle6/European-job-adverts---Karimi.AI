@@ -1,7 +1,7 @@
 # Same title, different job
 
 Hold the role fixed and change the industry around it: how much of what employers
-ask for actually changes? The part that stays is the **core** — what travels with
+ask for changes? The part that stays is the **core** — what travels with
 you between industries. The part that moves is the **shell** — what belongs to
 the industry you happen to be in. Separating the two is the deliverable.
 

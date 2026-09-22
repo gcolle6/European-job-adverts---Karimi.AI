@@ -34,7 +34,7 @@ ROOT = W4.parent
 KEEP_NAMED = "--named" in sys.argv
 
 data = {k: json.loads((W4 / "data" / f"{f}.json").read_text(encoding="utf-8"))
-        for k, f in [("tiles", "tiles"), ("weighting", "weighting"),
+        for k, f in [("tiles", "tiles"),
                      ("c1", "chart1_drivers"), ("c2", "chart2_core_shell"),
                      ("c3", "chart3_residual"), ("c4", "chart4_employers")]}
 
@@ -60,6 +60,10 @@ fill["method.steps"] = "".join(
     for i, st in enumerate(pagecopy.steps(C["method.steps"])))
 fill["limits.items"] = "".join(f"<li>{pagecopy.inline(x)}</li>"
                                for x in pagecopy.items(C["limits.items"]))
+fill["corpus.points"] = "".join(
+    f'<li><span class="stat">{pagecopy.inline(p["stat"])}</span>'
+    f'<span class="txt">{pagecopy.inline(p["text"])}</span></li>'
+    for p in pagecopy.points(C.get("corpus.points", "")))
 for who in ("author", "data"):
     ln = pagecopy.link(C[f"credits.{who}.link"])
     fill[f"credits.{who}.link"] = (
@@ -84,7 +88,7 @@ doc = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="What European employers ask for when the job stays the same: 25,800 job adverts, two job families, eleven industries.">
 <meta property="og:title" content="What employers ask for, when the job stays the same">
-<meta property="og:description" content="Hold the role fixed, change the context, and see which requirements actually move.">
+<meta property="og:description" content="Hold the role fixed, change the context, and see which requirements move.">
 <meta property="og:type" content="article">
 <style>html{color-scheme:light dark}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 """ + page + """

@@ -11,7 +11,7 @@ the standard library's, and pyarrow calls copy.deepcopy during import, so the
 obvious name breaks every script that touches a parquet file.
 
 Deliberately small. It understands `## key`, three slot shapes, and the two
-inline marks a heading or a bullet actually needs. It is not a Markdown parser
+inline marks a heading or a bullet needs. It is not a Markdown parser
 and should not become one: anything it does not understand is passed through as
 text, which fails visibly rather than silently.
 """
@@ -88,8 +88,3 @@ def link(body: str) -> dict[str, str]:
     return {"label": m.group(1).strip().rstrip("→").strip() + " →",
             "url": m.group(2)}
 
-
-def option(body: str) -> dict[str, str]:
-    """`label | explanation` → one button of the weighting control."""
-    label, _, explain = body.partition("|")
-    return {"label": label.strip(), "explain": " ".join(explain.split())}
