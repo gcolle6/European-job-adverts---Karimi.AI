@@ -167,14 +167,18 @@ after removing the language effect
 Most of what you know travels. A few things belong to one industry.
 
 ## chart2.note
-Every dot is one requirement, placed where employers ask for it most. 1× means it is asked just as often there as anywhere else in the same job — so it travels with you. 20× means it is asked twenty times more often there than anywhere else. Hover any dot to see what it is.
+Every dot is one requirement group, placed where employers ask for it most. Across: how much more often it is asked there than in the same job elsewhere — 1× means no more often anywhere, 20× means twenty times more. Up: how many of that cell's adverts ask for it at all. Both matter, because a requirement that is distinctive but almost never asked for is not a finding. The two tinted regions are the rules: blue for core, orange for shell. Grey dots fell inside neither, and they are the majority. Hover any dot.
 
 ## chart2.x_label
 asked for how much more often here than in the same job elsewhere  →
 
+## chart2.y_label
+↑  share of that cell's adverts asking for it
+
 ## chart2.points
 - `91 of 580` Requirement groups sit close to 1×: asked at roughly the same rate whichever industry the job is in. This is the core — what you can take with you.
-- `149 of 580` Groups are concentrated in a single industry cell. This is the shell, and it is about a quarter of the groups rather than the bulk of them.
+- `149 of 580` Groups are concentrated in a single industry cell and asked for often enough there to count. This is the shell, and it is about a quarter of the groups rather than the bulk of them.
+- `340 of 580 grey` Most groups clear neither bar. 263 are not distinctive enough to be shell, and 77 are distinctive but too rare — `MacOS and Apple devices` peaks at 9.2× and still appears in only 2.6% of that cell's adverts. Grey is not a leftover category; it is the ordinary case.
 - `20.3×` Food industry knowledge, in software roles in Agriculture & Food. It is spread across 27 different employers, so it is a property of the industry rather than one company's house style.
 - `1.22×, in 10.1%` Python proficiency is asked for in a tenth of all adverts and barely varies by industry. The most common technical requirement is also one of the most portable.
 

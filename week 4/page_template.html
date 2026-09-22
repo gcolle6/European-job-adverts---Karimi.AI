@@ -398,25 +398,43 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
     xl1.textContent = d.x_label; s.appendChild(xl1);
   })();
 
-  /* ---------------- chart 2: dot strip ---------------- */
+  /* ---------------- chart 2: lift against how often it is asked ---------------- */
   (function(){
-    var d = D.c2, g = d.groups;
+    var d = D.c2, g = d.groups, th = d.thresholds;
     document.getElementById("c2title").textContent = d.title;
     document.getElementById("c2note").textContent = d.note;
     points("c2", d);
-    var W0 = 760, L = 40, R = 40, H = 300, top = 34, bot = H - 40;
+    var W0 = 760, L = 54, R = 40, H = 380, top = 30, bot = H - 46;
     var s = svg("c2", W0, H), tip = tipFor("c2", "tip2");
     var lo = Math.log(0.6), hi = Math.log(24), iw = W0 - L - R;
-    function X(x){ return L + (Math.log(Math.max(x,0.6)) - lo) / (hi - lo) * iw; }
+    function X(x){ return L + (Math.log(Math.max(x, 0.6)) - lo) / (hi - lo) * iw; }
+    // share spans 0.4% to 67%, so height is logarithmic too; a linear axis would
+    // press four fifths of the groups into the bottom tenth of the picture
+    var ylo = Math.log(0.003), yhi = Math.log(0.75);
+    function Y(v){ return bot - (Math.log(Math.max(v, 0.003)) - ylo) / (yhi - ylo) * (bot - top); }
+
     [1,2,5,10,20].forEach(function(t){
-      s.appendChild(mk("line",{x1:X(t),x2:X(t),y1:top-8,y2:bot,class:"gridline"}));
+      s.appendChild(mk("line",{x1:X(t),x2:X(t),y1:top,y2:bot,class:"gridline"}));
       var lb = mk("text",{x:X(t),y:bot+16,"text-anchor":"middle",class:"axis"});
-      lb.textContent = t + "×"; s.appendChild(lb);
+      lb.textContent = t + "\u00d7"; s.appendChild(lb);
     });
-    s.appendChild(mk("line",{x1:X(1),x2:X(1),y1:top-8,y2:bot,
+    [0.005,0.01,0.03,0.10,0.30].forEach(function(t){
+      s.appendChild(mk("line",{x1:L,x2:W0-R,y1:Y(t),y2:Y(t),class:"gridline"}));
+      var lb = mk("text",{x:L-8,y:Y(t)+4,"text-anchor":"end",class:"axis"});
+      lb.textContent = (t*100).toFixed(t < 0.01 ? 1 : 0) + "%"; s.appendChild(lb);
+    });
+
+    // the two rules, drawn where they actually sit
+    s.appendChild(mk("line",{x1:X(1),x2:X(1),y1:top,y2:bot,
       stroke:v("--muted"),"stroke-width":1.5,"stroke-dasharray":"3 3"}));
-    var rl = mk("text",{x:X(1),y:top-14,"text-anchor":"middle",class:"reflabel"});
+    var rl = mk("text",{x:X(1),y:top-10,"text-anchor":"middle",class:"reflabel"});
     rl.textContent = d.reference.label; s.appendChild(rl);
+    s.appendChild(mk("rect",{x:X(th.shell_lift),y:top,width:(W0-R)-X(th.shell_lift),
+      height:Y(th.shell_share)-top,fill:v("--s2"),opacity:0.06}));
+    s.appendChild(mk("rect",{x:X(1-th.core_dev),y:top,
+      width:X(1+th.core_dev)-X(1-th.core_dev),height:Y(th.core_share)-top,
+      fill:v("--accent"),opacity:0.07}));
+
     var COL = {core:v("--accent"), shell:v("--s2"), neither:v("--dim")};
     var lg2 = document.getElementById("c2legend");
     ["core","shell","neither"].forEach(function(k){
@@ -426,23 +444,23 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
       sp.appendChild(i2); sp.appendChild(document.createTextNode(d.keys[k]));
       lg2.appendChild(sp);
     });
-    var band = bot - top - 16, seed = 7;
-    function rnd(){ seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; }
+
     g.slice().sort(function(a,b){ return (a.kind==="neither"?0:1)-(b.kind==="neither"?0:1); })
       .forEach(function(x){
-      var cy = top + 10 + rnd() * band;
-      var c = mk("circle",{cx:X(x.lift),cy:cy,r:x.kind==="neither"?3.2:4.6,
-        fill:COL[x.kind],opacity:x.kind==="neither"?0.5:0.92});
+      var c = mk("circle",{cx:X(x.lift),cy:Y(x.share),r:x.kind==="neither"?3:4.4,
+        fill:COL[x.kind],opacity:x.kind==="neither"?0.45:0.9});
       if (x.kind !== "neither"){ c.setAttribute("stroke", v("--panel")); c.setAttribute("stroke-width", 1.4); }
       c.style.cursor = "pointer";
       c.addEventListener("mousemove", function(e){
-        tip.show(e, "<b>" + x.group + "</b><br>" + x.lift + "× in " + x.cell +
-          "<br>asked by " + (x.employers || "—") + " different employers");
+        tip.show(e, "<b>" + x.group + "</b><br>" + x.lift + "\u00d7 in " + x.cell +
+          "<br>asked in " + (x.share*100).toFixed(1) + "% of those adverts" +
+          "<br>by " + (x.employers || "\u2014") + " different employers");
       });
       c.addEventListener("mouseleave", tip.hide);
       s.appendChild(c);
     });
     var xl = mk("text",{x:L,y:H-6,class:"axis"}); xl.textContent = d.x_label; s.appendChild(xl);
+    var yl = mk("text",{x:2,y:top-12,class:"axis"}); yl.textContent = d.y_label; s.appendChild(yl);
   })();
 
   /* ---------------- chart 3: stacked bar ---------------- */
