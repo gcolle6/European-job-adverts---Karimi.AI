@@ -149,14 +149,14 @@ for r in peak.itertuples():
     })
 rows.sort(key=lambda x: -x["lift"])
 write("chart2_core_shell.json", {
-    "reference": {"value": 1.0, "label": "asked just as often everywhere"},
+    "reference": {"value": 1.0, "label": "same rate in every industry"},
     # the verdict's own thresholds, so the chart draws the rules it is showing
     # rather than a retyped copy of them
     "thresholds": {"shell_lift": cl.SHELL_MIN_LIFT, "shell_share": cl.SHELL_MIN_SHARE,
                    "core_share": cl.CORE_MIN_SHARE, "core_dev": cl.CORE_MAX_LIFT_DEVIATION},
-    "keys": {"core": "asked everywhere, equally",
-             "shell": "belongs to one industry",
-             "neither": "somewhere in between"},
+    "keys": {"core": "similar rate everywhere",
+             "shell": "mostly one industry",
+             "neither": "neither"},
     "groups": rows,
 })
 

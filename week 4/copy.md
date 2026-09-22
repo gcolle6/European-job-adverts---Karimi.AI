@@ -15,7 +15,7 @@ paragraph is a way of removing it.
 
 Three slot shapes:
 
-* **plain** — one paragraph. `**bold**` and `` `code` `` work; nothing else does.
+* **plain** — one paragraph. `**bold**`, `` `code` ``, and `[label](https://url)` work.
 * **steps** — a list of `- **lead** trailing text`, used by the method strip.
 * **points** — a list of `` - `figure` text``, used under each chart. The figure
   is shown in a chip, the text beside it. The figure comes first on purpose: a
@@ -52,7 +52,7 @@ How the methodology works
 An intro to the job postings
 
 ## corpus.intro
-Karimi (www.karimi.ai) builds a database of European companies and the jobs they advertise, taken from public listings on company pages. It holds more than 5,600 companies and hundreds of thousands of postings.
+[Karimi](https://www.karimi.ai) builds a database of European companies and the jobs they advertise, taken from public listings on company pages. It holds more than 5,600 companies and hundreds of thousands of postings.
 
 ## corpus.more
 This page uses one slice of that database. The adverts were posted from May to August 2026 for two kinds of role, software and data, and sales and business development, across eleven industries.
@@ -64,7 +64,7 @@ Each circle is one industry. The area is the number of postings, and the count i
 Industry, country, seniority — which one really changes the job?
 
 ## section.02
-What travels with you between industries, and what stays behind?
+Which requirements follow the job, and which belong to one industry?
 
 ## section.03
 Europe keeps an official list of workplace skills. Is what employers ask for on it?
@@ -76,7 +76,7 @@ Which employers repeat themselves?
 Read the article: why the raw table said country, and why it was wrong →
 
 ## cta.02
-Read the article: the seven things that travel, and the twenty-times demands →
+Read the article: what follows the job, and what is asked for twenty times more often →
 
 ## cta.03
 Read the article: what the European skills catalogue misses, and why →
@@ -138,7 +138,7 @@ what we first measured
 after removing the language effect
 
 ## chart1.points
-- `0.422 → 0.342` Country was the largest factor before the language control and the fourth after it. Adverts from one country tend to share a language, so part of what looked like a country difference was a difference in the words themselves.
+- `0.422 → 0.342` Country was the largest factor before the language control and the third after it. Adverts from one country tend to share a language, so part of what looked like a country difference was a difference in the words themselves.
 - `−18.9% vs −2.6%` Country lost nearly a fifth of its distance under the control. No other factor moved by more than 2.6%, and company size moved upwards by 1.2% — movement in the wrong direction is what noise looks like, and it sets the scale for reading the others.
 - `0.373 vs 0.372` Seniority and industry finish level once language is removed. The gap between them is smaller than either confidence interval, so the honest reading is a tie rather than a winner.
 - `3 levels each` Every factor is compared across three of its levels, chosen for having enough adverts on each side in both job families and in the English subset. A factor with more levels could rank differently across all of them.
@@ -148,23 +148,23 @@ after removing the language effect
 # Chart 2 — core and shell
 
 ## chart2.title
-Most of what you know travels. A few things belong to one industry.
+Most requirements are asked for at a similar rate everywhere. A few belong to one industry.
 
 ## chart2.note
-Every dot is one requirement group, placed where employers ask for it most. Across: how much more often it is asked there than in the same job elsewhere — 1× means no more often anywhere, 20× means twenty times more. Up: how many of that cell's adverts ask for it at all. Both matter, because a requirement that is distinctive but almost never asked for is not a finding. The two tinted regions are the rules: blue for core, orange for shell. Grey dots fell inside neither, and they are the majority. Hover any dot.
+Each dot is a group of requirements that mean the same thing, shown in the industry where employers ask for it most. Left to right: how much more often they ask for it there than in the same job in other industries. 1× means the same rate everywhere. 20× means twenty times more often in that one industry. Bottom to top: how many of that industry's adverts mention it. Both matter, because a requirement can be typical of one industry and still almost never asked for. Blue means a similar rate in every industry. Orange means common in one industry and uncommon in the others. Grey is neither, and grey is most of the chart. Hover a dot to see which requirement it is.
 
 ## chart2.x_label
-asked for how much more often here than in the same job elsewhere  →
+how much more often it is asked for in this industry than in others  →
 
 ## chart2.y_label
-↑  share of that cell's adverts asking for it
+↑  how many of that industry's adverts ask for it
 
 ## chart2.points
-- `91 of 580` Requirement groups sit close to 1×: asked at roughly the same rate whichever industry the job is in. This is the core — what you can take with you.
-- `149 of 580` Groups are concentrated in a single industry cell and asked for often enough there to count. This is the shell, and it is about a quarter of the groups rather than the bulk of them.
-- `340 of 580 grey` Most groups clear neither bar. 263 are not distinctive enough to be shell, and 77 are distinctive but too rare — `MacOS and Apple devices` peaks at 9.2× and still appears in only 2.6% of that cell's adverts. Grey is not a leftover category; it is the ordinary case.
-- `20.3×` Food industry knowledge, in software roles in Agriculture & Food. It is spread across 27 different employers, so it is a property of the industry rather than one company's house style.
-- `1.22×, in 10.1%` Python proficiency is asked for in a tenth of all adverts and barely varies by industry. The most common technical requirement is also one of the most portable.
+- `91 of 580` Asked for at about the same rate whichever industry the job is in. These follow the job.
+- `149 of 580` Common in one industry, much rarer in the others, and asked for often enough there to matter. About a quarter of the groups.
+- `340 of 580 grey` Neither of those. 263 are not tied strongly enough to one industry. 77 are tied to one industry but rarely asked for: MacOS and Apple devices comes up 9.2 times more often in one place, and still in only 2.6% of those adverts. Grey is the usual case.
+- `20.3×` Food-industry knowledge, for software roles in Agriculture & Food. 27 different employers ask for it, so it belongs to the industry rather than to one company.
+- `1.22×, in 10.1%` Python is mentioned in about one advert in ten, at nearly the same rate in every industry.
 
 ---
 

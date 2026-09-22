@@ -10,7 +10,7 @@ Named pagecopy rather than copy: a module called `copy` on sys.path shadows
 the standard library's, and pyarrow calls copy.deepcopy during import, so the
 obvious name breaks every script that touches a parquet file.
 
-Deliberately small. It understands `## key`, three slot shapes, and the two
+Deliberately small. It understands `## key`, three slot shapes, and the
 inline marks a heading or a bullet needs. It is not a Markdown parser
 and should not become one: anything it does not understand is passed through as
 text, which fails visibly rather than silently.
@@ -42,11 +42,20 @@ def load(path: pathlib.Path | None = None) -> dict[str, str]:
 
 
 def inline(s: str) -> str:
-    """`**bold**` and `` `code` ``, escaped first so the source cannot inject HTML."""
+    """`**bold**`, `` `code` ``, and `[label](https://url)`.
+
+    Escaped first so the source cannot inject HTML. Only an http(s) address
+    becomes a link; anything else is left as written.
+    """
     s = html.escape(s, quote=False)
     s = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", s)
     s = re.sub(r"`(.+?)`", r"<code>\1</code>", s)
-    return s
+
+    def _link(m: re.Match) -> str:
+        url = html.escape(m.group(2), quote=True)
+        return f'<a href="{url}">{m.group(1)}</a>'
+
+    return re.sub(r"\[(.+?)\]\((https?://[^\s)]+)\)", _link, s)
 
 
 def items(body: str) -> list[str]:
