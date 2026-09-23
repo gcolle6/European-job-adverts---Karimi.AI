@@ -1,7 +1,7 @@
 <title>What Employers Ask For</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700&family=Poppins:wght@400;600&family=IBM+Plex+Mono:wght@400;600;700&display=swap">
 
 <style>
 :root{
@@ -30,7 +30,7 @@
 }
 *{box-sizing:border-box}
 body{background:var(--ground);color:var(--body);
-  font-family:"Source Sans 3",system-ui,sans-serif;font-size:16.5px;line-height:1.6;
+  font-family:Poppins,system-ui,sans-serif;font-size:16.5px;line-height:1.6;
   margin:0;padding-block:clamp(2rem,5vw,3.5rem);padding-left:20px;padding-right:20px}
 .wrap{max-width:64rem;margin:0 auto;display:flex;flex-direction:column;gap:3.5rem}
 .mast,.steps,.limits,.lede,.foot{max-width:52rem}
@@ -54,34 +54,34 @@ body{background:var(--ground);color:var(--body);
 }
 
 .mast{display:flex;flex-direction:column;gap:.7rem;border-bottom:2px solid var(--ink);padding-bottom:1.5rem}
-.kicker{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.14em;
+.kicker{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.68rem;letter-spacing:.14em;
   text-transform:uppercase;color:var(--muted)}
-h1{font-family:Newsreader,Georgia,serif;font-weight:600;
+h1{font-family:Nunito,sans-serif;font-weight:600;
   font-size:clamp(2rem,5.5vw,3.1rem);line-height:1.06;color:var(--ink);margin:0;text-wrap:balance}
 .dek{font-size:1.12rem;color:var(--muted);margin:0;max-width:44rem}
 
-h2{font-family:Newsreader,Georgia,serif;font-weight:600;font-size:1.5rem;line-height:1.2;
+h2{font-family:Nunito,sans-serif;font-weight:600;font-size:1.5rem;line-height:1.2;
   color:var(--ink);margin:0;text-wrap:balance}
-h3{font-family:"Source Sans 3",sans-serif;font-weight:600;font-size:.95rem;color:var(--ink);margin:0}
+h3{font-family:Poppins,sans-serif;font-weight:600;font-size:.95rem;color:var(--ink);margin:0}
 p{margin:0}
 section{display:flex;flex-direction:column;gap:1.1rem}
 .sechead{display:flex;align-items:baseline;gap:.8rem;border-bottom:1px solid var(--line);padding-bottom:.5rem}
-.num{font-family:"JetBrains Mono",monospace;font-size:.75rem;font-weight:700;color:var(--accent);flex:none}
+.num{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.75rem;font-weight:700;color:var(--accent);flex:none}
 
 /* tiles */
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.7rem}
 .tile{background:var(--panel);border:1px solid var(--line);padding:1rem 1.1rem;
   display:flex;flex-direction:column;gap:.25rem}
-.tile .v{font-family:"JetBrains Mono",monospace;font-size:2.1rem;font-weight:700;
+.tile .v{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:2.1rem;font-weight:700;
   color:var(--ink);line-height:1;font-variant-numeric:tabular-nums}
-.tile .r{font-family:"JetBrains Mono",monospace;font-size:.74rem;color:var(--accent)}
+.tile .r{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.74rem;color:var(--accent)}
 .tile .l{font-size:.86rem;color:var(--muted);line-height:1.35}
 
 /* method */
 .steps{display:flex;flex-direction:column;border-top:1px solid var(--line-soft)}
 .step{display:grid;grid-template-columns:1.6rem 1fr;gap:.9rem;padding:.55rem 0;
   border-bottom:1px solid var(--line-soft);align-items:baseline}
-.step .s{font-family:"JetBrains Mono",monospace;font-size:.72rem;color:var(--faint)}
+.step .s{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.72rem;color:var(--faint)}
 .step .t{font-size:.95rem}
 .step .t b{color:var(--ink);font-weight:600}
 .step .t em{color:var(--muted);font-style:normal}
@@ -90,16 +90,16 @@ section{display:flex;flex-direction:column;gap:1.1rem}
 .card{background:var(--panel);border:1px solid var(--line);padding:1.3rem 1.4rem 1.1rem;
   display:flex;flex-direction:column;gap:.85rem}
 .card.door{border-top:3px solid var(--accent)}
-.ctitle{font-family:Newsreader,Georgia,serif;font-size:1.28rem;font-weight:600;color:var(--ink);line-height:1.25}
+.ctitle{font-family:Nunito,sans-serif;font-size:1.28rem;font-weight:600;color:var(--ink);line-height:1.25}
 .cnote{font-size:.85rem;color:var(--muted);line-height:1.45}
 .chartbox{position:relative;width:100%;overflow-x:auto}
 svg{display:block;max-width:100%;height:auto;overflow:visible}
-text.axis{font-family:"JetBrains Mono",monospace;font-size:10px;fill:var(--faint)}
+text.axis{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10px;fill:var(--faint)}
 line.axis{stroke:var(--line);stroke-width:1}
-.rowlab{font-family:"Source Sans 3",sans-serif;font-size:12.5px;fill:var(--body)}
-.rowval{font-family:"JetBrains Mono",monospace;font-size:11px;fill:var(--ink)}
+.rowlab{font-family:Poppins,sans-serif;font-size:12.5px;fill:var(--body)}
+.rowval{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;fill:var(--ink)}
 .gridline{stroke:var(--line-soft);stroke-width:1}
-.reflabel{font-family:"Source Sans 3",sans-serif;font-size:10.5px;fill:var(--faint)}
+.reflabel{font-family:Poppins,sans-serif;font-size:10.5px;fill:var(--faint)}
 .legend{display:flex;flex-wrap:wrap;gap:.9rem;font-size:.82rem;color:var(--muted)}
 .legend span{display:inline-flex;align-items:center;gap:.35rem}
 .sw{width:11px;height:11px;border-radius:2px;flex:none}
@@ -108,7 +108,7 @@ line.axis{stroke:var(--line);stroke-width:1}
 .points{list-style:none;margin:0;padding:.9rem 0 0;display:flex;flex-direction:column;
   gap:.6rem;border-top:1px solid var(--line-soft)}
 .points li{display:grid;grid-template-columns:auto 1fr;gap:.8rem;align-items:baseline}
-.points .stat{font-family:"JetBrains Mono",monospace;font-size:.8rem;font-weight:700;
+.points .stat{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.8rem;font-weight:700;
   color:var(--ink);background:var(--line-soft);padding:.16rem .45rem;border-radius:2px;
   white-space:nowrap}
 .points .txt{font-size:.93rem;color:var(--body);line-height:1.5;text-wrap:pretty}
@@ -126,18 +126,18 @@ line.axis{stroke:var(--line);stroke-width:1}
 
 .limits{border-left:3px solid var(--warn-line);background:var(--warn-soft);padding:1rem 1.2rem;
   display:flex;flex-direction:column;gap:.45rem;font-size:.92rem}
-.limits .tag{font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.12em;
+.limits .tag{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.64rem;letter-spacing:.12em;
   text-transform:uppercase;color:var(--warn);font-weight:700}
 ul{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3rem}
-code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--line-soft);
+code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.85em;background:var(--line-soft);
   padding:.08em .32em;color:var(--ink)}
 .foot{border-top:1px solid var(--line);padding-top:1rem;font-size:.84rem;color:var(--faint)}
 .credits{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:1.6rem;
   border-top:2px solid var(--ink);padding-top:1.4rem}
 .cred{display:flex;flex-direction:column;gap:.35rem}
-.credlab{font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.12em;
+.credlab{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.64rem;letter-spacing:.12em;
   text-transform:uppercase;color:var(--faint)}
-.credname{font-family:Newsreader,Georgia,serif;font-size:1.3rem;font-weight:600;
+.credname{font-family:Nunito,sans-serif;font-size:1.3rem;font-weight:600;
   color:var(--ink);line-height:1.15}
 .cred p{font-size:.88rem;color:var(--muted);line-height:1.5}
 .cred a{font-size:.86rem;color:var(--accent);font-weight:600;text-decoration:none;
@@ -405,7 +405,7 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
     document.getElementById("c2title").textContent = d.title;
     document.getElementById("c2note").textContent = d.note;
     points("c2", d);
-    var W0 = 760, L = 54, R = 40, H = 380, top = 30, bot = H - 46;
+    var W0 = 760, L = 72, R = 40, H = 400, top = 36, bot = H - 46;
     var s = svg("c2", W0, H), tip = tipFor("c2", "tip2");
     var lo = Math.log(0.6), hi = Math.log(24), iw = W0 - L - R;
     function X(x){ return L + (Math.log(Math.max(x, 0.6)) - lo) / (hi - lo) * iw; }
@@ -461,7 +461,10 @@ code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--lin
       s.appendChild(c);
     });
     var xl = mk("text",{x:L,y:H-6,class:"axis"}); xl.textContent = d.x_label; s.appendChild(xl);
-    var yl = mk("text",{x:2,y:top-12,class:"axis"}); yl.textContent = d.y_label; s.appendChild(yl);
+    var yMid = (top + bot) / 2;
+    var yl = mk("text",{x:14,y:yMid,"text-anchor":"middle",class:"axis",
+      transform:"rotate(-90 14 " + yMid + ")"});
+    yl.textContent = d.y_label; s.appendChild(yl);
   })();
 
   /* ---------------- chart 3: stacked bar ---------------- */

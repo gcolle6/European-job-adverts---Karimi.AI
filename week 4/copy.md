@@ -157,7 +157,7 @@ Each dot is a group of requirements that mean the same thing, shown in the indus
 how much more often it is asked for in this industry than in others  →
 
 ## chart2.y_label
-↑  how many of that industry's adverts ask for it
+how many of that industry's adverts ask for it
 
 ## chart2.points
 - `91 of 580` Asked for at about the same rate whichever industry the job is in. These follow the job.
