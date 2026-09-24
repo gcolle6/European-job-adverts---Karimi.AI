@@ -106,6 +106,47 @@ print("building chart datasets from the corrected structure")
 print(f"  groups after merge: {asg.loc[asg['cluster'] != -1, 'cluster'].nunique()}")
 print("")
 
+# ---------------------------------------------------------------- corpus ---
+# The two families described by five factors, for the introductory chart. Counts
+# are the analysis base — the same 25,800 the masthead states and every chart
+# below uses — so a reader adding up the bubbles arrives at the headline figure.
+CORPUS_FACTORS = [
+    ("company_industry", "Industry"),
+    ("company_size", "Company size"),
+    ("company_type", "Kind of company"),
+    ("seniority", "Seniority"),
+    ("work_type", "Where the work happens"),
+]
+UNSTATED = "not stated"
+
+corpus = {"total": int(post["vacancy_id"].nunique()), "groups": []}
+for col, title in CORPUS_FACTORS:
+    lv = post[col].fillna("").astype(str).str.strip().replace("", UNSTATED)
+    ct = pd.crosstab(lv, post["macro_function"])
+    co = post.assign(_l=lv).groupby(["_l", "macro_function"])["company"].nunique().unstack()
+    for fn in ("SOFTWARE_DATA", "SALES_BD"):
+        if fn not in ct.columns:
+            ct[fn] = 0
+        if fn not in co.columns:
+            co[fn] = 0
+    ct = ct.assign(tot=ct["SOFTWARE_DATA"] + ct["SALES_BD"]).sort_values("tot", ascending=False)
+    # an unstated level is information about the data, so it is kept and named —
+    # but it belongs at the bottom, not interleaved with real levels
+    order = [i for i in ct.index if i != UNSTATED] + \
+            ([UNSTATED] if UNSTATED in ct.index else [])
+    corpus["groups"].append({
+        "factor": title,
+        "levels": [{
+            "level": str(i),
+            "software": int(ct.loc[i, "SOFTWARE_DATA"]),
+            "sales": int(ct.loc[i, "SALES_BD"]),
+            "sw_companies": int(co.loc[i, "SOFTWARE_DATA"]) if i in co.index else 0,
+            "sa_companies": int(co.loc[i, "SALES_BD"]) if i in co.index else 0,
+            "unstated": bool(i == UNSTATED),
+        } for i in order],
+    })
+write("corpus.json", corpus)
+
 # ---------------------------------------------------------------- chart 1 ---
 dd = pd.read_csv(W3 + r"\driver_dumbbell.csv", index_col=0)
 NICE = {"seniority": "How senior the role is", "company_industry": "Which industry",

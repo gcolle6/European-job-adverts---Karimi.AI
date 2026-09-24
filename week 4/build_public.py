@@ -19,7 +19,7 @@ W4 = pathlib.Path(__file__).resolve().parent
 ROOT = W4.parent
 
 data = {k: json.loads((W4 / "data" / f"{f}.json").read_text(encoding="utf-8"))
-        for k, f in [("tiles", "tiles"),
+        for k, f in [("tiles", "tiles"), ("corpus", "corpus"),
                      ("c1", "chart1_drivers"), ("c2", "chart2_core_shell")]}
 
 # Chart 4 carried 311 named employers and was anonymised here before publishing.

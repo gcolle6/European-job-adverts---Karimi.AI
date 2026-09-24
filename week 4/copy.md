@@ -55,10 +55,10 @@ An intro to the job postings
 [Karimi](https://www.karimi.ai) builds a database of European companies and the jobs they advertise, taken from public listings on company pages. It holds more than 5,600 companies and hundreds of thousands of postings.
 
 ## corpus.more
-This page uses one slice of that database. The adverts were posted from May to August 2026 for two kinds of role, software and data, and sales and business development, across eleven industries.
+This page uses one slice of that database: 25,800 adverts posted from May to August 2026, for two kinds of role — software and data, and sales and business development — across eleven industries. The chart below is that slice seen along five different factors at once.
 
 ## corpus.note
-Each circle is one industry. The area is the number of postings, and the count is written beside the circle. Hover a circle for how many companies posted them.
+Each row is one slice of the data and each circle is its size, by area — software on the left, sales on the right, with the count written beside it. Hover a circle for how many different companies it covers. Every block adds up to the same 25,800 adverts, so an unstated value is shown rather than dropped: where the work happens is not stated for 12.7% of them.
 
 ## section.01
 Industry, country, seniority — which one really changes the job?

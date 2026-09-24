@@ -13,6 +13,7 @@ W4 = pathlib.Path(__file__).resolve().parent
 
 data = {
     "tiles": json.loads((W4 / "data" / "tiles.json").read_text(encoding="utf-8")),
+    "corpus": json.loads((W4 / "data" / "corpus.json").read_text(encoding="utf-8")),
     "c1": json.loads((W4 / "data" / "chart1_drivers.json").read_text(encoding="utf-8")),
     "c2": json.loads((W4 / "data" / "chart2_core_shell.json").read_text(encoding="utf-8")),
 }
