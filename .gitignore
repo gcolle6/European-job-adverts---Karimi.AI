@@ -91,6 +91,7 @@ week 4/articles/data/
 # cannot be read from the repository before it is finished.
 week 4/articles/*.html
 !week 4/articles/*_template.html
+week 4/articles/*.md
 
 # internal working notes: the handover file, the defect register, unpublished
 # drafts, planning documents and speaking notes
