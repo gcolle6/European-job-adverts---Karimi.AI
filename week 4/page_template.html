@@ -165,7 +165,7 @@ code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.85em;backgrou
     <div class="sechead"><span class="num">DATA</span><h2>{{corpus.title}}</h2></div>
     <p class="lede">{{corpus.intro}}</p>
     <p class="lede">{{corpus.more}}</p>
-    <div class="card">
+    <div class="card wide">
       <div class="chartbox"><svg id="c0"></svg><div class="tip" id="tip0"></div></div>
       <p class="cnote">{{corpus.note}}</p>
     </div>
@@ -269,63 +269,72 @@ code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.85em;backgrou
      with no chart around it reads as a claim, and each of them belongs inside
      the chart that earns it. */
 
-  /* ---------------- corpus: industry, by postings and by companies ----------------
-     Counts are the analysis base, the same 25,800 the masthead states. Area is
-     proportional within each block; the two blocks have separate scales, because
-     postings reach 5,214 and companies 422 and one scale would hide the second.
+  /* ---------------- corpus: industry, along four measures ----------------
+     Counts are the analysis base, the same 25,800 the masthead states.
+     The first three blocks are counts of adverts and share one radius scale, so
+     a senior bubble reads as part of the adverts bubble beside it. Companies has
+     its own scale — 422 against 5,214 cannot share one — which is why the blocks
+     are ruled apart and separately headed.
      corpus.json carries four further factors that are not drawn here. */
   (function(){
     var d = D.corpus;
-    var g = d.groups.filter(function(x){ return x.factor === "Industry"; })[0];
-    var rows = g.levels;
-    var W0 = 760, labX = 200, rowH = 44, top = 52;
-    var xP = [280, 392], xC = [556, 650], divX = 478;
+    var rows = d.groups.filter(function(x){ return x.factor === "Industry"; })[0].levels;
+    var W0 = 1050, labX = 186, rowH = 44, top = 56;
+    var COLS = [
+      {head:"ADVERTS",          x:[250, 356], keys:["software", "sales"],           scale:"a"},
+      {head:"OF WHICH SENIOR",  x:[470, 566], keys:["senior_sw", "senior_sa"],      scale:"a"},
+      {head:"HYBRID OR REMOTE", x:[680, 776], keys:["flex_sw", "flex_sa"],          scale:"a"},
+      {head:"COMPANIES",        x:[890, 976], keys:["sw_companies", "sa_companies"], scale:"c"}
+    ];
     var H = top + rows.length * rowH + 10;
     var s = svg("c0", W0, H), tip = tipFor("c0", "tip0");
-    var maxP = 0, maxC = 0;
-    rows.forEach(function(r){
-      maxP = Math.max(maxP, r.software, r.sales);
-      maxC = Math.max(maxC, r.sw_companies, r.sa_companies);
-    });
-    function R(n, m){ return n > 0 ? Math.max(20 * Math.sqrt(n / m), 1.8) : 0; }
+    var mx = {a:0, c:0};
+    rows.forEach(function(r){ COLS.forEach(function(col){
+      col.keys.forEach(function(k){ mx[col.scale] = Math.max(mx[col.scale], r[k] || 0); });
+    }); });
+    function R(n, sc){ return n > 0 ? Math.max(20 * Math.sqrt(n / mx[sc]), 1.8) : 0; }
 
-    function group(cx, label){
-      var t = mk("text", {x:(cx[0] + cx[1]) / 2, y:16, "text-anchor":"middle", class:"axis"});
-      t.textContent = label; s.appendChild(t);
-    }
-    group(xP, "POSTINGS");
-    group(xC, "COMPANIES");
-    [[xP[0], "software", v("--s1")], [xP[1], "sales", v("--s2")],
-     [xC[0], "software", v("--s1")], [xC[1], "sales", v("--s2")]].forEach(function(h){
-      var t = mk("text", {x:h[0], y:34, "text-anchor":"middle", class:"rowlab"});
-      t.style.fill = h[2]; t.textContent = h[1]; s.appendChild(t);
+    COLS.forEach(function(col, ci){
+      var t = mk("text", {x:(col.x[0] + col.x[1]) / 2, y:18, "text-anchor":"middle", class:"axis"});
+      t.textContent = col.head; s.appendChild(t);
+      [[col.x[0], "software", v("--s1")], [col.x[1], "sales", v("--s2")]].forEach(function(h){
+        var f = mk("text", {x:h[0], y:36, "text-anchor":"middle", class:"rowlab"});
+        f.style.fill = h[2]; f.textContent = h[1]; s.appendChild(f);
+      });
+      if (ci) {
+        var dx = (COLS[ci - 1].x[1] + col.x[0]) / 2;
+        s.appendChild(mk("line", {x1:dx, x2:dx, y1:10, y2:H - 8, class:"gridline"}));
+      }
     });
-    s.appendChild(mk("line", {x1:divX, x2:divX, y1:8, y2:H - 8, class:"gridline"}));
 
     rows.forEach(function(r, i){
       var cy = top + i * rowH + rowH / 2;
       var lab = mk("text", {x:labX, y:cy + 4, "text-anchor":"end", class:"rowlab"});
       lab.textContent = r.level; s.appendChild(lab);
-      var per = function(n, c){ return c ? (n / c).toFixed(1) : "\u2014"; };
-      [["software", r.software, xP[0], v("--s1"), maxP, "postings", r.sw_companies],
-       ["sales",    r.sales,    xP[1], v("--s2"), maxP, "postings", r.sa_companies],
-       ["software", r.sw_companies, xC[0], v("--s1"), maxC, "companies", 0],
-       ["sales",    r.sa_companies, xC[1], v("--s2"), maxC, "companies", 0]
-      ].forEach(function(q){
-        var rad = R(q[1], q[4]);
-        var c = mk("circle", {cx:q[2], cy:cy, r:rad, fill:q[3], opacity:"0.9"});
-        c.style.cursor = "pointer";
-        c.addEventListener("mousemove", function(e){
-          var extra = q[5] === "postings"
-            ? "<br>" + per(q[1], q[6]) + " postings per company"
-            : "";
-          tip.show(e, "<b>" + r.level + "</b><br>" + q[0] + "<br>" +
-            q[1].toLocaleString() + " " + q[5] + extra);
+      COLS.forEach(function(col){
+        col.keys.forEach(function(k, j){
+          var n = r[k] || 0, rad = R(n, col.scale);
+          var c = mk("circle", {cx:col.x[j], cy:cy, r:rad,
+            fill:v(j ? "--s2" : "--s1"), opacity:"0.9"});
+          c.style.cursor = "pointer";
+          c.addEventListener("mousemove", function(e){
+            var of = col.scale === "a" && col.head !== "ADVERTS"
+              ? "<br>" + Math.round(100 * n / (r[col.keys[j] === col.keys[0]
+                  ? "software" : "sales"] || 1)) + "% of its adverts"
+              : (col.head === "ADVERTS"
+                 ? "<br>" + (n / (r[j ? "sa_companies" : "sw_companies"] || 1)).toFixed(1)
+                   + " per company"
+                 : "");
+            tip.show(e, "<b>" + r.level + "</b><br>" + (j ? "sales" : "software") +
+              "<br>" + n.toLocaleString() + " " +
+              (col.scale === "c" ? "companies" : "adverts") +
+              (col.head === "ADVERTS" ? "" : " \u00b7 " + col.head.toLowerCase()) + of);
+          });
+          c.addEventListener("mouseleave", tip.hide);
+          s.appendChild(c);
+          var val = mk("text", {x:col.x[j] + rad + 6, y:cy + 4, class:"rowval"});
+          val.textContent = n.toLocaleString(); s.appendChild(val);
         });
-        c.addEventListener("mouseleave", tip.hide);
-        s.appendChild(c);
-        var val = mk("text", {x:q[2] + rad + 6, y:cy + 4, class:"rowval"});
-        val.textContent = q[1].toLocaleString(); s.appendChild(val);
       });
     });
   })();

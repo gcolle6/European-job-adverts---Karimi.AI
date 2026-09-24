@@ -58,7 +58,7 @@ An intro to the job postings
 This page uses one slice of that database: 25,800 adverts posted from May to August 2026, for two kinds of role — software and data, and sales and business development — across eleven industries. The chart below is that slice seen along five different factors at once.
 
 ## corpus.note
-Each row is one industry. On the left, how many adverts it carries; on the right, how many different companies posted them — software and sales apart in both. **The two halves have separate scales**, because adverts reach 5,214 and companies 422, so a circle on the left and one the same size on the right do not mean the same number. Hover for the adverts-per-company figure: Commerce & Retail sales runs at 15.5, three times the corpus norm, and that is the concentration every estimate on this page is reported twice to guard against.
+Each row is one industry, seen four ways — software on the left of each pair, sales on the right. The first three blocks all count adverts and share one scale, so a **senior** or **hybrid or remote** circle reads as a part of the **adverts** circle beside it. **Companies has its own scale**, because 422 and 5,214 cannot sit on the same one: a circle there and an equal circle to its left do not stand for the same number. Hover for the percentages, and for adverts per company — Commerce & Retail sales runs at 15.5 against a norm near 5, which is the employer concentration every estimate on this page is reported twice to guard against.
 
 ## section.01
 Industry, country, seniority — which one really changes the job?

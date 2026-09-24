@@ -145,6 +145,21 @@ for col, title in CORPUS_FACTORS:
             "unstated": bool(i == UNSTATED),
         } for i in order],
     })
+# Two further metrics for the industry block, as counts of adverts rather than
+# shares — so they share the adverts radius scale and read as subsets of it.
+# Chosen because each separates the families sharply and varies between
+# industries; Enterprise share does neither (67% against 66%).
+EXTRA = [("senior", post["seniority"].eq("Senior")),
+         ("flex", post["work_type"].isin(["hybrid", "remote"]))]
+ind = [g for g in corpus["groups"] if g["factor"] == "Industry"][0]
+for key, mask in EXTRA:
+    ct = pd.crosstab(post.loc[mask, "company_industry"],
+                     post.loc[mask, "macro_function"])
+    for lv in ind["levels"]:
+        row = ct.loc[lv["level"]] if lv["level"] in ct.index else None
+        lv[f"{key}_sw"] = int(row.get("SOFTWARE_DATA", 0)) if row is not None else 0
+        lv[f"{key}_sa"] = int(row.get("SALES_BD", 0)) if row is not None else 0
+
 write("corpus.json", corpus)
 
 # ---------------------------------------------------------------- chart 1 ---
