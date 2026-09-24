@@ -55,16 +55,21 @@ An intro to the job postings
 [Karimi](https://www.karimi.ai) builds a database of European companies and the jobs they advertise, taken from public listings on company pages. It holds more than 5,600 companies and hundreds of thousands of postings.
 
 ## corpus.more
-This page uses one slice of that database: 25,800 adverts posted from May to August 2026, for two kinds of role — software and data, and sales and business development — across eleven industries. The chart below is that slice seen along five different factors at once.
+This page uses one slice of that database. The adverts were posted from May to August 2026, for two kinds of role, software and data, and sales and business development, across eleven industries. The chart below shows the distirbution of five different factors at once.
 
 ## corpus.note
-Each row is one industry, seen four ways — software on the left of each pair, sales on the right. The first three blocks all count adverts and share one scale, so a **senior** or **hybrid or remote** circle reads as a part of the **adverts** circle beside it. **Companies has its own scale**, because 422 and 5,214 cannot sit on the same one: a circle there and an equal circle to its left do not stand for the same number. Hover for the percentages, and for adverts per company — Commerce & Retail sales runs at 15.5 against a norm near 5, which is the employer concentration every estimate on this page is reported twice to guard against.
+Each circle is one industry. 
+**Averts**: the area is the number of postings, and the count is written beside the circle. Hover a circle for how many companies posted them.
+**Senior**: the area is the number of postings looking for a senior role. 
+**Hybrid or remote**: the area shows the number of postings as hybrid or remote.
+**Companies**: the area represent the concentration of companies per industry.
+Note that **Companies** is drawn on its own scale: the first three blocks all count adverts and share one, so a circle there and an equal circle under Companies do not stand for the same number.
 
 ## section.01
 Industry, country, seniority — which one really changes the job?
 
 ## section.02
-Which requirements follow the job, and which belong to one industry?
+Country looked like the strongest — until the advert's language was taken out
 
 
 
