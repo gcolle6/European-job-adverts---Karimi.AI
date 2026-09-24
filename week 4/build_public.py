@@ -93,7 +93,22 @@ doc = """<!doctype html>
 
 docs = ROOT / "docs"
 docs.mkdir(exist_ok=True)
-(docs / "index.html").write_text(doc, encoding="utf-8")
+current = docs / "index.html"
+
+# --check answers one question: is the published page what copy.md and the
+# datasets currently say? Editing copy.md and committing without rebuilding
+# leaves docs/index.html a version behind, and nothing about the diff looks
+# wrong — the page is valid, just stale. Run it before committing.
+if "--check" in sys.argv:
+    live = current.read_text(encoding="utf-8") if current.exists() else ""
+    if live == doc:
+        print("docs/index.html is up to date with copy.md and the datasets")
+        raise SystemExit(0)
+    print("docs/index.html is STALE — copy.md or the datasets have moved on.")
+    print("Rebuild before committing:  python \"week 4/build_public.py\"")
+    raise SystemExit(1)
+
+current.write_text(doc, encoding="utf-8")
 # GitHub Pages runs Jekyll by default, which skips files and folders beginning
 # with an underscore; this switches it off so the directory is served verbatim.
 (docs / ".nojekyll").write_text("", encoding="utf-8")
