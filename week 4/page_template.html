@@ -195,28 +195,6 @@ code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.85em;backgrou
     </div>
   </section>
 
-  <section>
-    <div class="sechead"><span class="num">03</span><h2>{{section.03}}</h2></div>
-    <div class="card split door">
-      <div class="ctitle" id="c3title"></div>
-      <div class="chartbox"><svg id="c3"></svg><div class="tip" id="tip3"></div></div>
-      <div class="legend" id="c3legend"></div>
-      <p class="cnote" id="c3note"></p>
-      <ul class="points" id="c3points"></ul>
-      <p class="door-cta">{{cta.03}}</p>
-    </div>
-  </section>
-
-  <section>
-    <div class="sechead"><span class="num">04</span><h2>{{section.04}}</h2></div>
-    <div class="card wide">
-      <div class="ctitle" id="c4title"></div>
-      <div class="chartbox"><svg id="c4"></svg><div class="tip" id="tip4"></div></div>
-      <p class="cnote" id="c4note"></p>
-      <ul class="points" id="c4points"></ul>
-    </div>
-  </section>
-
   <div class="limits">
     <span class="tag">{{limits.title}}</span>
     <ul>{{limits.items}}</ul>
@@ -465,109 +443,6 @@ code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.85em;backgrou
     var yl = mk("text",{x:14,y:yMid,"text-anchor":"middle",class:"axis",
       transform:"rotate(-90 14 " + yMid + ")"});
     yl.textContent = d.y_label; s.appendChild(yl);
-  })();
-
-  /* ---------------- chart 3: stacked bar ---------------- */
-  (function(){
-    var d = D.c3, fam = d.families;
-    document.getElementById("c3title").textContent = d.title;
-    document.getElementById("c3note").textContent = d.note;
-    points("c3", d);
-    var W0 = 760, L = 96, R = 70, H = 190, barH = 46, gap = 34;
-    var s = svg("c3", W0, H), tip = tipFor("c3", "tip3");
-    var max = 0.32, iw = W0 - L - R;
-    function X(x){ return x / max * iw; }
-    var COLS = [v("--s1"), v("--s2"), v("--s3"), v("--s4")];
-    [0,0.1,0.2,0.3].forEach(function(t){
-      s.appendChild(mk("line",{x1:L+X(t),x2:L+X(t),y1:22,y2:H-34,class:"gridline"}));
-      var lb = mk("text",{x:L+X(t),y:14,"text-anchor":"middle",class:"axis"});
-      lb.textContent = Math.round(t*100) + "%"; s.appendChild(lb);
-    });
-    fam.forEach(function(f, i){
-      var y = 30 + i * (barH + gap), off = 0;
-      var lab = mk("text",{x:L-14,y:y+barH/2+5,"text-anchor":"end",class:"rowlab"});
-      lab.textContent = f.family; s.appendChild(lab);
-      f.segments.forEach(function(sg, k){
-        var w = X(sg.share_of_family);
-        if (w <= 0) return;
-        var r = mk("rect",{x:L+off+ (k?1:0), y:y, width:Math.max(w-2,1), height:barH,
-          fill:COLS[k], rx:2});
-        r.style.cursor = "pointer";
-        r.addEventListener("mousemove", function(e){
-          tip.show(e, "<b>" + f.family + "</b><br>" + sg.reason + "<br>" +
-            (sg.share_of_family*100).toFixed(1) + "% of this family's requirements");
-        });
-        r.addEventListener("mouseleave", tip.hide);
-        s.appendChild(r);
-        if (w > 46){
-          var t2 = mk("text",{x:L+off+w/2, y:y+barH/2+4,"text-anchor":"middle",
-            class:"axis"});
-          t2.style.fill = "#fff";
-          t2.textContent = (sg.share_of_family*100).toFixed(1) + "%";
-          s.appendChild(t2);
-        }
-        off += w;
-      });
-      var tot = mk("text",{x:L+off+10,y:y+barH/2+5,class:"rowval"});
-      tot.textContent = (f.residual_share*100).toFixed(1) + "% total";
-      s.appendChild(tot);
-    });
-    var lg = document.getElementById("c3legend");
-    fam[0].segments.forEach(function(sg, k){
-      var sp = document.createElement("span");
-      var i2 = document.createElement("i"); i2.className = "sw";
-      i2.style.background = COLS[k];
-      sp.appendChild(i2); sp.appendChild(document.createTextNode(sg.reason));
-      lg.appendChild(sp);
-    });
-  })();
-
-  /* ---------------- chart 4: emphasis scatter ---------------- */
-  (function(){
-    var d = D.c4, e = d.employers;
-    document.getElementById("c4title").textContent = d.title;
-    document.getElementById("c4note").textContent = d.note;
-    points("c4", d);
-    var W0 = 760, L = 52, R = 30, H = 300, top = 26, bot = H - 42;
-    var s = svg("c4", W0, H), tip = tipFor("c4", "tip4");
-    var xlo = Math.log(18), xhi = Math.log(1100), iw = W0 - L - R;
-    function X(x){ return L + (Math.log(x) - xlo) / (xhi - xlo) * iw; }
-    function Y(y){ return bot - Math.min(y,1) * (bot - top); }
-    [0,0.25,0.5,0.75,1].forEach(function(t){
-      s.appendChild(mk("line",{x1:L,x2:W0-R,y1:Y(t),y2:Y(t),class:"gridline"}));
-      var lb = mk("text",{x:L-8,y:Y(t)+4,"text-anchor":"end",class:"axis"});
-      lb.textContent = t; s.appendChild(lb);
-    });
-    [20,50,100,300,1000].forEach(function(t){
-      var lb = mk("text",{x:X(t),y:bot+16,"text-anchor":"middle",class:"axis"});
-      lb.textContent = t; s.appendChild(lb);
-    });
-    s.appendChild(mk("line",{x1:L,x2:W0-R,y1:Y(d.control_line),y2:Y(d.control_line),
-      stroke:v("--muted"),"stroke-width":1.5,"stroke-dasharray":"3 3"}));
-    var cl = mk("text",{x:W0-R,y:Y(d.control_line)-6,"text-anchor":"end",class:"reflabel"});
-    cl.textContent = "two adverts from different employers"; s.appendChild(cl);
-    e.slice().sort(function(a,b){ return a.highlight - b.highlight; }).forEach(function(x){
-      var c = mk("circle",{cx:X(x.adverts),cy:Y(x.self_similarity),
-        r:x.highlight?7:3.4, fill:x.highlight?v("--accent"):v("--dim"),
-        opacity:x.highlight?1:0.55});
-      if (x.highlight){ c.setAttribute("stroke", v("--panel")); c.setAttribute("stroke-width", 2); }
-      c.style.cursor = "pointer";
-      c.addEventListener("mousemove", function(ev){
-        tip.show(ev, "<b>" + x.name + "</b><br>" + x.adverts.toLocaleString() +
-          " adverts<br>its own adverts resemble each other: " + x.self_similarity);
-      });
-      c.addEventListener("mouseleave", tip.hide);
-      s.appendChild(c);
-      if (x.highlight){
-        var t3 = mk("text",{x:X(x.adverts)+ (x.adverts>400?-12:12),
-          y:Y(x.self_similarity)+4, class:"rowval",
-          "text-anchor": x.adverts>400 ? "end" : "start"});
-        t3.textContent = x.name; s.appendChild(t3);
-      }
-    });
-    var xl = mk("text",{x:L,y:H-6,class:"axis"}); xl.textContent = d.x_label; s.appendChild(xl);
-    var yl = mk("text",{x:6,y:top+2,class:"axis"}); yl.textContent = d.y_label;
-    s.appendChild(yl);
   })();
 })();
 </script>

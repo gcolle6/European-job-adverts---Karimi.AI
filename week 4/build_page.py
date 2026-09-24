@@ -15,8 +15,6 @@ data = {
     "tiles": json.loads((W4 / "data" / "tiles.json").read_text(encoding="utf-8")),
     "c1": json.loads((W4 / "data" / "chart1_drivers.json").read_text(encoding="utf-8")),
     "c2": json.loads((W4 / "data" / "chart2_core_shell.json").read_text(encoding="utf-8")),
-    "c3": json.loads((W4 / "data" / "chart3_residual.json").read_text(encoding="utf-8")),
-    "c4": json.loads((W4 / "data" / "chart4_employers.json").read_text(encoding="utf-8")),
 }
 
 tpl = (W4 / "page_template.html").read_text(encoding="utf-8")
@@ -37,7 +35,6 @@ local = """<!doctype html>
 
 print(f"data inlined: {len(blob)/1024:.0f} KB")
 print(f"  chart 2 groups   : {len(data['c2']['groups'])}")
-print(f"  chart 4 employers: {len(data['c4']['employers'])}")
 print(f"page: {len(page)/1024:.0f} KB")
 print(f"\nlocal copy: week 4/dashboard.html  (names all 311 employers)")
 print("public build with the cloud anonymised: python \"week 4/build_public.py\"")

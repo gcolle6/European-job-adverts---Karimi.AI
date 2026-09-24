@@ -1,24 +1,11 @@
 """Build the public page for GitHub Pages, and set the repo up to serve it.
 
-Two differences from the internal build, both about what goes public.
+One difference from the internal build: it writes into docs/ for GitHub Pages.
 
-**The employer cloud is anonymised.** Chart 4 carries 311 employers and its
-tooltip names each one, which on a public page is a browsable ranking of
-companies by how much they repeat their own job adverts. The observation is
-factual and drawn from public adverts, but being one of 311 dots is not the same
-as being a row in a published list, and that is a commercial judgement rather
-than a technical one.
-
-The two named examples stay, because they carry the argument and neither is an
-accusation: the largest poster writes 975 genuinely different adverts, and the
-counter-example writes 86 near-identical ones. The other 309 become "an employer"
-— the cloud exists to show the two are not cherry-picked, and it does that
-without names.
-
-**Nothing else changes.** Group labels, industry names and every aggregate are
-already impersonal.
-
-Run with `--named` to build the version that keeps all 311, if that is decided.
+The employer cloud used to be anonymised here. That chart has moved to article 1,
+so this page names no company at all, and what remains is a check that it stays
+that way — see below. The anonymisation itself has to travel with the chart: the
+article build is now the place where 309 employers must stop being named.
 """
 import json
 import pathlib
@@ -31,23 +18,22 @@ import pagecopy
 W4 = pathlib.Path(__file__).resolve().parent
 ROOT = W4.parent
 
-KEEP_NAMED = "--named" in sys.argv
-
 data = {k: json.loads((W4 / "data" / f"{f}.json").read_text(encoding="utf-8"))
         for k, f in [("tiles", "tiles"),
-                     ("c1", "chart1_drivers"), ("c2", "chart2_core_shell"),
-                     ("c3", "chart3_residual"), ("c4", "chart4_employers")]}
+                     ("c1", "chart1_drivers"), ("c2", "chart2_core_shell")]}
 
-if not KEEP_NAMED:
-    n = 0
-    for e in data["c4"]["employers"]:
-        if not e["highlight"]:
-            e["name"] = "an employer"
-            n += 1
-    data["c4"]["note"] += (" Individual employers are not named: the two labelled "
-                           "examples carry the point and the rest are shown as a "
-                           "distribution.")
-    print(f"anonymised {n} employers; {len(data['c4']['employers']) - n} kept named")
+# Chart 4 carried 311 named employers and was anonymised here before publishing.
+# It has moved to article 1, so nothing on this page names a company — and the
+# anonymisation has nothing left to act on. It is replaced by a check rather than
+# by nothing: deleting a guard along with the thing it guarded is how the guard
+# fails to be there the next time something similar arrives. If a dataset with
+# employer names reaches this build again, it stops here.
+named_fields = [k for k, v in data.items()
+                if isinstance(v, dict) and "employers" in v]
+if named_fields:
+    raise SystemExit(
+        f"{', '.join(named_fields)} carries employer names and this build no "
+        f"longer anonymises them. Restore the anonymisation before publishing.")
 
 tpl = (W4 / "page_template.html").read_text(encoding="utf-8")
 

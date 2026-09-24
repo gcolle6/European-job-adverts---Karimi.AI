@@ -66,11 +66,7 @@ Industry, country, seniority — which one really changes the job?
 ## section.02
 Which requirements follow the job, and which belong to one industry?
 
-## section.03
-Europe keeps an official list of workplace skills. Is what employers ask for on it?
 
-## section.04
-Which employers repeat themselves?
 
 ## cta.01
 Read the article: why the raw table said country, and why it was wrong →
@@ -78,8 +74,6 @@ Read the article: why the raw table said country, and why it was wrong →
 ## cta.02
 Read the article: what follows the job, and what is asked for twenty times more often →
 
-## cta.03
-Read the article: what the European skills catalogue misses, and why →
 
 ## limits.title
 What these numbers will not carry
@@ -141,7 +135,6 @@ after removing the language effect
 - `0.422 → 0.342` Country was the largest factor before the language control and the third after it. Adverts from one country tend to share a language, so part of what looked like a country difference was a difference in the words themselves.
 - `−18.9% vs −2.6%` Country lost nearly a fifth of its distance under the control. No other factor moved by more than 2.6%, and company size moved upwards by 1.2% — movement in the wrong direction is what noise looks like, and it sets the scale for reading the others.
 - `0.373 vs 0.372` Seniority and industry finish level once language is removed. The gap between them is smaller than either confidence interval, so the honest reading is a tie rather than a winner.
-- `3 levels each` Every factor is compared across three of its levels, chosen for having enough adverts on each side in both job families and in the English subset. A factor with more levels could rank differently across all of them.
 
 ---
 
@@ -165,41 +158,3 @@ how many of that industry's adverts ask for it
 - `340 of 580 grey` Neither of those. 263 are not tied strongly enough to one industry. 77 are tied to one industry but rarely asked for: MacOS and Apple devices comes up 9.2 times more often in one place, and still in only 2.6% of those adverts. Grey is the usual case.
 - `20.3×` Food-industry knowledge, for software roles in Agriculture & Food. 27 different employers ask for it, so it belongs to the industry rather than to one company.
 - `1.22×, in 10.1%` Python is mentioned in about one advert in ten, at nearly the same rate in every industry.
-
----
-
-# Chart 3 — the catalogue residual
-
-## chart3.title
-About a quarter is not — and the two jobs fall off the list for different reasons
-
-## chart3.note
-ESCO is the European Union's official classification of skills and occupations: the reference list used to compare jobs across countries. Each bar is one job family's requirements that match no concept in it, split by why they do not. Software falls off through novelty — it names things the list has not caught up with. Sales falls off through vagueness — it names nothing specific enough to match. 'No reason assigned' is the largest piece of both, and part of it is our own grouping rather than a gap in the catalogue.
-
-## chart3.points
-- `27.5% and 24.0%` Share of each job family's requirements that match no concept in ESCO, the European Union's official list of skills and occupations. The two families are close in size, and different in reason.
-- `5.8% vs 3.1%` Software falls off the list through novelty nearly twice as often as sales: it names tools and practices the catalogue has not caught up with.
-- `6.1% vs 3.9%` Sales falls off through vagueness more than software: the requirement names nothing specific enough for any concept to match it.
-- `12.7%` The largest single piece of software's residual has no reason assigned at all. Some of that is the catalogue and some is our own grouping, and this chart cannot separate the two.
-
----
-
-# Chart 4 — employers and repetition
-
-## chart4.title
-Posting a lot is not the same as posting the same thing
-
-## chart4.note
-Each dot is one employer that posted 20 adverts or more. Higher up means that employer keeps re-posting the same advert: 1.0 would mean every one of its adverts asks for exactly the same things. The dashed line is how alike two adverts from DIFFERENT employers usually are — so anything near it is writing genuinely different adverts.
-
-## chart4.x_label
-how many adverts this employer posted  →
-
-## chart4.y_label
-how alike its own adverts are to each other  ↑
-
-## chart4.points
-- `311 employers` Every employer that posted 20 adverts or more. Below that the self-similarity measure is too unstable to read.
-- `975 adverts, 1.5×` The largest poster in the corpus writes adverts barely more alike than two adverts from different companies. Posting a great deal is not, by itself, evidence of a template.
-- `86 adverts, 54×` A much smaller poster repeats itself almost exactly. This is the case the counting rule has to handle, and it is not the one volume would have pointed at.
-- `33 of 311` Employers sit above ten times the control line. Heavy repetition is a minority behaviour, which is why collapsing repeats changes the corpus size by 17% and not by half.
