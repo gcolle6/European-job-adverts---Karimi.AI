@@ -177,7 +177,7 @@ code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.85em;backgrou
     <p class="lede">This page uses one slice of that database: 25,800 adverts posted from May to August 2026, for two kinds of role — software and data, and sales and business development — across eleven industries. The chart below is that slice seen along five different factors at once.</p>
     <div class="card">
       <div class="chartbox"><svg id="c0"></svg><div class="tip" id="tip0"></div></div>
-      <p class="cnote">Each row is one slice of the data and each circle is its size, by area — software on the left, sales on the right, with the count written beside it. Hover a circle for how many different companies it covers. Every block adds up to the same 25,800 adverts, so an unstated value is shown rather than dropped: where the work happens is not stated for 12.7% of them.</p>
+      <p class="cnote">Each row is one industry. On the left, how many adverts it carries; on the right, how many different companies posted them — software and sales apart in both. <b>The two halves have separate scales</b>, because adverts reach 5,214 and companies 422, so a circle on the left and one the same size on the right do not mean the same number. Hover for the adverts-per-company figure: Commerce &amp; Retail sales runs at 15.5, three times the corpus norm, and that is the concentration every estimate on this page is reported twice to guard against.</p>
     </div>
   </section>
 
@@ -279,60 +279,63 @@ code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.85em;backgrou
      with no chart around it reads as a claim, and each of them belongs inside
      the chart that earns it. */
 
-  /* ---------------- corpus: the two families, along five factors ----------------
-     Counts are the analysis base, the same 25,800 the masthead states, so a
-     reader adding the bubbles reaches the headline figure. Area is proportional
-     to postings; company counts are tooltip-only. */
+  /* ---------------- corpus: industry, by postings and by companies ----------------
+     Counts are the analysis base, the same 25,800 the masthead states. Area is
+     proportional within each block; the two blocks have separate scales, because
+     postings reach 5,214 and companies 422 and one scale would hide the second.
+     corpus.json carries four further factors that are not drawn here. */
   (function(){
-    var d = D.corpus, groups = d.groups;
-    var W0 = 700, labX = 268, rowH = 30, headH = 30, gapH = 26, top = 30;
-    var xS = 430, xB = 600;
-    var maxN = 0;
-    groups.forEach(function(g){ g.levels.forEach(function(l){
-      maxN = Math.max(maxN, l.software, l.sales); }); });
-    var nRows = groups.reduce(function(a, g){ return a + g.levels.length; }, 0);
-    var H = top + nRows * rowH + groups.length * (headH + gapH) + 10;
+    var d = D.corpus;
+    var g = d.groups.filter(function(x){ return x.factor === "Industry"; })[0];
+    var rows = g.levels;
+    var W0 = 760, labX = 200, rowH = 44, top = 52;
+    var xP = [280, 392], xC = [556, 650], divX = 478;
+    var H = top + rows.length * rowH + 10;
     var s = svg("c0", W0, H), tip = tipFor("c0", "tip0");
-    function R(n){ return n > 0 ? Math.max(22 * Math.sqrt(n / maxN), 1.6) : 0; }
+    var maxP = 0, maxC = 0;
+    rows.forEach(function(r){
+      maxP = Math.max(maxP, r.software, r.sales);
+      maxC = Math.max(maxC, r.sw_companies, r.sa_companies);
+    });
+    function R(n, m){ return n > 0 ? Math.max(20 * Math.sqrt(n / m), 1.8) : 0; }
 
-    [[xS, "software", v("--s1")], [xB, "sales", v("--s2")]].forEach(function(h){
-      var t = mk("text", {x:h[0], y:16, "text-anchor":"middle", class:"rowlab"});
+    function group(cx, label){
+      var t = mk("text", {x:(cx[0] + cx[1]) / 2, y:16, "text-anchor":"middle", class:"axis"});
+      t.textContent = label; s.appendChild(t);
+    }
+    group(xP, "POSTINGS");
+    group(xC, "COMPANIES");
+    [[xP[0], "software", v("--s1")], [xP[1], "sales", v("--s2")],
+     [xC[0], "software", v("--s1")], [xC[1], "sales", v("--s2")]].forEach(function(h){
+      var t = mk("text", {x:h[0], y:34, "text-anchor":"middle", class:"rowlab"});
       t.style.fill = h[2]; t.textContent = h[1]; s.appendChild(t);
     });
+    s.appendChild(mk("line", {x1:divX, x2:divX, y1:8, y2:H - 8, class:"gridline"}));
 
-    var y = top;
-    groups.forEach(function(g, gi){
-      if (gi) y += gapH;
-      var ht = mk("text", {x:14, y:y + 12, class:"axis"});
-      ht.textContent = g.factor.toUpperCase(); s.appendChild(ht);
-      s.appendChild(mk("line", {x1:14, x2:W0 - 20, y1:y + 20, y2:y + 20, class:"gridline"}));
-      y += headH;
-      g.levels.forEach(function(l){
-        var cy = y + rowH / 2;
-        var lab = mk("text", {x:labX, y:cy + 4, "text-anchor":"end", class:"rowlab"});
-        if (l.unstated) lab.style.fill = v("--faint");
-        lab.textContent = l.level; s.appendChild(lab);
-        [["software", l.software, l.sw_companies, xS, v("--s1")],
-         ["sales", l.sales, l.sa_companies, xB, v("--s2")]].forEach(function(q){
-          var rad = R(q[1]);
-          if (rad > 0) {
-            var c = mk("circle", {cx:q[3], cy:cy, r:rad, fill:q[4],
-              opacity:l.unstated ? "0.45" : "0.92"});
-            c.style.cursor = "pointer";
-            c.addEventListener("mousemove", function(e){
-              tip.show(e, "<b>" + l.level + "</b><br>" + q[0] + "<br>" +
-                q[1].toLocaleString() + " postings<br>" +
-                q[2].toLocaleString() + " companies");
-            });
-            c.addEventListener("mouseleave", tip.hide);
-            s.appendChild(c);
-          }
-          var val = mk("text", {x:q[3] + Math.max(rad, 2) + 6, y:cy + 4, class:"rowval"});
-          if (l.unstated) val.setAttribute("class", "rowval q");
-          val.textContent = q[1].toLocaleString();
-          s.appendChild(val);
+    rows.forEach(function(r, i){
+      var cy = top + i * rowH + rowH / 2;
+      var lab = mk("text", {x:labX, y:cy + 4, "text-anchor":"end", class:"rowlab"});
+      lab.textContent = r.level; s.appendChild(lab);
+      var per = function(n, c){ return c ? (n / c).toFixed(1) : "\u2014"; };
+      [["software", r.software, xP[0], v("--s1"), maxP, "postings", r.sw_companies],
+       ["sales",    r.sales,    xP[1], v("--s2"), maxP, "postings", r.sa_companies],
+       ["software", r.sw_companies, xC[0], v("--s1"), maxC, "companies", 0],
+       ["sales",    r.sa_companies, xC[1], v("--s2"), maxC, "companies", 0]
+      ].forEach(function(q){
+        var rad = R(q[1], q[4]);
+        var c = mk("circle", {cx:q[2], cy:cy, r:rad, fill:q[3], opacity:"0.9"});
+        c.style.cursor = "pointer";
+        c.addEventListener("mousemove", function(e){
+          var extra = q[5] === "postings"
+            ? "<br>" + per(q[1], q[6]) + " postings per company"
+            : "";
+          tip.show(e, "<b>" + r.level + "</b><br>" + q[0] + "<br>" +
+            q[1].toLocaleString() + " " + q[5] + extra);
         });
-        y += rowH;
+        c.addEventListener("mouseleave", tip.hide);
+        s.appendChild(c);
+        var val = mk("text", {x:q[2] + rad + 6, y:cy + 4, class:"rowval"});
+        val.textContent = q[1].toLocaleString(); s.appendChild(val);
       });
     });
   })();
