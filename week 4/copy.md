@@ -131,7 +131,10 @@ Every factor is tested the same way: hold the job family fixed, change only that
 how much the list of requirements changes when this factor changes  →
 
 ## chart1.noise_label
-what pure chance already gives
+difference you get by chance alone
+
+## chart1.noise_explain
+**What the grey band is.** Take these same adverts and sort them into groups at random, then compare what each group asks for. The lists never come out identical — a little difference always shows up, purely by luck. The band is how much. It is wider where the groups are smaller, because smaller groups differ more by luck. So a dot sitting inside its own band has not been shown to do anything: whatever it measured, shuffling would have measured too.
 
 ## chart1.axis_min
 0 = the groups ask for exactly the same things

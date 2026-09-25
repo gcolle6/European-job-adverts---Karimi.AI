@@ -92,6 +92,12 @@ section{display:flex;flex-direction:column;gap:1.1rem}
 .card.door{border-top:3px solid var(--accent)}
 .ctitle{font-family:Nunito,sans-serif;font-size:1.28rem;font-weight:600;color:var(--ink);line-height:1.25}
 .cnote{font-size:.85rem;color:var(--muted);line-height:1.45}
+/* a plain-language aside for one thing on the chart a reader cannot be
+   expected to already know */
+.explain{font-size:.9rem;color:var(--body);line-height:1.5;
+  background:var(--accent-soft);border-left:3px solid var(--accent-pale);
+  padding:.7rem .9rem;text-wrap:pretty}
+.explain b{color:var(--ink)}
 .chartbox{position:relative;width:100%;overflow-x:auto}
 svg{display:block;max-width:100%;height:auto;overflow:visible}
 text.axis{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10px;fill:var(--faint)}
@@ -177,6 +183,7 @@ code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.85em;backgrou
       <div class="ctitle" id="c1title"></div>
       <div class="chartbox"><svg id="c1"></svg><div class="tip" id="tip1"></div></div>
       <div class="legend" id="c1legend"></div>
+      <p class="explain">{{chart1.noise_explain}}</p>
       <p class="cnote" id="c1note"></p>
       <ul class="points" id="c1points"></ul>
       <p class="door-cta">{{cta.01}}</p>
@@ -383,9 +390,11 @@ code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.85em;backgrou
           fill:v("--dim"),opacity:0.22});
         band.style.cursor = "pointer";
         band.addEventListener("mousemove", function(e){
-          tip.show(e, "<b>" + r.factor + "</b><br>shuffled so it means nothing, " +
-            "this still reads " + r.noise.toFixed(3) +
-            "<br>because each group holds only " + r.cell_n.toLocaleString() + " adverts");
+          tip.show(e, "<b>" + r.factor + "</b><br>Shuffle this factor so it means " +
+            "nothing and the measurement still reads " + r.noise.toFixed(3) +
+            ".<br>Each group holds only " + r.cell_n.toLocaleString() +
+            " adverts, and smaller groups differ more by chance." +
+            "<br>Anything inside this band could be chance.");
         });
         band.addEventListener("mouseleave", tip.hide);
         s.appendChild(band);
@@ -402,8 +411,9 @@ code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.85em;backgrou
       var over = r.noise != null ? r.controlled - r.noise : null;
       function tell(e, which, val){
         tip.show(e, "<b>" + r.factor + "</b><br>" + which + " &middot; " + val.toFixed(3) +
-          (over != null ? "<br>" + (over > 0 ? "+" + over.toFixed(3) + " above" :
-           over.toFixed(3) + " — inside") + " what chance already gives" : ""));
+          (over != null ? "<br>" + (over > 0
+            ? "+" + over.toFixed(3) + " more than chance alone would give"
+            : "inside the band — no more than chance alone would give") : ""));
       }
       a.addEventListener("mousemove", function(e){ tell(e, "all adverts", r.raw); });
       b.addEventListener("mousemove", function(e){ tell(e, "English only", r.controlled); });
