@@ -94,10 +94,14 @@ section{display:flex;flex-direction:column;gap:1.1rem}
 .cnote{font-size:.85rem;color:var(--muted);line-height:1.45}
 /* a plain-language aside for one thing on the chart a reader cannot be
    expected to already know */
-.explain{font-size:.9rem;color:var(--body);line-height:1.5;
+.explain{font-size:.85rem;color:var(--body);line-height:1.45;
   background:var(--accent-soft);border-left:3px solid var(--accent-pale);
   padding:.7rem .9rem;text-wrap:pretty}
-.explain b{color:var(--ink)}
+/* a second paragraph of the same aside: same size, no tint — the panel marks
+   where the aside starts, and repeating it would make two blocks of one */
+.cont{font-size:.85rem;color:var(--body);line-height:1.45;text-wrap:pretty;
+  padding:0 .9rem;margin-top:-.2rem}
+.explain b,.cont b{color:var(--ink)}
 .chartbox{position:relative;width:100%;overflow-x:auto}
 svg{display:block;max-width:100%;height:auto;overflow:visible}
 text.axis{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10px;fill:var(--faint)}

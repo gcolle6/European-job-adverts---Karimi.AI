@@ -51,8 +51,10 @@ fill["limits.items"] = "".join(f"<li>{pagecopy.inline(x)}</li>"
 BREAK = chr(10) * 2
 for k, v in C.items():
     if BREAK in v:
-        fill[k] = "</p><p>".join(pagecopy.inline(part.strip())
-                                 for part in v.split(BREAK) if part.strip())
+        # the continuation carries a class of its own: an unclassed <p> falls
+        # back to body size and loses the block it belongs to
+        fill[k] = '</p><p class="cont">'.join(pagecopy.inline(part.strip())
+                                              for part in v.split(BREAK) if part.strip())
 for who in ("author", "data"):
     ln = pagecopy.link(C[f"credits.{who}.link"])
     fill[f"credits.{who}.link"] = (
