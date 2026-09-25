@@ -134,7 +134,9 @@ how much the list of requirements changes when this factor changes  →
 difference you get by chance alone
 
 ## chart1.noise_explain
-**What the grey band is.** Take these same adverts and sort them into groups at random, then compare what each group asks for. The lists never come out identical — a little difference always shows up, purely by luck. The band is how much. It is wider where the groups are smaller, because smaller groups differ more by luck. So a dot sitting inside its own band has not been shown to do anything: whatever it measured, shuffling would have measured too.
+**What the grey band is.** Take these same adverts and sort them into groups at random, then compare what each group asks for. The band shows how much difference shows up. It is wider where the groups are smaller, because smaller groups differ more by luck. So a dot sitting inside its own band could be luck.
+
+**Why it is here.** On its own, a number like 0.33 looks like a finding. Read against the band, it says how much of the difference is more than luck — and for one factor on this chart, none of it is.
 
 ## chart1.axis_min
 0 = the groups ask for exactly the same things

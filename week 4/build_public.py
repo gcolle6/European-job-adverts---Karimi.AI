@@ -46,6 +46,13 @@ fill["method.steps"] = "".join(
     for i, st in enumerate(pagecopy.steps(C["method.steps"])))
 fill["limits.items"] = "".join(f"<li>{pagecopy.inline(x)}</li>"
                                for x in pagecopy.items(C["limits.items"]))
+# A blank line in a slot is a paragraph break to whoever wrote it, but HTML
+# collapses it to a space, so two labelled parts would run into one.
+BREAK = chr(10) * 2
+for k, v in C.items():
+    if BREAK in v:
+        fill[k] = "</p><p>".join(pagecopy.inline(part.strip())
+                                 for part in v.split(BREAK) if part.strip())
 for who in ("author", "data"):
     ln = pagecopy.link(C[f"credits.{who}.link"])
     fill[f"credits.{who}.link"] = (
