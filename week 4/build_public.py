@@ -86,6 +86,27 @@ current = docs / "index.html"
 # leaves docs/index.html a version behind, and nothing about the diff looks
 # wrong — the page is valid, just stale. Run it before committing.
 if "--check" in sys.argv:
+    stale = []
+    # the datasets carry each chart's title, note, labels and bullets, and they
+    # are written by build_chart_data.py, not here — so a copy.md edit to any of
+    # those reaches the page only through that script. Checking the page against
+    # the datasets alone reports "up to date" while the page is a version behind,
+    # which is worse than not checking.
+    C = pagecopy.load()
+    for key, slot in (("c1", "chart1"), ("c2", "chart2")):
+        d = data.get(key, {})
+        for field in ("title", "note", "x_label", "y_label", "dot_a", "dot_b"):
+            want = C.get(slot + "." + field)
+            if want and d.get(field) != want:
+                stale.append(slot + "." + field)
+        want_pts = [b["text"] for b in pagecopy.points(C.get(slot + ".points", ""))]
+        if want_pts != [b.get("text") for b in d.get("points", [])]:
+            stale.append(slot + ".points")
+    if stale:
+        print("the chart datasets are STALE against copy.md: " + ", ".join(stale))
+        print('Rebuild them first:  python "week 4/build_chart_data.py"')
+        raise SystemExit(1)
+
     live = current.read_text(encoding="utf-8") if current.exists() else ""
     if live == doc:
         print("docs/index.html is up to date with copy.md and the datasets")

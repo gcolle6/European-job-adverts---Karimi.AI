@@ -6,7 +6,7 @@ the only file to open.
 
 You do not run this file. You write it, then rebuild:
 
-    python "week 4/build_chart_data.py"      # only if you edited a bullet figure
+    python "week 4/build_chart_data.py"      # if you edited any chart title, note, label or bullet
     python "week 4/build_public.py"          # always — this writes docs/index.html
 
 Each `## key` below is a slot the page fills. Keep the keys, change the words.
@@ -125,7 +125,7 @@ karimi.ai → https://www.karimi.ai/
 Country looked like the strongest — until the advert's language was taken out
 
 ## chart1.note
-Every factor is tested the same way: hold the job fixed, change only that one thing, and measure how much the list of requirements moves. Further right means it moves more. The pale dot is the first measurement. The solid dot is the same measurement after removing the effect of the language the advert happens to be written in — adverts from one country tend to share a language, so an untreated country comparison is partly just a comparison of languages. Only country moves when that is taken out, which is how you can tell it was the confounded one.
+Every factor is tested the same way: hold the job family fixed, change only that one thing, and measure how much the list of requirements moves. Further right means it moves more. The pale dot is the first measurement. The solid dot is the same measurement after removing the effect of the language the advert happens to be written in — adverts from one country tend to share a language, so an untreated country comparison is partly just a comparison of languages. Only country moves when that is taken out, which is how you can tell it was the confounded one.
 
 ## chart1.x_label
 how much the list of requirements changes when this factor changes  →
@@ -158,7 +158,7 @@ how much more often it is asked for in this industry than in others  →
 how many of that industry's adverts ask for it
 
 ## chart2.points
-- `91 of 580` Asked for at about the same rate whichever industry the job is in. These follow the job.
+- `91 of 580` Asked for at about the same rate whichever industry the job family is in. These follow the job family.
 - `149 of 580` Common in one industry, much rarer in the others, and asked for often enough there to matter. About a quarter of the groups.
 - `340 of 580 grey` Neither of those. 263 are not tied strongly enough to one industry. 77 are tied to one industry but rarely asked for: MacOS and Apple devices comes up 9.2 times more often in one place, and still in only 2.6% of those adverts. Grey is the usual case.
 - `20.3×` Food-industry knowledge, for software roles in Agriculture & Food. 27 different employers ask for it, so it belongs to the industry rather than to one company.
