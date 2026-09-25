@@ -238,7 +238,20 @@ the measure stopped being arbitrary.
 
 ## Figures
 
-TBD
+TBD, plus one to add.
+
+**The shell, named.** A horizontal bar chart per cell: macro-area as a heading,
+the requirement groups under it, one bar each. The bar is lift, the count of
+employers asking sits beside it. Two or three cells shown, one clearly software
+and one clearly sales.
+
+What it is for: chart 2 has 580 dots and you have to hover to learn anything,
+so the article's most quotable finding is currently unreadable. This says
+`Pharma industry experience, 18.6x` in words, and groups it under DOMAIN so the
+reader sees the shell is not only tools.
+
+Form borrowed from Revelio Labs; the magnitude is not. Theirs is a wage
+premium and this corpus has no pay field at all.
 
 
 ## Not in this article
