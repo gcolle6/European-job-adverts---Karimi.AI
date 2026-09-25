@@ -130,6 +130,15 @@ Every factor is tested the same way: hold the job family fixed, change only that
 ## chart1.x_label
 how much the list of requirements changes when this factor changes  →
 
+## chart1.noise_label
+what pure chance already gives
+
+## chart1.axis_min
+0 = the groups ask for exactly the same things
+
+## chart1.axis_max
+1 = nothing in common
+
 ## chart1.dot_a
 what we first measured
 
@@ -140,6 +149,7 @@ after removing the language effect
 - `0.422 → 0.342` Country was the largest factor before the language control and the third after it. Adverts from one country tend to share a language, so part of what looked like a country difference was a difference in the words themselves.
 - `−18.9% vs −2.6%` Country lost nearly a fifth of its distance under the control. No other factor moved by more than 2.6%, and company size moved upwards by 1.2% — movement in the wrong direction is what noise looks like, and it sets the scale for reading the others.
 - `0.373 vs 0.372` Seniority and industry finish level once language is removed. The gap between them is smaller than either confidence interval, so the honest reading is a tie rather than a winner.
+- `0.33 vs 0.34` What kind of company explains nothing at all. Its dot sits inside the grey band — shuffle the factor so it means nothing and the measurement still reads 0.342, because this factor's groups hold only 172 adverts each against 604 to 847 for the others, and smaller groups differ more by chance alone.
 
 ---
 

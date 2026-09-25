@@ -70,7 +70,8 @@ def write(name, obj):
     key = CHART.get(name.replace(".json", ""))
     pts = []
     if key:
-        for slot in ("title", "note", "x_label", "y_label", "dot_a", "dot_b"):
+        for slot in ("title", "note", "x_label", "y_label", "dot_a", "dot_b",
+                     "axis_min", "axis_max", "noise_label"):
             if C.get(f"{key}.{slot}"):
                 obj = dict(obj, **{slot: C[f"{key}.{slot}"]})
         pts = pagecopy.points(C.get(f"{key}.points", ""))
@@ -167,6 +168,10 @@ dd = pd.read_csv(W3 + r"\driver_dumbbell.csv", index_col=0)
 NICE = {"seniority": "How senior the role is", "company_industry": "Which industry",
         "geo_country": "Which country", "company_type": "What kind of company",
         "company_size": "How big the company is"}
+# What the same measurement reads when the factor makes no difference at all:
+# the levels shuffled, the sizes kept. It is not one number — a factor whose
+# cells are small has a higher floor — so it travels per row.
+nul = pd.read_csv(W3 + r"\driver_null.csv").set_index("factor")
 write("chart1_drivers.json", {
     "rows": [{
         "factor": NICE.get(i, i),
@@ -174,6 +179,8 @@ write("chart1_drivers.json", {
         "controlled": round(float(r["controlled"]), 4),
         "shift_pct": round(float(r["shift_pct"]), 1),
         "confounded": bool(abs(r["shift_pct"]) > 5),
+        "noise": round(float(nul.loc[i, "null"]), 4) if i in nul.index else None,
+        "cell_n": int(nul.loc[i, "n"]) if i in nul.index else None,
     } for i, r in dd.sort_values("controlled", ascending=False).iterrows()],
 })
 

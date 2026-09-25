@@ -339,60 +339,91 @@ code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.85em;backgrou
     });
   })();
 
-  /* ---------------- chart 1: dumbbell ---------------- */
+  /* ---------------- chart 1: dumbbell, over its noise floor ----------------
+     The band is what this measurement reads when the factor is shuffled into
+     meaninglessness, at that factor's own cell size. A dot inside its band is
+     not evidence of anything, which is the whole reason to draw it. */
   (function(){
     var d = D.c1, rows = d.rows, n = rows.length;
     document.getElementById("c1title").textContent = d.title;
     document.getElementById("c1note").textContent = d.note;
     points("c1", d);
     var lg1 = document.getElementById("c1legend");
-    [[v("--accent-pale"), d.dot_a], [v("--accent"), d.dot_b]].forEach(function(p){
+    [[v("--accent-pale"), d.dot_a], [v("--accent"), d.dot_b],
+     [v("--dim"), d.noise_label || "what pure chance already gives"]].forEach(function(p){
       var sp = document.createElement("span");
       var i2 = document.createElement("i"); i2.className = "sw";
       i2.style.background = p[0]; i2.style.borderRadius = "50%";
       sp.appendChild(i2); sp.appendChild(document.createTextNode(p[1]));
       lg1.appendChild(sp);
     });
-    var W0 = 760, L = 190, R = 60, rowH = 44, H = n * rowH + 64;
+    var W0 = 760, L = 230, R = 80, top = 46, rowH = 44;
+    var H = top + n * rowH + 52;
     var s = svg("c1", W0, H), tip = tipFor("c1", "tip1");
-    var lo = 0.26, hi = 0.44, iw = W0 - L - R;
-    function X(x){ return L + (x - lo) / (hi - lo) * iw; }
-    [0.28,0.32,0.36,0.40,0.44].forEach(function(t){
-      s.appendChild(mk("line",{x1:X(t),x2:X(t),y1:26,y2:H-20,class:"gridline"}));
-      var lb = mk("text",{x:X(t),y:18,"text-anchor":"middle",class:"axis"});
-      lb.textContent = t.toFixed(2); s.appendChild(lb);
+    var hi = 0.50, X = function(t){ return L + (t / hi) * (W0 - L - R); };
+
+    [0, 0.1, 0.2, 0.3, 0.4, 0.5].forEach(function(t){
+      s.appendChild(mk("line",{x1:X(t),x2:X(t),y1:top-10,y2:top+n*rowH,class:"gridline"}));
+      var lb = mk("text",{x:X(t),y:top+n*rowH+16,"text-anchor":"middle",class:"axis"});
+      lb.textContent = t.toFixed(1); s.appendChild(lb);
     });
+    // the ends of the scale, in words — the numbers alone are not a quantity
+    var e0 = mk("text",{x:X(0),y:top+n*rowH+32,class:"axis"});
+    e0.textContent = d.axis_min || "0 = asks for exactly the same things";
+    s.appendChild(e0);
+    var e1 = mk("text",{x:W0-R,y:top+n*rowH+32,"text-anchor":"end",class:"axis"});
+    e1.textContent = d.axis_max || "1 = nothing in common";
+    s.appendChild(e1);
+
     rows.forEach(function(r, i){
-      var y = 40 + i * rowH;
-      var lab = mk("text",{x:L-14,y:y+4,"text-anchor":"end",class:"rowlab"});
-      lab.textContent = r.factor; s.appendChild(lab);
-      s.appendChild(mk("line",{x1:X(r.raw),x2:X(r.controlled),y1:y,y2:y,
-        stroke:r.confounded ? v("--accent") : v("--dim"),
-        "stroke-width":r.confounded ? 3 : 2,"stroke-linecap":"round"}));
-      [[r.raw, v("--accent-pale"), "as measured"],
-       [r.controlled, v("--accent"), "language held constant"]].forEach(function(p){
-        var c = mk("circle",{cx:X(p[0]),cy:y,r:6,fill:p[1],
-          stroke:v("--panel"),"stroke-width":2});
-        c.style.cursor = "pointer";
-        c.addEventListener("mousemove", function(e){
-          tip.show(e, "<b>" + r.factor + "</b><br>" + p[2] + ": " + p[0].toFixed(3) +
-            (r.confounded ? "<br>loses " + Math.abs(r.shift_pct) + "% when language is held constant" : ""));
+      var y = top + i * rowH + rowH / 2;
+      // the floor first, so every dot is read against it
+      if (r.noise != null) {
+        var band = mk("rect",{x:X(0),y:y-13,width:X(r.noise)-X(0),height:26,
+          fill:v("--dim"),opacity:0.22});
+        band.style.cursor = "pointer";
+        band.addEventListener("mousemove", function(e){
+          tip.show(e, "<b>" + r.factor + "</b><br>shuffled so it means nothing, " +
+            "this still reads " + r.noise.toFixed(3) +
+            "<br>because each group holds only " + r.cell_n.toLocaleString() + " adverts");
         });
-        c.addEventListener("mouseleave", tip.hide);
-        s.appendChild(c);
-      });
-      if (r.confounded){
-        var mid = (X(r.raw) + X(r.controlled)) / 2;
-        var t2 = mk("text",{x:mid,y:y-13,"text-anchor":"middle",class:"reflabel",
-          fill:v("--accent")});
-        t2.textContent = "most of this gap was just the advert's language";
-        s.appendChild(t2);
+        band.addEventListener("mouseleave", tip.hide);
+        s.appendChild(band);
       }
-      var val = mk("text",{x:W0-R+8,y:y+4,class:"rowval"});
-      val.textContent = r.controlled.toFixed(3); s.appendChild(val);
+      var lab = mk("text",{x:L-12,y:y+4,"text-anchor":"end",class:"rowlab"});
+      lab.textContent = r.factor; s.appendChild(lab);
+
+      s.appendChild(mk("line",{x1:X(r.raw),x2:X(r.controlled),y1:y,y2:y,
+        stroke:r.confounded ? v("--s2") : v("--dim"),"stroke-width":r.confounded?3:2}));
+      var a = mk("circle",{cx:X(r.raw),cy:y,r:5,fill:v("--accent-pale"),
+        stroke:v("--panel"),"stroke-width":2});
+      var b = mk("circle",{cx:X(r.controlled),cy:y,r:5.5,
+        fill:r.confounded ? v("--s2") : v("--accent"),stroke:v("--panel"),"stroke-width":2});
+      var over = r.noise != null ? r.controlled - r.noise : null;
+      function tell(e, which, val){
+        tip.show(e, "<b>" + r.factor + "</b><br>" + which + " &middot; " + val.toFixed(3) +
+          (over != null ? "<br>" + (over > 0 ? "+" + over.toFixed(3) + " above" :
+           over.toFixed(3) + " — inside") + " what chance already gives" : ""));
+      }
+      a.addEventListener("mousemove", function(e){ tell(e, "all adverts", r.raw); });
+      b.addEventListener("mousemove", function(e){ tell(e, "English only", r.controlled); });
+      a.addEventListener("mouseleave", tip.hide);
+      b.addEventListener("mouseleave", tip.hide);
+      s.appendChild(a); s.appendChild(b);
+
+      // name the two dots where they are first met, not only in the legend
+      if (i === 0) {
+        var t1 = mk("text",{x:X(r.raw),y:y-14,"text-anchor":"middle",class:"reflabel"});
+        t1.textContent = d.dot_a; s.appendChild(t1);
+        var t2 = mk("text",{x:X(r.controlled),y:y+22,"text-anchor":"middle",class:"reflabel"});
+        t2.textContent = d.dot_b; s.appendChild(t2);
+      }
+      var sh = (r.shift_pct > 0 ? "+" : "") + r.shift_pct.toFixed(1) + "%";
+      var val = mk("text",{x:W0-R+10,y:y+4,class:"rowval" + (r.confounded ? "" : " q")});
+      val.textContent = sh; s.appendChild(val);
     });
-    var xl1 = mk("text",{x:L,y:H-6,class:"axis"});
-    xl1.textContent = d.x_label; s.appendChild(xl1);
+    var xl = mk("text",{x:L,y:16,class:"axis"});
+    xl.textContent = d.x_label; s.appendChild(xl);
   })();
 
   /* ---------------- chart 2: lift against how often it is asked ---------------- */
