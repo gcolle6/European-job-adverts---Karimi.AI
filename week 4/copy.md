@@ -69,7 +69,7 @@ Note that **Companies** is drawn on its own scale: the first three blocks all co
 Industry, country, seniority — which one really changes the job?
 
 ## section.02
-Country looked like the strongest — until the advert's language was taken out
+Which requirements follow the job, and which belong to one industry?
 
 
 

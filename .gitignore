@@ -92,6 +92,9 @@ week 4/articles/data/
 week 4/articles/*.html
 !week 4/articles/*_template.html
 week 4/articles/*.md
+# except the map, which is shared for review. It is a working document on a
+# public repository: anyone can read it, not only whoever is sent the link.
+!week 4/articles/karimi-articles-map.md
 
 # internal working notes: the handover file, the defect register, unpublished
 # drafts, planning documents and speaking notes
