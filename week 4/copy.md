@@ -136,7 +136,7 @@ difference you get by chance alone
 ## chart1.noise_explain
 **What the grey band is.** Take these same adverts and sort them into groups at random, then compare what each group asks for. The band shows how much difference shows up. It is wider where the groups are smaller, because smaller groups differ more by luck. So a dot sitting inside its own band could be luck.
 
-**Why it is here.** On its own, a number like 0.33 looks like a finding. Read against the band, it says how much of the difference is more than luck — and for one factor on this chart, none of it is.
+**Why one factor is inside its band.** Every group is cut down to the size of the smallest one being compared, so that no group looks distinctive just for being small. For what kind of company the smallest is small and medium businesses hiring in sales, in English: 172 adverts, where every other factor's smallest holds 604 to 847. At 172, luck alone gives 0.342 and the factor measured 0.329. So the chart is not saying the kind of company makes no difference, while it is saying that these adverts cannot tell.
 
 ## chart1.axis_min
 0 = the groups ask for exactly the same things
@@ -154,7 +154,7 @@ after removing the language effect
 - `0.422 → 0.342` Country was the largest factor before the language control and the third after it. Adverts from one country tend to share a language, so part of what looked like a country difference was a difference in the words themselves.
 - `−18.9% vs −2.6%` Country lost nearly a fifth of its distance under the control. No other factor moved by more than 2.6%, and company size moved upwards by 1.2% — movement in the wrong direction is what noise looks like, and it sets the scale for reading the others.
 - `0.373 vs 0.372` Seniority and industry finish level once language is removed. The gap between them is smaller than either confidence interval, so the honest reading is a tie rather than a winner.
-- `0.33 vs 0.34` What kind of company explains nothing at all. Its dot sits inside the grey band — shuffle the factor so it means nothing and the measurement still reads 0.342, because this factor's groups hold only 172 adverts each against 604 to 847 for the others, and smaller groups differ more by chance alone.
+- `172 adverts` The one thing this chart cannot answer. What kind of company is compared on groups of 172, against 604 to 847 for every other factor, and at that size luck alone already produces more difference than the factor did.
 
 ---
 
