@@ -57,10 +57,21 @@ print("")
 
 
 def index_for(frame, factor, levels, n):
+    """The index, and the interval the bootstrap already computed for it.
+
+    summarise() returns a 95% interval per function and index_for used to throw
+    it away. Without it there is no way to say whether two factors differ, and
+    the intervals in driver_ranking.csv cannot stand in: that run uses a
+    different MIN_LEVEL, so it compares different levels of the same factor.
+
+    lo and hi are averaged across the two families exactly as the mean is. That
+    is an indication of width, not a formal interval for the average.
+    """
     boot = var.bootstrap(asg, frame, exclude=drop, unit="vacancy_id", draws=DRAWS,
                          equalise=n, factor=factor, levels=levels)
     s = var.summarise(boot)
-    return float(s["js_mean"].mean())
+    return (float(s["js_mean"].mean()), float(s["js_lo"].mean()),
+            float(s["js_hi"].mean()))
 
 
 rows = []
@@ -82,15 +93,18 @@ for f in FACTORS:
         continue
     top = ct_en.loc[ok].min(axis=1).nlargest(3).index.tolist()
     n = int(min(ct_en.loc[top].min().min(), ct_all.loc[top].min().min()))
-    a = index_for(reqs, f, top, n)
-    b = index_for(reqs_en, f, top, n)
-    rows.append({"factor": f, "levels": 3, "pooled": a, "english_only": b})
+    a, a_lo, a_hi = index_for(reqs, f, top, n)
+    b, b_lo, b_hi = index_for(reqs_en, f, top, n)
+    rows.append({"factor": f, "levels": 3, "pooled": a, "english_only": b,
+                 "pooled_lo": a_lo, "pooled_hi": a_hi,
+                 "english_lo": b_lo, "english_hi": b_hi})
     print(f"  {f:<18} n={n:<5} {', '.join(str(x)[:18] for x in top)}")
 
 d = pd.DataFrame(rows).dropna(subset=["pooled"])
 d["shift_pct"] = ((d["english_only"] - d["pooled"]) / d["pooled"] * 100).round(1)
-d["pooled"] = d["pooled"].round(4)
-d["english_only"] = d["english_only"].round(4)
+for c in ("pooled", "english_only", "pooled_lo", "pooled_hi",
+          "english_lo", "english_hi"):
+    d[c] = d[c].round(4)
 d = d.sort_values("shift_pct")
 
 print("")
@@ -115,7 +129,8 @@ d.to_csv(W3 + r"\language_control_all.csv", index=False, encoding="utf-8")
 # measures, from a run whose settings are gone, and pairing it with a noise
 # floor computed here produced a published claim that was simply wrong. It is
 # now derived, so the two cannot disagree again.
-d.rename(columns={"pooled": "raw", "english_only": "controlled"})[
-    ["factor", "raw", "shift_pct", "controlled"]
+d.rename(columns={"pooled": "raw", "english_only": "controlled",
+                  "english_lo": "controlled_lo", "english_hi": "controlled_hi"})[
+    ["factor", "raw", "shift_pct", "controlled", "controlled_lo", "controlled_hi"]
 ].to_csv(W3 + r"\driver_dumbbell.csv", index=False, encoding="utf-8")
 print(f"\nwritten: language_control_all.csv   total {time.time()-t0:.0f}s")

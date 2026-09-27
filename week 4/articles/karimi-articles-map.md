@@ -13,6 +13,11 @@ Article 2 says which requirements belong to the industry you happen to be in and
 whether Europe's official list of skills even names them. Its unit is a
 **requirement group**: Python, food industry knowledge, SQL skills.
 
+**Both articles name requirements. They name them on different axes.** Article 1
+names what changes with **seniority**; article 2 names what belongs to an
+**industry**. No sentence in one is writable in the other, and where article 1
+needs industry it stays general and points here.
+
 
 ## The test that keeps the development of the two articles separated: twelve sentences, assigned
 
@@ -52,6 +57,11 @@ It is an interesting part of the method followed to arrive at the conclusion of 
 
 # 3. Article 1 — What changes the job
 
+**Title.** Country, industry, seniority: which one really changes your job?
+
+**Deck.** Analysing all six things that vary around a fixed job title shows how
+differently they affect what employers ask for.
+
 **Target reader:** Everyone, and more specifically someone who wants
 to know whether where they work changes what is asked of them, what seniority really brings to the table and how much weight it has on the role here vs there.
 
@@ -60,43 +70,72 @@ Which of them actually changes what you are asked for? Set up the measurement in
 two sentences: take three levels of a factor, hold the job family fixed, see how
 far apart the requirement profiles land.
 
-1. **The naive ranking.** Country first, seniority and industry behind, company
-   size last. Seems to be the answer, but then we refuse it.
-2. **The first confound: language.** A country is also a language, and the
+1. **Two look strongest.** What kind of company measures highest of the six, with
+   country just behind. Present that as the answer and let the reader believe it.
+2. **How to read the chart at all.** The grey band: what the same measurement
+   gives when the factor is shuffled into meaninglessness. Not a caveat — the
+   thing that makes every number afterwards readable. Introduce it here and
+   score everything against it from now on.
+3. **The first illusion is sample size.** What kind of company is compared on
+   groups of 172 adverts, against 526 to 847 for everything else. Smaller groups
+   differ more by luck, luck alone gives it 0.342, and it **falls from first to
+   fifth**.
+4. **The second illusion is language.** A country is also a language, and the
    requirement text is what was read and grouped. The United Kingdom is 99.8%
-   English, France 56.7% French, Germany 59.0% German — and those are exactly the
-   three countries the comparison ran on, which is the worst case, not a
-   convenient one.
-3. **The correction.** Rerun on English-only adverts. Country loses 18.9% of its
-   distance. Nothing else moves more than 2.6%, and company size moves *up* by
-   1.2% — movement in the wrong direction, which is what noise looks like and
-   which sets the scale for reading everything else.
-4. **The second confound: geography.** Industries are not spread evenly across
-   countries, so is an industry step partly a country step? Block on country and
-   measure again.
-5. **The correction, which goes the other way.** The industry step gets
-   **larger**, not smaller — the opposite of the worry. The control move,
-   climbing a seniority level, barely shifts, which is what makes it a control.
-6. **The third confound: who is talking.** One employer posted the same advert
-   474 times. Templates inflate whatever they repeat. Volume is not the tell: the
-   largest poster writes 975 genuinely different adverts, while a much smaller
-   poster writes 86 near-identical ones.
-7. **The correction.** Count each employer once. Every distance shrinks, no
-   factor overtakes another. A correction that moves everything by about the same
-   amount changes the size of the answer, not the answer.
+   English, France 56.7% French, Germany 59.0% German — the three countries the
+   comparison ran on, which is the worst case and not a convenient one. Rerun in
+   one language: country loses 18.9% where nothing else moves more than 2.8%,
+   and **falls from second to fourth**.
+5. **One more check: is industry secretly country?** Industries are not spread
+   evenly across countries. Block on country and measure again — the industry
+   step gets **larger**, not smaller, and the control move barely shifts.
+6. **What is left is a tie, and the tie is the pivot.** Seniority and industry.
+   On the controlled distance industry leads; on the excess over the band
+   seniority leads; the intervals overlap. **The two orderings disagree, which is
+   better proof that neither is readable than any single number could be.**
+7. **So open the one this article owns.** What actually changes between junior
+   and senior, named: cloud platforms 4.1% → 22.1%, architecture 2.7% → 14.7%,
+   leadership 0.2% → 10.8%. And the other way: willingness to learn 14.2% →
+   2.9%, a bachelor's degree 10.8% → 4.6%, Excel 10.2% → 4.1%.
+8. **And it means the same thing everywhere.** Measured inside each industry
+   separately, the seniority effect clears its own noise floor every time, and by
+   about the same margin — +0.17 to +0.24. Seniority is not an industry thing
+   wearing a disguise.
 
+**Closing move.** Industry ties with seniority and this article does not open it.
+Point at article 2 and stop. The reader leaves with `leadership 0.2% → 10.8%`,
+not with a draw.
 
 ## Figures
 
-TBD
+Built, from `week 4/articles/build_article1.py`:
+
+| | shows | status |
+|---|---|---|
+| A | six factors, raw and controlled, over their noise bands | needs the band and the sixth factor |
+| B | each country's mixture of languages | built |
+| C | raw → English only, per factor | built |
+| D | the industry step, pooled and inside one country | built |
+| E | advert-weighted against employer-weighted | built |
+
+To build:
+
+| | shows | data |
+|---|---|---|
+| F | what moves between junior and senior, named | computed; needs drawing |
+| G | the seniority effect inside each industry, against each one's floor | computed; needs drawing |
+
+F is the article's payoff and should be the most carefully drawn thing in it.
 
 ## Not in this article
 
-Core and shell. Any specific named requirement
-group as a finding — one may appear as an illustration inside a clause, but the
-moment a paragraph is *about* a skill it has crossed the line. ESCO. The
-sales-versus-software difference as a claim: both families appear only to show
-that the ranking is the same in each.
+Core and shell. ESCO. **Requirements named on the industry axis** — which
+industry asks for what is article 2's subject, and this piece points at it
+rather than opening it. The sales-versus-software difference as a claim: both
+families appear only to show that the ranking is the same in each.
+
+**Requirements named on the seniority axis are this article's own**, and no
+sentence about them is writable in article 2.
 
 ---
 
