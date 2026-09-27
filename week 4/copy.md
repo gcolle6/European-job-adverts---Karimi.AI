@@ -74,7 +74,7 @@ Which requirements follow the job, and which belong to one industry?
 
 
 ## cta.01
-Read the article: why the raw table said country, and why it was wrong →
+Read the article: two factors looked strongest, for two different reasons →
 
 ## cta.02
 Read the article: what follows the job, and what is asked for twenty times more often →
@@ -122,7 +122,7 @@ karimi.ai → https://www.karimi.ai/
 # Chart 1 — what changes the job
 
 ## chart1.title
-Country looked like the strongest — until the advert's language was taken out
+Two factors looked strongest. Neither of them is.
 
 ## chart1.note
 Every factor is tested the same way: hold the job family fixed, change only that one thing, and measure how much the list of requirements moves. Further right means it moves more. The pale dot is the first measurement. The solid dot is the same measurement after removing the effect of the language the advert happens to be written in — adverts from one country tend to share a language, so an untreated country comparison is partly just a comparison of languages. Only country moves when that is taken out, which is how you can tell it was the confounded one.
@@ -136,7 +136,7 @@ difference you get by chance alone
 ## chart1.noise_explain
 **What the grey band is.** Take these same adverts and sort them into groups at random, then compare what each group asks for. The band shows how much difference shows up. It is wider where the groups are smaller, because smaller groups differ more by luck. So a dot sitting inside its own band could be luck.
 
-**Why one factor is inside its band.** Every group is cut down to the size of the smallest one being compared, so that no group looks distinctive just for being small. For what kind of company the smallest is small and medium businesses hiring in sales, in English: 172 adverts, where every other factor's smallest holds 604 to 847. At 172, luck alone gives 0.342 and the factor measured 0.329. So the chart is not saying the kind of company makes no difference, while it is saying that these adverts cannot tell.
+**Why one band is so much wider.** Every group is cut down to the size of the smallest one being compared, and for what kind of company that is 172 adverts, against 526 to 847 for every other factor. Smaller groups differ more by luck, so most of its distance is luck: it measures highest of all six, and lands fifth once its band is taken off.
 
 ## chart1.axis_min
 0 = the groups ask for exactly the same things
@@ -151,10 +151,9 @@ what we first measured
 after removing the language effect
 
 ## chart1.points
-- `0.422 → 0.342` Country was the largest factor before the language control and the third after it. Adverts from one country tend to share a language, so part of what looked like a country difference was a difference in the words themselves.
-- `−18.9% vs −2.6%` Country lost nearly a fifth of its distance under the control. No other factor moved by more than 2.6%, and company size moved upwards by 1.2% — movement in the wrong direction is what noise looks like, and it sets the scale for reading the others.
-- `0.373 vs 0.372` Seniority and industry finish level once language is removed. The gap between them is smaller than either confidence interval, so the honest reading is a tie rather than a winner.
-- `172 adverts` The one thing this chart cannot answer. What kind of company is compared on groups of 172, against 604 to 847 for every other factor, and at that size luck alone already produces more difference than the factor did.
+- `0.417 → 0.338` Country falls from second to fourth once every advert is read in the same language. Adverts from one country tend to share a language, so part of what looked like a country difference was a difference in the words themselves.
+- `−18.9% vs −2.8%` Country lost nearly a fifth of its distance under the control. No other factor moved by more than 2.8%, and company size moved upwards by 1.2% — movement in the wrong direction is what noise looks like, and it sets the scale for reading the others.
+- `0.201 vs 0.192` Seniority and industry finish level once both the language and the band are taken off. The gap between them is smaller than either confidence interval, so the honest reading is a tie rather than a winner.
 
 ---
 

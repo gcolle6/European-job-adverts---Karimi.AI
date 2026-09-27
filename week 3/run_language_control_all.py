@@ -28,7 +28,8 @@ W3 = r"C:\Users\giaco\OneDrive\Desktop\Karimi.ai\week 3"
 pd.set_option("display.width", 250)
 t0 = time.time()
 
-FACTORS = ["geo_country", "seniority", "company_industry", "company_type", "company_size"]
+FACTORS = ["geo_country", "seniority", "company_industry", "company_type",
+           "company_size", "work_type"]
 MIN_LEVEL = 120
 DRAWS = 120
 
@@ -108,4 +109,13 @@ print("  If several move, the restriction is changing the corpus, not isolating"
 print("  a confound — and the dumbbell would be showing a sampling artefact.")
 
 d.to_csv(W3 + r"\language_control_all.csv", index=False, encoding="utf-8")
+
+# The chart reads a dumbbell table, and it used to be a separate file that
+# nothing wrote. It drifted: its company_type sat 0.099 below what this script
+# measures, from a run whose settings are gone, and pairing it with a noise
+# floor computed here produced a published claim that was simply wrong. It is
+# now derived, so the two cannot disagree again.
+d.rename(columns={"pooled": "raw", "english_only": "controlled"})[
+    ["factor", "raw", "shift_pct", "controlled"]
+].to_csv(W3 + r"\driver_dumbbell.csv", index=False, encoding="utf-8")
 print(f"\nwritten: language_control_all.csv   total {time.time()-t0:.0f}s")

@@ -167,7 +167,8 @@ write("corpus.json", corpus)
 dd = pd.read_csv(W3 + r"\driver_dumbbell.csv", index_col=0)
 NICE = {"seniority": "How senior the role is", "company_industry": "Which industry",
         "geo_country": "Which country", "company_type": "What kind of company",
-        "company_size": "How big the company is"}
+        "company_size": "How big the company is",
+        "work_type": "Office, hybrid or remote"}
 # What the same measurement reads when the factor makes no difference at all:
 # the levels shuffled, the sizes kept. It is not one number — a factor whose
 # cells are small has a higher floor — so it travels per row.
