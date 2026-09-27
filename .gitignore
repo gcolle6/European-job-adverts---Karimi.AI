@@ -96,6 +96,12 @@ week 4/articles/*.md
 # public repository: anyone can read it, not only whoever is sent the link.
 !week 4/articles/karimi-articles-map.md
 
+# Article 1 is written here and stays here. Everything in this folder is working
+# material — drafts, chart experiments, the figures behind them — and none of it
+# is the article. Only the finished piece gets published, and it gets published
+# deliberately rather than by having been committed along the way.
+week 4/articles/article1/
+
 # internal working notes: the handover file, the defect register, unpublished
 # drafts, planning documents and speaking notes
 CLAUDE.md
