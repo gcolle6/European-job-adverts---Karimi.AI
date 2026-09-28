@@ -65,46 +65,103 @@ differently they affect what employers ask for.
 **Target reader:** Everyone, and more specifically someone who wants
 to know whether where they work changes what is asked of them, what seniority really brings to the table and how much weight it has on the role here vs there.
 
-**Opening move.** Same job title, different company. Six things vary around it.
-Which of them actually changes what you are asked for? Set up the measurement in
-two sentences: take three levels of a factor, hold the job family fixed, see how
-far apart the requirement profiles land.
+## The story, and what carries a reader through it
 
-1. **Two look strongest.** What kind of company measures highest of the six, with
-   country just behind. Present that as the answer and let the reader believe it.
-2. **How to read the chart at all.** The grey band: what the same measurement
-   gives when the factor is shuffled into meaninglessness. Not a caveat — the
-   thing that makes every number afterwards readable. Introduce it here and
-   score everything against it from now on.
-3. **The first illusion is sample size.** What kind of company is compared on
-   groups of 172 adverts, against 526 to 847 for everything else. Smaller groups
-   differ more by luck, luck alone gives it 0.342, and it **falls from first to
-   fifth**.
-4. **The second illusion is language.** A country is also a language, and the
-   requirement text is what was read and grouped. The United Kingdom is 99.8%
-   English, France 56.7% French, Germany 59.0% German — the three countries the
-   comparison ran on, which is the worst case and not a convenient one. Rerun in
-   one language: country loses 18.9% where nothing else moves more than 2.8%,
-   and **falls from second to fourth**.
-5. **One more check: is industry secretly country?** Industries are not spread
-   evenly across countries. Block on country and measure again — the industry
-   step gets **larger**, not smaller, and the control move barely shifts.
-6. **What is left is a tie, and the tie is the pivot.** Seniority and industry.
-   On the controlled distance industry leads; on the excess over the band
-   seniority leads; the intervals overlap. **The two orderings disagree, which is
-   better proof that neither is readable than any single number could be.**
-7. **So open the one this article owns.** What actually changes between junior
-   and senior, named: cloud platforms 4.1% → 22.1%, architecture 2.7% → 14.7%,
-   leadership 0.2% → 10.8%. And the other way: willingness to learn 14.2% →
-   2.9%, a bachelor's degree 10.8% → 4.6%, Excel 10.2% → 4.1%.
-8. **And it means the same thing everywhere.** Measured inside each industry
-   separately, the seniority effect clears its own noise floor every time, and by
-   about the same margin — +0.17 to +0.24. Seniority is not an industry thing
-   wearing a disguise.
+Short sentences, in order. The italic line between each pair is the thing that
+pulls the reader forward. **If a section cannot be reached from the one before
+it, that is the section to fix.**
 
-**Closing move.** Industry ties with seniority and this article does not open it.
-Point at article 2 and stop. The reader leaves with `leadership 0.2% → 10.8%`,
-not with a draw.
+**0 · Opening.** Two people. Same job title. Different employer. Six things are
+different: the industry, the country, the seniority, the kind of company, its
+size, whether the work is in an office. Which of them changes what you are asked
+for?
+
+*↓ a question needs a way to answer it*
+
+**1 · The measure.** Take three versions of one thing and compare what employers
+ask for in each. The answer is one number. 0 means they ask for the same things,
+1 means nothing in common.
+
+*↓ now the number can be read, so read it*
+
+**2 · The first answer.** Six factors, ranked. What kind of company first at
+**0.434**, country just behind at **0.417**. That looks like the answer.
+
+*↓ but a number is only as good as what it is measured against*
+
+**3 · The grey band.** Sort the same adverts into groups at random and compare
+them. They are never identical: a little difference always shows up by luck
+alone, and the band is how much. It is wider where the groups are smaller. *Look
+again at the chart — the factor on top has an enormous band.*
+
+*↓ so start with the one on top*
+
+**4 · The first illusion is sample size.** Each kind of company does ask for
+different things: corporates for Excel, startups for Python, the public sector
+for a computer science degree. But the smallest kind is defined by **Dutch
+fluency at 23.3%**, because **44%** of those adverts come from the Netherlands
+and Belgium. It is also the smallest category, so every group in the comparison
+shrinks to **172 adverts**, where luck alone gives 0.342. **It falls from first
+to fifth.**
+
+*↓ one down. Now the one that was just behind it*
+
+**5 · The second illusion is language.** A country is also a language. The
+United Kingdom is **99.8%** English, France **56.7%** French, Germany **59.0%**
+German — and those are the three countries the comparison ran on. Read every
+advert in one language and country loses **18.9%** where nothing else moves more
+than 2.8%. **It falls from second to fourth.**
+
+*↓ two illusions removed. Is there a third?*
+
+**6 · One more check.** Industries are not spread evenly across countries, so is
+changing industry partly changing country? If it were, the same move inside one
+country would leave *less* to learn. It leaves more — software 31.5% → 39.2%,
+sales 34.3% → 50.4% — while the control, getting promoted, barely shifts. **The
+industry effect is real.**
+
+*↓ so what is actually left*
+
+**7 · A tie.** Seniority **+0.201** above its band, industry **+0.192**. On the
+controlled distance industry leads; on the excess seniority does; the intervals
+overlap. **The two orderings disagree, which is better proof that neither is
+readable than either of them alone.**
+
+*↓ a tie is not an ending. Take the one this article can follow*
+
+**8 · Inside seniority.** Cloud platforms 4.1% → 22.1%. Architecture 2.7% →
+14.7%. **Leadership 0.2% → 10.8%, a factor of forty-eight.** And what falls
+away: willingness to learn 14.2% → 2.9%, a bachelor's degree, Excel. **A junior
+advert asks what you have learned; a senior advert asks what you can run.**
+
+*↓ true everywhere, or only on average?*
+
+**9 · The same climb.** The same requirements, one column per industry. Every row
+keeps its sign in every column: cloud rises between +10 and +24 in all nine,
+willingness to learn falls in all nine. Three exceptions worth naming — Excel
+survives only in finance, retail is the most relational climb, climate wants the
+most cloud.
+
+*↓ and what was all that worth*
+
+**10 · Close.** The two factors that looked strongest were an artefact of how
+many adverts there were and of what language they were in. What survived is the
+least surprising thing on the list. **The finding is not the ranking; it is how
+much of a ranking can be sampling and wording.** Industry ties with seniority,
+and this piece does not open it.
+
+### What the shape is doing
+
+Three beats repeat — a number arrives, something is wrong with it, the thing is
+removed — and sections 4, 5 and 6 are that shape three times. It is what makes
+four corrections read as momentum rather than as an author who cannot settle.
+
+Section 7 breaks it deliberately: nothing is removed and the reader is left with
+a draw. **That is where the piece can lose them**, which is why section 8 has to
+arrive immediately and be concrete.
+
+Sections 8 and 9 are the only ones that name a skill. Everything before them is
+about magnitudes, and a skill appearing earlier is a sentence in the wrong place.
 
 ## Figures
 
