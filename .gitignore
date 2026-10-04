@@ -100,8 +100,13 @@ week 4/articles/*.md
 # material — drafts, chart experiments, the figures behind them — and none of it
 # is the article. Only the finished piece gets published, and it gets published
 # deliberately rather than by having been committed along the way.
-week 4/articles/article1/
-
+# Everything under articles/ stays local - both articles' working files, their
+# figures and their scripts. The map is the one exception and has to be
+# re-included; a trailing-slash rule excludes the directory itself, and git
+# never descends into an excluded directory, so no "!" below it can rescue a
+# file. The star form keeps git walking in.
+week 4/articles/*
+!week 4/articles/karimi-articles-map.md
 # internal working notes: the handover file, the defect register, unpublished
 # drafts, planning documents and speaking notes
 CLAUDE.md

@@ -71,7 +71,7 @@ def write(name, obj):
     pts = []
     if key:
         for slot in ("title", "note", "x_label", "y_label", "dot_a", "dot_b",
-                     "axis_min", "axis_max", "noise_label"):
+                     "axis_min", "axis_max"):
             if C.get(f"{key}.{slot}"):
                 obj = dict(obj, **{slot: C[f"{key}.{slot}"]})
         pts = pagecopy.points(C.get(f"{key}.points", ""))
@@ -95,6 +95,26 @@ asg = pd.read_parquet(W3 + r"\phrase_clusters_corrected.parquet")
 alias = pd.read_csv(W3 + r"\alias_table_final.csv")
 amap = dict(zip(alias["cluster"], alias["merged_into"]))
 asg["cluster"] = asg["cluster"].map(lambda c: amap.get(c, c))
+named["cluster"] = named["cluster"].map(lambda c: amap.get(c, c))
+
+# Clusters carrying the SAME label are folded together. Twenty-one labels
+# covered more than one cluster, and three of them appeared on the chart with
+# different verdicts — "Engineering degree" was neither, shell and core on three
+# separate dots. Two groups the dictionary calls the same thing are
+# indistinguishable to a reader, so a chart that names them cannot keep them
+# apart. Each family collapses onto its largest member: 580 groups -> 555.
+_size = asg[asg["cluster"] != -1].groupby("cluster").size()
+lmap = {}
+for _label, _ids in named[~named["cluster"].isin(
+        set(named.loc[named["boilerplate"] == True, "cluster"]) |
+        set(named.loc[named["label"].astype(str).str.upper() == "MIXED", "cluster"])
+        )].groupby("label")["cluster"].apply(list).items():
+    _ids = [i for i in set(_ids) if i in _size.index]
+    if len(_ids) > 1:
+        _keep = max(_ids, key=lambda i: _size.get(i, 0))
+        lmap.update({i: _keep for i in _ids})
+asg["cluster"] = asg["cluster"].map(lambda c: lmap.get(c, c))
+named["cluster"] = named["cluster"].map(lambda c: lmap.get(c, c))
 
 lab = dict(zip(named["cluster"], named["label"]))
 drop = {amap.get(c, c) for c in
@@ -180,7 +200,6 @@ write("chart1_drivers.json", {
         "controlled": round(float(r["controlled"]), 4),
         "shift_pct": round(float(r["shift_pct"]), 1),
         "confounded": bool(abs(r["shift_pct"]) > 5),
-        "noise": round(float(nul.loc[i, "null"]), 4) if i in nul.index else None,
         "cell_n": int(nul.loc[i, "n"]) if i in nul.index else None,
     } for i, r in dd.sort_values("controlled", ascending=False).iterrows()],
 })
@@ -195,11 +214,26 @@ employers = (j[j["cluster"] != -1]
              .nunique().rename("employers").reset_index())
 cs = cs.merge(employers, on=["cluster", "macro_function", "company_industry"], how="left")
 
-peak = (cs[cs["reliable"]].sort_values("lift", ascending=False)
-        .drop_duplicates("cluster"))
 core_ids = set(cs.loc[cs["verdict"] == "core", "cluster"])
+
+# Where a group is DRAWN. Everything used to be plotted at its peak-lift cell,
+# which for a core group is the one cell that contradicts its own label: 82 of
+# 91 blue dots sat above the core threshold and 58 above the shell one, the
+# worst at 6.0x, under a legend reading "a similar rate in every industry".
+#
+# A shell group is a claim about one cell, so its peak is the right place for
+# it. A core group is a claim about being ordinary, so it is drawn in the
+# largest cell where that actually holds. No verdict and no colour changes —
+# only where 94 dots sit, and they land between 0.94x and 1.35x, which is where
+# the legend has always said they are.
+rel = cs[cs["reliable"]]
+peak = rel.sort_values("lift", ascending=False).drop_duplicates("cluster")
+ordinary = (rel[(rel["lift"] - 1).abs() <= cl.CORE_MAX_LIFT_DEVIATION]
+            .sort_values("share", ascending=False).drop_duplicates("cluster"))
+shown = pd.concat([ordinary[ordinary["cluster"].isin(core_ids)],
+                   peak[~peak["cluster"].isin(core_ids)]])
 rows = []
-for r in peak.itertuples():
+for r in shown.itertuples():
     if r.cluster in drop:
         continue
     rows.append({

@@ -55,14 +55,14 @@ An intro to the job postings
 [Karimi](https://www.karimi.ai) builds a database of European companies and the jobs they advertise, taken from public listings on company pages. It holds more than 5,600 companies and hundreds of thousands of postings.
 
 ## corpus.more
-This page uses one slice of that database. The adverts were posted from May to August 2026, for two kinds of role, software and data, and sales and business development, across eleven industries. The chart below shows the distirbution of five different factors at once.
+This page uses one slice of that database. The adverts were posted from May to August 2026, for two kinds of role, software and data, and sales and business development, across eleven industries. The chart below shows the distribution of five different factors at once.
 
 ## corpus.note
 Each circle is one industry. 
-**Averts**: the area is the number of postings, and the count is written beside the circle. Hover a circle for how many companies posted them.
+**Adverts**: the area is the number of postings, and the count is written beside the circle. Hover a circle for how many companies posted them.
 **Senior**: the area is the number of postings looking for a senior role. 
 **Hybrid or remote**: the area shows the number of postings as hybrid or remote.
-**Companies**: the area represent the concentration of companies per industry.
+**Companies**: the area represents the concentration of companies per industry.
 Note that **Companies** is drawn on its own scale: the first three blocks all count adverts and share one, so a circle there and an equal circle under Companies do not stand for the same number.
 
 ## section.01
@@ -122,21 +122,13 @@ karimi.ai → https://www.karimi.ai/
 # Chart 1 — what changes the job
 
 ## chart1.title
-Two factors looked strongest. Neither of them is.
+Country looked like the second strongest. It was partly the language.
 
 ## chart1.note
-Every factor is tested the same way: hold the job family fixed, change only that one thing, and measure how much the list of requirements moves. Further right means it moves more. The pale dot is the first measurement. The solid dot is the same measurement after removing the effect of the language the advert happens to be written in — adverts from one country tend to share a language, so an untreated country comparison is partly just a comparison of languages. Only country moves when that is taken out, which is how you can tell it was the confounded one.
+Every factor is tested the same way: hold the job family fixed, change only that one thing, and measure how much the list of requirements moves. A longer bar means they move more. The solid part is what survives once every advert is read in the same language; the pale tail is what that takes away. Only country loses anything, which is how you can tell it was the confounded one.
 
 ## chart1.x_label
 how much the list of requirements changes when this factor changes  →
-
-## chart1.noise_label
-difference you get by chance alone
-
-## chart1.noise_explain
-**What the grey band is.** Take these same adverts and sort them into groups at random, then compare what each group asks for. The band shows how much difference shows up. It is wider where the groups are smaller, because smaller groups differ more by luck. So a dot sitting inside its own band could be luck.
-
-**Why one band is so much wider.** Every group is cut down to the size of the smallest one being compared, and for what kind of company that is 172 adverts, against 526 to 847 for every other factor. Smaller groups differ more by luck, so most of its distance is luck: it measures highest of all six, and lands fifth once its band is taken off.
 
 ## chart1.axis_min
 0 = the groups ask for exactly the same things
@@ -145,15 +137,15 @@ difference you get by chance alone
 1 = nothing in common
 
 ## chart1.dot_a
-what we first measured
+what the language was accounting for
 
 ## chart1.dot_b
-after removing the language effect
+what survives when every advert is read in one language
 
 ## chart1.points
 - `0.417 → 0.338` Country falls from second to fourth once every advert is read in the same language. Adverts from one country tend to share a language, so part of what looked like a country difference was a difference in the words themselves.
 - `−18.9% vs −2.8%` Country lost nearly a fifth of its distance under the control. No other factor moved by more than 2.8%, and company size moved upwards by 1.2% — movement in the wrong direction is what noise looks like, and it sets the scale for reading the others.
-- `0.201 vs 0.192` Seniority and industry finish level once both the language and the band are taken off. The gap between them is smaller than either confidence interval, so the honest reading is a tie rather than a winner.
+- `172 vs 847` What kind of company measures highest, and it is also the factor with the fewest adverts in each group — 172 against 526 to 847 for every other factor. The groups it compares are small enough that the number is the least reliable of the six.
 
 ---
 
@@ -172,8 +164,8 @@ how much more often it is asked for in this industry than in others  →
 how many of that industry's adverts ask for it
 
 ## chart2.points
-- `91 of 580` Asked for at about the same rate whichever industry the job family is in. These follow the job family.
-- `149 of 580` Common in one industry, much rarer in the others, and asked for often enough there to matter. About a quarter of the groups.
-- `340 of 580 grey` Neither of those. 263 are not tied strongly enough to one industry. 77 are tied to one industry but rarely asked for: MacOS and Apple devices comes up 9.2 times more often in one place, and still in only 2.6% of those adverts. Grey is the usual case.
+- `94 of 555` Asked for at about the same rate whichever industry the job family is in. These follow the job family.
+- `137 of 555` Common in one industry, much rarer in the others, and asked for often enough there to matter. About a quarter of the groups.
+- `324 of 555 grey` Neither of those. 221 are not tied strongly enough to one industry. 103 are tied to one industry but rarely asked for: MacOS and Apple devices comes up 9.2 times more often in one place, and still in only 2.6% of those adverts. Grey is the usual case.
 - `20.3×` Food-industry knowledge, for software roles in Agriculture & Food. 27 different employers ask for it, so it belongs to the industry rather than to one company.
 - `1.22×, in 10.1%` Python is mentioned in about one advert in ten, at nearly the same rate in every industry.
