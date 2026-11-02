@@ -38,18 +38,20 @@ this produces should be read as an upper bound.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-PROMPT_VERSION = "anchor-v1"
+PROMPT_VERSION = "anchor-v3"
 
 SYSTEM_PROMPT = """\
 You decide whether an official taxonomy already contains a job requirement.
 
 For each item you get a requirement cluster (its name and example phrases) and
-up to 5 candidate ESCO skill concepts retrieved by semantic similarity.
+a list of candidate ESCO skill concepts. Most were retrieved by semantic
+similarity; some are exact label matches on the requirement's own wording.
 
 Answer with the candidate that means THE SAME THING as the requirement, or null
 if none does.
@@ -69,7 +71,7 @@ Rules:
 5. Prefer null over a doubtful match. This measures what the taxonomy LACKS, so
    a false match hides a real gap, which is the more damaging error.
 
-Return ONLY: {"decisions": [{"id": <int>, "match": <candidate index 0-4 or null>}]}"""
+Return ONLY: {"decisions": [{"id": <int>, "match": <candidate index, or null>}]}"""
 
 RESPONSE_SCHEMA = {
     "type": "json_schema",
@@ -99,28 +101,95 @@ RESPONSE_SCHEMA = {
 }
 
 
+def _key(text: str) -> str:
+    """Lowercased, punctuation-light form for exact lexical matching."""
+    t = re.sub(r"\s*\[.*?\]", " ", str(text).lower())
+    t = re.sub(r"[^\w\s/+#.-]", " ", t)
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def lexical_candidates(texts: dict, skill_uris: list[str],
+                       skill_labels: list[str]) -> dict:
+    """ESCO concepts whose label IS one of a cluster's own strings.
+
+    **Why this exists.** The cosine shortlist compares a cluster *centroid* —
+    the average of a few hundred multilingual member phrases — against a single
+    ESCO label. When the centroid drifts from the concept's exact wording the
+    right concept never enters the top five, and the adjudicator is asked to
+    choose between five wrong answers. It answers `null`, correctly, and the
+    cluster joins the residual for a reason that has nothing to do with ESCO.
+
+    The 2026-10-04 audit found nine such clusters carrying 1.1% of requirement
+    mass: `Interpersonal skills`, `Communication skills`, `Information
+    security`, `Data analysis` twice, `Writing skills`, `Adobe Creative Suite`,
+    `knowledge of GDPR` and `DevOps` — every one of them a literal ESCO label,
+    and every one of them checkable by a reader in ESCO's own search box. That
+    is the most falsifiable error the study could publish.
+
+    Exact match only, on a lowercased and punctuation-light key. Nothing fuzzy:
+    a fuzzy channel would re-introduce the polysemy that made cosine unusable,
+    and the adjudicator still decides — this only guarantees the right answer is
+    *on the ballot*.
+
+    `texts` maps cluster id to the strings to look up: its label first, then its
+    most common member phrases.
+    """
+    index: dict[str, int] = {}
+    for i, lab in enumerate(skill_labels):
+        index.setdefault(_key(lab), i)
+
+    out: dict[int, list] = {}
+    for cid, strings in texts.items():
+        seen, picks = set(), []
+        for s in strings:
+            i = index.get(_key(s))
+            if i is None or skill_uris[i] in seen:
+                continue
+            seen.add(skill_uris[i])
+            picks.append((skill_uris[i], skill_labels[i], None))
+        out[int(cid)] = picks
+    return out
+
+
 def shortlist(centroids: np.ndarray, cluster_ids: list[int], skill_vectors: np.ndarray,
-              skill_uris: list[str], skill_labels: list[str], k: int = 5) -> dict:
+              skill_uris: list[str], skill_labels: list[str], k: int = 5,
+              lexical: dict | None = None, max_lexical: int = 2) -> dict:
     """Top-k ESCO candidates per cluster, deduplicated by concept.
 
     Cosine is kept for the one thing it does well — narrowing 14,359 concepts to
     five — and nothing more. Deduplicating by concept URI matters because a
     single concept carries up to six alternative labels in English, and five
     slots filled by five spellings of the same concept would waste the shortlist.
+
+    `lexical` adds exact-label hits from `lexical_candidates` ahead of the cosine
+    picks, capped at `max_lexical`. They carry `None` for the cosine, which is
+    honest: they were not retrieved by similarity, and printing a similarity for
+    them would invite the reader to compare two different things.
+
+    ⚠️ **Lexical hits are added to the ballot, never substituted into it.** The
+    first version filled to a fixed `k`, so two literal candidates displaced the
+    two weakest cosine picks — and a group whose correct answer sat fifth lost
+    it. Measured: 41 groups that had anchored correctly fell into the residual,
+    against 42 rescued, and the net movement was mostly noise from crowding
+    rather than the repair the channel was built for. `k` now counts cosine
+    picks only, so a ballot is five candidates plus any literal ones.
     """
     unit = centroids / np.clip(np.linalg.norm(centroids, axis=1, keepdims=True), 1e-12, None)
     sims = unit @ skill_vectors.T
     out = {}
     for row, cid in enumerate(cluster_ids):
-        order = np.argsort(-sims[row])[: k * 10]
-        seen, picks = set(), []
-        for j in order:
+        seen, picks, n_cos = set(), [], 0
+        for uri, lab, _ in (lexical or {}).get(int(cid), [])[:max_lexical]:
+            seen.add(uri)
+            picks.append((uri, lab, None))
+        for j in np.argsort(-sims[row])[: k * 10]:
             uri = skill_uris[j]
             if uri in seen:
                 continue
             seen.add(uri)
             picks.append((uri, skill_labels[j], round(float(sims[row, j]), 4)))
-            if len(picks) >= k:
+            n_cos += 1
+            if n_cos >= k:
                 break
         out[int(cid)] = picks
     return out

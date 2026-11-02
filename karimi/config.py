@@ -282,3 +282,26 @@ LLM_ROUTE_MIN_CHARS = 60
 # head outside it, which is what this implements. Round 1's contrary reading is
 # superseded; the precision cost against those labels is reported as such.
 EXPAND_PAREN_LISTS = True
+
+# Repairs found by grouping DAMAGED splits over the whole re-delivered software
+# export (`New project/split_damage.py`), plus abstention on whatever stays
+# damaged: such an item is kept whole, in its original wording.
+#
+# Why a corpus taxonomy and not the labelled sample: the damage detector fires
+# on 3 of the 150 labelled rows (holdout F1 0.652 -> 0.654, noise) but on 3,385
+# unique corpus items, 6.6% of all rules splits. A sample that rarely contains a
+# construction cannot measure it.
+#
+# OFF by default so `run_week1.py` and every published Week 1-4 figure still
+# reproduce. The new project turns it on.
+SPLIT_REPAIRS = False
+
+# Open word classes (is this word a verb? an adjective?) decided by a
+# part-of-speech tagger instead of word lists, so the splitter holds on text
+# nobody has seen yet (`New project/PATTERNS.md`, decided 2026-10-30). Needs
+# English input, so it goes with the translate-first pipeline. Only read when
+# SPLIT_REPAIRS is on; OFF keeps the word lists. The version is pinned because
+# a different model can tag, and therefore split, differently.
+SPLIT_POS = False
+POS_MODEL = "en_core_web_sm"
+POS_MODEL_VERSION = "3.8.0"
