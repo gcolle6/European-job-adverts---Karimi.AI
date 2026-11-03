@@ -162,6 +162,50 @@ these rules (46 cases) with the count the conventions give. Run it after any cha
 **Solution.** One requirement per language; the modes stay attached.
 **Detected by.** Language names (closed list, `_split_languages`).
 
+### P10–P15. Found on sales, stated as grammar (2026-11-02)
+
+The frozen model (9c8b5f0) was run on 1,000 random SALES_BD postings
+(`run_sales.py`). The errors fell into a few shapes, none of them specific to sales:
+software has them too, only less often. Each is a grammatical rule, behind
+`atomise.SALES_PATTERNS` so it can be measured on its own.
+
+| | Shape | Was | Now |
+|---|---|---|---|
+| P10 | the item opens with its own preposition | `work in in the evening` | `work in the evening` |
+| P11 | after `to` + verb, a bare noun is another object of that verb | `Proven ability to supplier networks` | `Proven ability to manage supplier networks` |
+| P11b | a gerund, not a preposition, governs the list | `Comfortable discussing APIs`, `webhooks` | `Comfortable discussing webhooks` |
+| P12 | an item ending in a frame noun has its own head | `Analytical skills with CRM system experience` | `CRM system experience` |
+| P13 | adjectives on the object of a verb describe one object | `create a welcoming` · `inclusive customer experience` | one requirement |
+| P14 | `noun or hyphenated-modifier + noun` | `Business` · `customer-related experience` | `Business experience` · `customer-related experience` |
+| P15 | `head gerund X and gerund Y` | `Experience designing REST APIs` · `building data pipelines` | both with `Experience` |
+
+**Limits, measured.** P13 applies only when the adjectives are the one coordination
+(`manage ambiguity and operate in fast-evolving, early-stage environments` stays two).
+P15 does not apply inside a comma list. `to` as a preposition (`Commitment to X and Y`)
+is untouched by P11. Fixed adverbials (`in particular`) are not P10.
+
+**Not done.** The first reading also blamed `Bachelor or Master` as two requirements: that
+is the convention (alternative degrees count one each), so the error was in the reading,
+not in the model. Translation artefacts (`carpenter, carpenter, carpenter`) and untranslated
+languages (2.4% of sales items) are not splitting problems.
+
+**How it was judged.** The first sample was read to find the shapes, so it is a
+development set. A second sample of 1,000 postings, drawn from the rest and never read,
+is the test (`run_sales.py --sample2`), beside `software_holdout` and the blind half of
+the hand count.
+
+**Result.** The rules change 2.3% of item occurrences on sales sample 2 and 1.9% on
+software dev. Nothing gets worse: the blind hand count stays 78.0%, the general
+label-free measures barely move (stranded modifiers 4.26% → 4.22% on software_holdout),
+and with the flags off the output is identical to HEAD on 93,217 segments. The gain is
+in wording, which those general measures do not see, so two targeted defects were
+counted on the untouched sets:
+
+| | sales sample 2 | software_holdout |
+|---|---|---|
+| atoms with a doubled preposition (`in in`) | 23 → 11 | 113 → 101 |
+| `ability to <noun>` (verb lost) | 41 → 9 | 204 → 41 |
+
 ### Abstention
 
 Whatever still looks broken after splitting (`damage_reason`) is kept whole in its

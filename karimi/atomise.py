@@ -537,6 +537,9 @@ def _distribute_shared_head(items: list[str]) -> list[str]:
         if len(item.split()) > config.MAX_BARE_TAIL_WORDS:
             out.append(item)
             continue
+        if _use_pos() and SALES_PATTERNS and _owns_head(item):
+            out.append(item)
+            continue
         head = ""
         for prior in reversed(out):
             preps = list(PREP_RE.finditer(prior))
@@ -545,10 +548,83 @@ def _distribute_shared_head(items: list[str]) -> list[str]:
             cand = clean(prior[: preps[-1].end()])
             if cand and len(cand) <= config.MAX_HEAD_CHARS \
                     and prior[preps[-1].end():].strip():
+                if _use_pos() and SALES_PATTERNS:
+                    cand = _fit_head(prior, preps[-1], item)
                 head = cand
                 break
+        if _use_pos() and SALES_PATTERNS and not head:
+            head = _gerund_head(items[0], item)
         out.append(clean(f"{head} {item}") if head else item)
     return out
+
+
+# PATTERNS.md P10-P12 (2026-11-02), found on the first sales sample and stated
+# as grammar so they hold on any job family. A switch only so they can be
+# measured on their own.
+SALES_PATTERNS = True
+
+# Nouns that frame a requirement: an item ending in one already has its own
+# head (`CRM system experience`, `communication skills`) and takes no other.
+# A closed class, the frame nouns of `normalise_req.HEAD_GROUPS`.
+_FRAME_NOUNS = {"experience", "skills", "skill", "knowledge", "expertise", "proficiency",
+                "background", "understanding", "familiarity", "abilities", "capabilities",
+                "competencies", "competences", "fluency", "exposure"}
+
+
+def _owns_head(item: str) -> bool:
+    """P12: `Analytical skills with data-driven approach and CRM system
+    experience` — the second item names its own frame noun, so the first
+    item's head (`Analytical skills with`) is not repeated onto it."""
+    words = item.split()
+    return len(words) > 1 and re.sub(r"[^\w-]", "", words[-1]).lower() in _FRAME_NOUNS
+
+
+# Fixed phrases that open with a preposition and are adverbs, not a new
+# complement: `..., in particular Git` keeps the head's own preposition.
+_FIXED_ADVERBIAL_RE = re.compile(
+    r"^(?:in particular|in addition|in general|in short|for example|for instance|at least|"
+    r"at most|in fact|of course|on top)\b", re.I)
+
+
+def _fit_head(prior: str, prep: re.Match, item: str) -> str:
+    """The head a bare item takes from ``prior``, fitted to how the item opens.
+
+    P10: an item that opens with its own preposition replaces the head's:
+    `Willingness to work in the afternoon, in the evening and on Saturdays` is
+    `... work on Saturdays`, never `... work in in on Saturdays`.
+    P11: after an infinitive (`to` + verb) a bare noun is another object of
+    that verb, so the verb goes with the head: `Proven ability to manage
+    cross-functional teams and supplier networks` is `... to manage supplier
+    networks`, never `Proven ability to supplier networks`. A bare verb takes
+    the head up to `to` as before (`Ability to document incidents and write
+    reports`). `to` as a preposition (`Commitment to business alignment and
+    continuous improvement`) is untouched.
+    """
+    first = item.split()[0]
+    if PREP_RE.match(item + " ") and not first.lower() == "to" and not _FIXED_ADVERBIAL_RE.match(item):
+        return clean(prior[: prep.start()])
+    after = prior[prep.end():].split()
+    if prep.group().strip().lower() == "to" and after and pos.tag(after[0])[1] in ("VB", "VBP") \
+            and not _verb(first):
+        return clean(f"{prior[: prep.end()]} {after[0]}")
+    return clean(prior[: prep.end()])
+
+
+def _gerund_head(first: str, item: str) -> str:
+    """P11b: `Comfortable discussing APIs, webhooks, idempotency` — no
+    preposition governs the list, a gerund does, so each bare object takes the
+    first item up to that gerund. Only a gerund followed by its object (a noun,
+    not an adverb: `Ability to work independently, teamwork` lists two
+    requirements), and only onto an item that is not itself a verb phrase. A
+    hyphenated `-ing` is a modifier (`problem-solving skills`), never the verb."""
+    words = first.split()
+    if pos.tag(item.split()[0])[1] in ("VB", "VBG", "VBP"):
+        return ""
+    for k, w in enumerate(words[:-1]):
+        if k and "-" not in w and pos.tag(w)[1] == "VBG" \
+                and pos.tag(words[k + 1])[0] in ("NOUN", "PROPN", "ADJ", "DET"):
+            return clean(" ".join(words[: k + 1]))
+    return ""
 
 
 _RUN_VERBS = {
@@ -651,6 +727,9 @@ def _merge_verb_runs(items: list[str]) -> list[str]:
 
 def _pos_class(word: str) -> str:
     """Coarse class of a conjunct for the parallelism test of `_shared_tail`."""
+    if SALES_PATTERNS:
+        # The non-breaking hyphen of `fast‑paced` is a hyphen.
+        word = re.sub(r"[‐‑]", "-", word)
     if "-" in word.strip("-"):
         return "HYPH"            # `problem-solving`, `open-source`: either use
     p, fine = pos.tag(word)
@@ -663,7 +742,7 @@ def _pos_class(word: str) -> str:
 _PARALLEL = {"ADJ": {"ADJ", "HYPH"}, "HYPH": {"ADJ", "HYPH"}, "NOUN": {"NOUN"}, "PROPN": {"PROPN"}}
 
 
-def _shared_tail(head: str, items: list[str]) -> list[str] | None:
+def _shared_tail(head: str, items: list[str], alternatives: bool = False) -> list[str] | None:
     """PATTERNS.md P2: `X, Y and Z <noun>` -> one requirement per modifier.
 
     `Linux and Windows operating systems`, `open-source and commercial
@@ -696,12 +775,31 @@ def _shared_tail(head: str, items: list[str]) -> list[str] | None:
     if any(MODIFIER_RE.match(m) for m in mods):
         return None
     classes = [_pos_class(m) for m in mods]
+    prefix = (head.split() if head else []) + first[:-1]
+    if SALES_PATTERNS and alternatives and len(mods) == 2 and not prefix \
+            and classes[0] in ("NOUN", "PROPN") and classes[1] == "HYPH":
+        # P14: `Business or customer-related experience`, `IT or
+        # client-facing roles`. Alternatives of one kind: with `or`, the bare
+        # noun is the other modifier of the same tail, not a requirement by
+        # itself. Only before a hyphenated modifier, which cannot head a phrase.
+        return [clean(f"{m} {' '.join(tail)}") for m in mods]
     if any(c not in _PARALLEL for c in classes) \
             or any(b not in _PARALLEL[a] for a in classes for b in classes):
         return None
-    prefix = (head.split() if head else []) + first[:-1]
     tags = [pos.tag(w) for w in prefix]
     if any(fine in ("VB", "VBG", "VBP", "VBZ", "VBD") for _, fine in tags):
+        if SALES_PATTERNS and all(c in ("ADJ", "HYPH") for c in classes) \
+                and not _OR_RE.search(f" {' '.join(prefix)} ") \
+                and not re.search(r"\band\b", " ".join(prefix), re.I):
+            # Only when the adjectives are the one coordination: in `Ability
+            # to manage ambiguity and operate in fast-evolving, early-stage
+            # environments` the `and` before them still separates two.
+            # P13: adjectives on the object of a verb describe that one
+            # object, as the line above already holds: `ability to operate
+            # across a complex, fast-paced and multidisciplinary environment`,
+            # `create a welcoming and inclusive customer experience`. Returning
+            # None let the plain list split cut them apart.
+            return ONE_REQUIREMENT
         return None
     if classes[0] == "NOUN" and not (prefix and len(last) == 2):
         # A common noun is often a requirement by itself (`Rigor and team
@@ -784,6 +882,10 @@ def _is_filler_item(p: str) -> bool:
 
 def _split_list(s: str) -> list[str]:
     """Split one clause, either as head + list or as a bare coordinated list."""
+    if _use_pos() and SALES_PATTERNS:
+        clauses = _split_gerund_clauses(s)
+        if clauses:
+            return clauses
     head, rest = "", s
     lead: list[str] = []
 
@@ -839,7 +941,7 @@ def _split_list(s: str) -> list[str]:
             heads = _head_alternatives(head.strip()) if head.strip() else [""]
             return lead + [clean(f"{h} {i}") for h in heads for i in merged]
     if _use_pos() and len(_head_alternatives(head.strip()) if head.strip() else [""]) == 1:
-        tailed = _shared_tail(head.strip(), items)
+        tailed = _shared_tail(head.strip(), items, bool(_OR_RE.search(rest)))
         if tailed is ONE_REQUIREMENT:
             return [s]
         if tailed:
@@ -858,6 +960,9 @@ def _split_list(s: str) -> list[str]:
             # deadlines` has to be distributed from within, not prefixed.
             return lead + _distribute_shared_head(items)
         # One head per alternative it offers, each distributed over every item.
+        if _use_pos() and SALES_PATTERNS:
+            return lead + [i if k and _owns_head(i) else clean(f"{h} {i}")
+                           for h in _head_alternatives(head) for k, i in enumerate(items)]
         return lead + [clean(f"{h} {i}") for h in _head_alternatives(head) for i in items]
 
     # No usable head + list reading. Fall back to reading the whole clause as a
@@ -873,7 +978,7 @@ def _split_list(s: str) -> list[str]:
         if merged != resolved:
             return _distribute_shared_head(merged)
     if _use_pos() and resolved:
-        tailed = _shared_tail("", resolved)
+        tailed = _shared_tail("", resolved, bool(_OR_RE.search(s)))
         if tailed is ONE_REQUIREMENT:
             return [s]
         if tailed:
@@ -885,6 +990,41 @@ def _split_list(s: str) -> list[str]:
         if clauses:
             return clauses
     return [s]
+
+
+_OR_RE = re.compile(r"\s(?:or|and/or)\s", re.I)
+_GERUND_CONJ_RE = re.compile(r"\s(?:and|or|as well as)\s+", re.I)
+
+
+def _split_gerund_clauses(s: str) -> list[str] | None:
+    """P15: `<head> <gerund> <object> and <gerund> <object>` -> two, head shared.
+
+    `Experience designing REST APIs and building data pipelines`, `Strong
+    experience developing customer relationships and managing tenders`,
+    `Demonstrated success in building sales strategies and consistently
+    meeting or exceeding revenue objectives`: two activities, each with its own
+    object, under one head. Split at the first conjunction followed by a gerund
+    (an adverb may come between), and the head before the first gerund goes onto
+    the second. Verbs that SHARE an object stay one (`building and maintaining
+    CI/CD pipelines`, decided 2026-10-29): the left side must not end on its
+    gerund. Each side is then split as usual. No commas: in a list
+    (`Clear communication skills, including leading incidents and writing
+    postmortems`) the gerunds are its members, and the list rules decide.
+    """
+    if "," in s:
+        return None
+    for m in _GERUND_CONJ_RE.finditer(s):
+        right = s[m.end():].split()
+        k = 1 if len(right) > 2 and pos.tag(right[0])[0] == "ADV" else 0
+        if len(right) < k + 2 or pos.tag(right[k])[1] != "VBG" or not _verb(right[k]):
+            continue
+        left = s[: m.start()].split()
+        gers = [i for i, w in enumerate(left) if i and pos.tag(w)[1] == "VBG" and _verb(w)]
+        if not gers or gers[0] == len(left) - 1 or gers[-1] == len(left) - 1:
+            return None
+        head = " ".join(left[: gers[0]])
+        return _split_list(" ".join(left)) + _split_list(clean(f"{head} {' '.join(right)}"))
+    return None
 
 
 # Words that open a requirement of their own. Used only to decide that the

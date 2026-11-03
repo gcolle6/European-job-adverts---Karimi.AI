@@ -160,11 +160,13 @@ def judge(text: str, atoms: list[str], doc, atom_docs: dict) -> dict:
     return out
 
 
-def measure(name: str, show: str | None = None, k: int = 25) -> dict:
+def measure(name: str, show: str | None = None, k: int = 25,
+            rows: list[dict] | None = None, tr: dict[str, str] | None = None) -> dict:
+    """``rows`` and ``tr`` measure a set outside the frozen ones (`run_sales.py`)."""
     config.SPLIT_REPAIRS = True
-    config.SPLIT_POS = "--pos" in sys.argv
-    rows = rows_for(name)
-    tr = translations(name)
+    config.SPLIT_POS = "--pos" in sys.argv or rows is not None
+    rows = rows if rows is not None else rows_for(name)
+    tr = tr if tr is not None else translations(name)
     occ = collections.Counter(tr.get(it, it) for r in rows for it in r["must_have"])
     texts = sorted(occ)
     if config.SPLIT_POS:

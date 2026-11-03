@@ -76,7 +76,70 @@ CASES = [
     ("plus", "Fluent in English; Dutch is a strong plus", 1),
     ("plus", "Background in IT support and maintenance experience is a plus", 1),
     ("plus", "Experience with Zendesk Apps Framework is a plus", 1),
+    # P10-P15, from the first sales sample (2026-11-02); controls from software
+    ("P13", "The ability to operate effectively across a complex, fast‑paced and multidisciplinary environment", 1),
+    ("P13", "Ability to create a welcoming and inclusive customer experience", 1),
+    ("P14", "Business or customer-related experience", 2),
+    ("P15", "Experience designing REST APIs and building data pipelines", 2),
+    ("P15", "Demonstrated success in building regional sales strategies and consistently meeting or exceeding revenue objectives", 2),
+    ("P15 control", "Experience building and maintaining CI/CD pipelines", 1),
+    ("P11b", "Comfortable discussing APIs, webhooks, and cloud patterns", 3),
+    ("controls", "Bachelor's or Master's degree", 2),
+    ("controls", "Rigor and analytical spirit", 2),
+    ("controls", "Teamwork and communication skills", 2),
+    ("controls", "Sales experience and comfort with targeting new business", 2),
 ]
+
+# Wording, where the count was already right and the atoms were not: (text, atoms)
+ATOM_CASES = [
+    ("Willingness to work in the afternoon, in the evening and on Saturdays",
+     ["Willingness to work in the afternoon", "Willingness to work in the evening",
+      "Willingness to work on Saturdays"]),
+    ("Ability to effectively influence across functions and across sites",
+     ["Ability to effectively influence across functions", "Ability to effectively influence across sites"]),
+    ("A willingness to learn and good communication skills",
+     ["A willingness to learn", "good communication skills"]),
+    ("Analytical skills with data-driven approach and CRM system experience",
+     ["Analytical skills with data-driven approach", "CRM system experience"]),
+    ("Comfortable discussing APIs, webhooks, and cloud patterns",
+     ["Comfortable discussing APIs", "Comfortable discussing webhooks", "Comfortable discussing cloud patterns"]),
+    ("Experience designing REST APIs and building data pipelines",
+     ["Experience designing REST APIs", "Experience building data pipelines"]),
+    ("Experience with Docker and Kubernetes", ["Experience with Docker", "Experience with Kubernetes"]),
+]
+
+
+# Job titles (`karimi/normalise_title.py`): (title, role key, level)
+TITLE_CASES = [
+    ("data scientist", "data scientist", ""),
+    ("Data Scientist", "data scientist", ""),
+    ("Engineer of data", "data engineer", ""),
+    ("Data Engineer", "data engineer", ""),
+    # A feminine ending on the word is gender; a level phrase after a dash is a level.
+    ("Stagiair(e) IT Support", "it support", "intern"),
+    ("Data Analyst - Alternance", "analyst data", "intern"),
+    ("Lehrstelle Logistiker", "logistiker", "intern"),
+    ("Senior Data Engineer (m/w/d)", "data engineer", "senior"),
+    ("(Senior) Data Engineer", "data engineer", "senior"),
+    ("Lead Data Engineer", "data engineer", "lead"),
+    ("Data Analyst - Internship", "analyst data", "intern"),
+    ("Internship - Data Science", "data science", "intern"),
+    ("Medior/Senior Front-End Developer", "developer end front", "mid|senior"),
+    ("Software Engineer II", "engineer software", "grade 2"),
+    ("Incident Support Engineer - SAPIENT", "engineer incident support", ""),
+    # controls: a role word stays where it is the role
+    ("Tech Lead", "lead tech", ""),
+    ("Battery Integration Expert", "battery expert integration", ""),
+    ("Research Associate", "associate research", ""),
+    ("Head of Data", "data head", ""),
+]
+# Spelling variants that must join, and roles that must never join.
+TITLE_SAME = [("Full-Stack Engineer", "Fullstack Engineer"), ("Systems Engineer", "System Engineer"),
+              ("Site Reliability Engineer", "SRE"), ("Software Developer", "Software Engineer"),
+              ("Backend Developer", "Engineer Backend")]
+TITLE_DIFFERENT = [("Data Analyst", "Data Scientist"), ("Data Engineer", "Data Scientist"),
+                   ("Data Analyst", "Analytics Engineer"), ("Data Engineer", "Head of Data"),
+                   ("Business Developer", "Business Engineer"), ("Developer Platform Engineer", "Platform Engineer")]
 
 
 # Normalised wording (`karimi/normalise_req.py`): (text, translated?, expected)
@@ -139,6 +202,11 @@ def main() -> int:
         if got != want:
             failed += 1
             print(f"FAIL {pattern:12s} want {want} got {got}: {text}\n     {atoms}")
+    for text, want in ATOM_CASES:
+        got = atom.route(text)[0]
+        if got != want:
+            failed += 1
+            print(f"FAIL atoms        want {want}\n                  got  {got}")
     for text, translated, want in NORM_CASES:
         got = normalise_req.normalise_requirement(text, translated)
         if got != want:
@@ -150,7 +218,23 @@ def main() -> int:
             failed += 1
             print(f"FAIL key          want {(key, level, years)}\n                  got  "
                   f"{(d['key'], d['level'], d['years_min'])}  <- {text}")
-    total = len(CASES) + len(NORM_CASES) + len(KEY_CASES)
+    from karimi import normalise_title as nt
+    for title, want_key, want_level in TITLE_CASES:
+        d = nt.decompose(title)
+        if (d["key"], d["level"]) != (want_key, want_level):
+            failed += 1
+            print(f"FAIL title        want {(want_key, want_level)}\n                  got  "
+                  f"{(d['key'], d['level'])}  <- {title}")
+    acr = {"sre": "site reliability engineer"}
+    for pairs, same in ((TITLE_SAME, True), (TITLE_DIFFERENT, False)):
+        for a, b in pairs:
+            ra, rb = nt.decompose(a)["role"], nt.decompose(b)["role"]
+            g = nt.group_titles([ra, rb], acr)
+            if (g[nt.key(ra, acr)] == g[nt.key(rb, acr)]) != same:
+                failed += 1
+                print(f"FAIL title group  {a!r} and {b!r} should {'' if same else 'not '}join")
+    total = (len(CASES) + len(ATOM_CASES) + len(NORM_CASES) + len(KEY_CASES) + len(TITLE_CASES)
+             + len(TITLE_SAME) + len(TITLE_DIFFERENT))
     print(f"{total - failed}/{total} pass")
     return 1 if failed else 0
 
