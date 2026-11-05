@@ -143,10 +143,32 @@ fascia "solo tema".
 | 3 | Test automatici | ✅ 11 veloci a ogni commit (`.githooks/pre-commit`, da attivare con `git config core.hooksPath .githooks`); 3 soglie che bloccano il rilascio (`pytest -m gates`), fissate prima della misura |
 | 4 | Pacchetto e guida | ✅ installazione base + `[translate]` + `[embed]`; traduzione a scelta di Karimi, embedding fisso; guida in `karimi_normalise/README.md`. Manca il canale di consegna (repository privato) |
 | 5 | Storico del monitor | ✅ `log_run()` scrive una riga per run, senza testo degli annunci |
-| 6 | Agente tester | in attesa della scelta dell'LLM |
+| 6 | Agente tester | ✅ Qwen3-4B in locale, prompt v5, tarato (vedi Fase 6). Gira dentro il job `karimi-check` |
 
 Ancora deboli, e scritti nella guida: la fascia "solo tema" (46% uguale al
 batch), i titoli nuovi (37%), le lingue senza modello di traduzione.
+
+### Stato al 2026-11-05: API, controllore, sito
+
+Deciso oggi, per la prova con Karimi (contatto: Chiara), entro il 6 novembre:
+
+| # | Cosa | Stato |
+|---|---|---|
+| 1 | API su Cloud Run (`/v1/process` fino a 200 annunci; `/v1/jobs` per i lotti) | ✅ codice e 12 test; provata nel container (`karimi:local`, 9,2 GB) |
+| 2 | Accesso con **chiave API** (`X-API-Key`, segreto in Secret Manager) | ✅ scelta per la prova; IAM resta la strada se diventa stabile |
+| 3 | **Ogni chiamata** salvata come lavoro e controllata (`source: process`) | ✅ risultati, report, CSV, `check.json`; riga nello storico |
+| 4 | Due CSV per Karimi: `postings.csv` (i campi inviati + colonne aggiunte) e `requirements.csv` | ✅ `exports.py` |
+| 5 | Controllore a 4 livelli con il giudice dentro un secondo job (`karimi-check`) | ✅ `check.py`, 7 test; riferimento del giudice: 4,7% bocciate su gruppo, 11% su tema; container provato (`karimi-check:local`, 6,2 GB, llama.cpp b7923) |
+| 6 | `GET /v1/metrics`, pubblico, solo aggregati: ciò che il sito legge | ✅ `dashboard.py` |
+| 7 | Osservabilità: una riga JSON per richiesta e per blocco di lavoro, metriche dai log, dashboard Cloud Monitoring, avviso email | ✅ `deploy/dashboard.json`, passi 16-17 |
+| 8 | Repo del sito per Lovable (`../karimi-normalise-site`: contratto dati, brief, snapshot) | ✅ in locale; push appena c'è l'URL |
+| 9 | Progetto GCP `karimi-normalise-2026`, regione europe-west1 | ✅ creato (passo 1). **Fermo al passo 2: l'account di fatturazione risulta chiuso** |
+| 10 | Velocità misurata: 8,1 min ogni 1.000 elementi (94% traduzione, 31% non inglese) | ✅ costo rivisto: ~3-8 $/mese per 100k requisiti |
+
+Decisioni da ricordare: niente immagine senza sha256 del modello del
+giudice; il giudice è ritarato se cambiano modello o build di llama.cpp; i
+log non contengono mai testo degli annunci; i file dei lavori si cancellano
+dopo 30 giorni, lo storico no.
 
 ### Come si migliora dopo il rilascio
 
