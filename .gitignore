@@ -5,8 +5,7 @@ week 1/karimi-week1-tasks.md
 week 1/karimi-week1-script.md
 week 1/output
 week 1/validation
-New project/PATTERNS.md
-New project\PATTERNS.md
+
 # source export — 67 MB, delivered by Karimi, not redistributed here
 wetransfer_karimi-jobs_2026-08-25_1346/
 
@@ -128,3 +127,9 @@ week 1/karimi-week1.md
 week 2/karimi-week2.md
 week 2/karimi-week2-plan.md
 week 3/karimi-week3-plan.md
+
+# build context for a local `docker build`, copied in from the outputs (deploy/)
+/dictionary/
+/model/
+/judge_reference.json
+/jobs/

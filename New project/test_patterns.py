@@ -139,7 +139,13 @@ TITLE_SAME = [("Full-Stack Engineer", "Fullstack Engineer"), ("Systems Engineer"
               ("Backend Developer", "Engineer Backend")]
 TITLE_DIFFERENT = [("Data Analyst", "Data Scientist"), ("Data Engineer", "Data Scientist"),
                    ("Data Analyst", "Analytics Engineer"), ("Data Engineer", "Head of Data"),
-                   ("Business Developer", "Business Engineer"), ("Developer Platform Engineer", "Platform Engineer")]
+                   ("Business Developer", "Business Engineer"), ("Developer Platform Engineer", "Platform Engineer"),
+                   # Developer = Engineer only for the X the user listed (2026-11-04).
+                   ("System Developer", "Systems Engineer"), ("Solution Developer", "Solutions Engineer"),
+                   ("Platform Developer", "Platform Engineer"), ("IT Developer", "IT Engineer"),
+                   ("Developer", "Engineer"), ("Analytics Developer", "Analytics Engineer")]
+TITLE_SAME += [("Fullstack Developer", "Full Stack Engineer"), ("Backend Java Developer", "Java Backend Engineer"),
+               ("PLSQL Developer", "PL/SQL Engineer"), ("iOS Developer", "iOS Engineer")]
 
 
 # Normalised wording (`karimi/normalise_req.py`): (text, translated?, expected)

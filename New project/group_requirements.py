@@ -2,6 +2,7 @@
 
     python "New project/group_requirements.py" --bands         # pairs per similarity band, to read
     python "New project/group_requirements.py" --assign 0.90   # write the groups at a threshold
+    python "New project/group_requirements.py" --topic 0.80    # then the coarser topic level
 
 Runs after `split_must_have.py`. The rules have already moved years, level,
 head and qualifier into their own columns (`normalise_req.decompose`), so
@@ -33,7 +34,6 @@ from __future__ import annotations
 import collections
 import json
 import random
-import re
 import sys
 from pathlib import Path
 
@@ -44,6 +44,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
 from karimi import embed  # noqa: E402
+from karimi.normalise_req import names  # noqa: E402,F401  (shared with karimi_normalise)
 
 OUT = HERE / "output"
 ATOMS = OUT / "must_have_atoms.parquet"
@@ -51,33 +52,6 @@ CACHE = OUT / "core_embeddings.npz"
 FROZEN = HERE / "test_sets.json"
 BLOCK = 2048
 SEED = 20261101
-
-
-_TOKEN = re.compile(r"[\w+#./-]+")
-# Credential words are names wherever they stand: `Master's degree` and
-# `Bachelor degree` sit at cosine 0.95 and are different requirements. A closed set.
-_CREDENTIALS = {"bachelor", "master", "phd", "msc", "bsc", "mba", "ma", "ba", "graduate",
-                "undergraduate", "postgraduate", "doctorate", "doctoral", "diploma", "hbo", "wo",
-                "mbo", "associate", "bac", "licence", "license", "certificate", "certification"}
-
-
-def names(core: str) -> frozenset[str]:
-    """The proper names, acronyms and numbers of a core, plural- and case-free.
-
-    The embedding places `degree in Computer Science` and `degree in Computer
-    Engineering` at cosine 0.95, and `STP` next to `STL`: one different name is
-    one different requirement, however close the rest. A token is a name when
-    it holds a digit or a capital anywhere but the start of the first word.
-    """
-    out = set()
-    for i, tok in enumerate(_TOKEN.findall(core)):
-        if re.sub(r"[^\w]", "", tok.lower()).rstrip("s") in _CREDENTIALS:
-            out.add(re.sub(r"[^\w]", "", tok.lower()).rstrip("s"))
-            continue
-        if any(ch.isdigit() for ch in tok) or any(ch.isupper() for ch in (tok[1:] if i == 0 else tok)):
-            t = re.sub(r"[^\w+#]", "", tok.lower())
-            out.add(t[:-1] if len(t) > 3 and t.endswith("s") else t)
-    return frozenset(out)
 
 
 def cores(df: pd.DataFrame) -> pd.DataFrame:
@@ -167,8 +141,42 @@ def assign(df: pd.DataFrame, c: pd.DataFrame, v: np.ndarray, t: float) -> pd.Dat
     return df
 
 
+def topics(df: pd.DataFrame, t: float) -> pd.DataFrame:
+    """A second, coarser level: `req_topic`, the GROUPS joined at a lower threshold.
+
+    Decided 2026-11-04 after two rounds of pairs: all 29 near misses at
+    0.80-0.90 were judged the same by the labeller, who reads "same theme"
+    (`risk` ~ `risk mitigation`), while `req_group` keeps "same requirement".
+    The unit is the whole `req_group`, so the levels nest: every group sits in
+    exactly one topic. Not its group cores: one group can hold several
+    (`Python` / `python` fold by case, a bare core joins the competence with
+    that core), and those went to different topics. Each group is embedded by
+    its commonest wording, under the head its label carries.
+    """
+    head = np.where(df.req_group.str.startswith("competence: ") & (df.req_head_group == ""),
+                    "competence", df.req_head_group)
+    units = pd.DataFrame({"req_group": df.req_group, "req_head_group": head,
+                          "req_core": df.req_group_core})
+    rep = units.groupby("req_group").agg(req_head_group=("req_head_group", "first"),
+                                         req_core=("req_core", lambda s: s.value_counts().index[0]))
+    g = units[["req_group"]].join(rep, on="req_group")
+    c = cores(g)
+    v = vectors(c.req_core.tolist())
+    out = assign(g.assign(req_group_core=g.req_core), c, v, t)
+    topic = dict(zip(g.req_group, out.req_group))
+    return df.assign(req_topic=df.req_group.map(topic))
+
+
 def main() -> None:
     df = pd.read_parquet(ATOMS)
+    if "--topic" in sys.argv:
+        t = float(sys.argv[sys.argv.index("--topic") + 1])
+        out = topics(df, t)
+        out.to_parquet(ATOMS, index=False)
+        nest = out.groupby("req_group").req_topic.nunique().max()
+        print(f"topic threshold {t}: groups {out.req_group.nunique():,} -> topics "
+              f"{out.req_topic.nunique():,} (topics per group, max: {nest})")
+        return
     c = cores(df)
     print(f"{len(c):,} distinct (head group, core) pairs")
     v = vectors(c.req_core.tolist())

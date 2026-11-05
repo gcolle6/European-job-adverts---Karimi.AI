@@ -226,12 +226,7 @@ def group_titles(roles: list[str], acronyms: dict[str, str] | None = None) -> di
     member, so the group is named by its commonest wording.
     """
     keys = collections.Counter(key(r, acronyms) for r in roles)
-    vocab = {t for k in keys for t in k.split()}
-
-    def singular(t: str) -> str:
-        if len(t) > 3 and t.endswith("s") and not t.endswith(("ss", "us", "is")) and t[:-1] in vocab:
-            return t[:-1]
-        return t
+    singular = make_singular({t for k in keys for t in k.split()})
 
     parent: dict[str, str] = {k: k for k in keys}
 
@@ -254,21 +249,39 @@ def group_titles(roles: list[str], acronyms: dict[str, str] | None = None) -> di
         k = key(r, acronyms)
         if not k:
             continue
-        toks = _tokens(r, acronyms)
-        variants = {
-            " ".join(sorted({singular(t) for t in toks})),
-            # the letters in written order: `full stack` = `fullstack`
-            "#" + "".join(singular(t) for t in toks),
-        }
-        if _developer_head(r):
-            # Decided 2026-11-02: a Developer is the same role as an Engineer.
-            variants.add(" ".join(sorted({singular("engineer" if t == "developer" else t) for t in toks})))
-        for v in variants:
+        for v in variants(r, singular, acronyms):
             if v in by_variant:
                 union(by_variant[v], k)
             else:
                 by_variant[v] = k
     return {k: find(k) for k in keys}
+
+
+def make_singular(vocab: set[str]):
+    """A plural joins its singular only when the singular is a word of some
+    title in ``vocab`` (`devops` stays: no `devop`)."""
+    def singular(t: str) -> str:
+        if len(t) > 3 and t.endswith("s") and not t.endswith(("ss", "us", "is")) and t[:-1] in vocab:
+            return t[:-1]
+        return t
+    return singular
+
+
+def variants(role: str, singular, acronyms: dict[str, str] | None = None) -> set[str]:
+    """The spellings that join a role to others (`group_titles`), and that a
+    title nobody has seen is looked up by (`karimi_normalise.dictionary`)."""
+    toks = _tokens(role, acronyms)
+    out = {
+        " ".join(sorted({singular(t) for t in toks})),
+        # the letters in written order: `full stack` = `fullstack`
+        "#" + "".join(singular(t) for t in toks),
+    }
+    if _developer_head(role) and _dev_eng_same(toks, singular, acronyms):
+        # Decided 2026-11-02, narrowed 2026-11-04: an X Developer is an X
+        # Engineer only for the X in `_DEV_ENG_SAME`.
+        as_eng = [singular("engineer" if t == "developer" else t) for t in toks]
+        out |= {" ".join(sorted(set(as_eng))), "#" + "".join(as_eng)}
+    return out
 
 
 def _developer_head(role: str) -> bool:
@@ -279,6 +292,48 @@ def _developer_head(role: str) -> bool:
     ws = [w.lower() for w in _words(role)]
     return bool(ws) and ws[-1] in ("developer", "developers") \
         and not {"business", "sales"} & set(ws)
+
+
+# The X for which `X Developer` = `X Engineer`, decided pair by pair by the user
+# on 2026-11-04 (`New project/validation/developer_engineer_REVIEW.csv`). An
+# allow-list, not a deny-list: where Engineer can mean another job — infra
+# (`Platform`, `Cloud`, `Linux`, `IT`), hardware (`Electronics`, `Test`),
+# customer-facing (`Solutions`, `Applications`), a defined specialty
+# (`Analytics`, `Performance`) — the pair was judged different or doubtful,
+# and doubtful counts as different. An X not listed stays apart: a missed
+# merge costs depth, a wrong one joins what the product exists to compare.
+_DEV_ENG_SAME = (
+    "software", "data", "full stack", "devops", "ai", "backend", "frontend", "java",
+    "full stack software", "python", "embedded software", "net", "quality assurance", "qa",
+    "android", "backend software", "ios", "web", "java full stack", "frontend software",
+    "mobile", "ai software", "qa automation", "backend java", "python software", "quant",
+    "c#", "php", "firmware", "application support", "software security", "power platform",
+    "pl/sql", "big data", "cloud software", "ai full stack", "generative ai", "backend python",
+    "golang", "mobile software", "sw", "api", "agentic ai", "quantitative", "scala", "hardware",
+    "crm", "full stack application", "android mobile", "it software", "scientific software",
+    "mobile apps", "java/spring boot", "fullstack java/reactjs", "wordpress", "plc software",
+    "azure integration", "net backend", "backend php", "databricks", "sap integration", "mes",
+    "java/kotlin",
+)
+
+
+def _dev_eng_same(toks: list[str], singular, acronyms: dict[str, str] | None) -> bool:
+    """Is the modifier of this Developer title one of `_DEV_ENG_SAME`?
+
+    Compared as a word set (`Backend Java` = `Java Backend`) or as letters in
+    written order (`Fullstack` = `Full Stack`, `PLSQL` = `PL/SQL`), after the
+    same acronyms and plurals as the key, so `AI` matches when it is written out."""
+    def forms(ts):
+        ts = [singular(t) for t in ts if t not in ("developer", "developers", "engineer", "engineers")]
+        return frozenset(ts), "".join(ts)
+    words, letters = forms(toks)
+    if not words:
+        return False   # a bare `Developer` is too generic to be any one engineer
+    for m in _DEV_ENG_SAME:
+        w, l = forms(_tokens(m, acronyms))
+        if words == w or letters == l:
+            return True
+    return False
 
 
 _ACRONYM_RE = re.compile(r"((?:[A-Za-z][\w-]*\s+){1,4}[A-Za-z][\w-]*)\s*\(\s*([A-Z]{2,5})\s*\)")

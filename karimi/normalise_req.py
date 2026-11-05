@@ -271,6 +271,35 @@ def decompose(text: str) -> dict:
     return out
 
 
+_NAME_TOKEN = re.compile(r"[\w+#./-]+")
+# Credential words are names wherever they stand: `Master's degree` and
+# `Bachelor degree` sit at cosine 0.95 and are different requirements. A closed set.
+_CREDENTIALS = {"bachelor", "master", "phd", "msc", "bsc", "mba", "ma", "ba", "graduate",
+                "undergraduate", "postgraduate", "doctorate", "doctoral", "diploma", "hbo", "wo",
+                "mbo", "associate", "bac", "licence", "license", "certificate", "certification"}
+
+
+def names(core: str) -> frozenset[str]:
+    """The proper names, acronyms and numbers of a core, plural- and case-free.
+
+    The embedding places `degree in Computer Science` and `degree in Computer
+    Engineering` at cosine 0.95, and `STP` next to `STL`: one different name is
+    one different requirement, however close the rest. A token is a name when
+    it holds a digit or a capital anywhere but the start of the first word.
+    Grouping (`New project/group_requirements.py`) and dictionary lookup
+    (`karimi_normalise.dictionary`) both use this one function.
+    """
+    out = set()
+    for i, tok in enumerate(_NAME_TOKEN.findall(core)):
+        if re.sub(r"[^\w]", "", tok.lower()).rstrip("s") in _CREDENTIALS:
+            out.add(re.sub(r"[^\w]", "", tok.lower()).rstrip("s"))
+            continue
+        if any(ch.isdigit() for ch in tok) or any(ch.isupper() for ch in (tok[1:] if i == 0 else tok)):
+            t = re.sub(r"[^\w+#]", "", tok.lower())
+            out.add(t[:-1] if len(t) > 3 and t.endswith("s") else t)
+    return frozenset(out)
+
+
 _MODES_RE = re.compile(
     r"\b(?:both\s+)?(?:(?:in\s+)?(?:written|spoken|oral|verbal|orally)(?:\s+(?:and|&|as well as)\s+"
     r"(?:written|spoken|oral|verbal|orally|in\s+writing))?|in\s+writing(?:\s+and\s+(?:speech|orally))?)\b", re.I)
