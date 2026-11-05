@@ -1,0 +1,13 @@
+# What a local `docker build` sees: the code, plus what Cloud Build would copy in
+# from the EU buckets (dictionary/, model/, judge_reference.json). Everything
+# else stays out of the image: the data, the outputs, the labels.
+*
+!pyproject.toml
+!karimi/
+!karimi_normalise/
+!deploy/
+!dictionary/
+!model/
+!judge_reference.json
+**/__pycache__
+**/*.py[cod]

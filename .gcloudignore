@@ -1,0 +1,11 @@
+# What `gcloud builds submit` uploads to Cloud Build: the code the image needs,
+# and nothing else. Without this file it would upload the whole folder, data
+# and model outputs included. The dictionary does not come from here either:
+# Cloud Build copies it from the EU bucket (deploy/cloudbuild.yaml).
+/*
+!/pyproject.toml
+!/karimi/
+!/karimi_normalise/
+!/deploy/
+__pycache__/
+*.py[cod]

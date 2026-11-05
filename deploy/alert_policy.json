@@ -1,0 +1,22 @@
+{
+  "displayName": "karimi: a run checked red",
+  "documentation": {
+    "content": "A job's check (karimi_normalise/check.py) came out red, or the check itself failed. Open jobs/<id>/check.json in the jobs bucket: the job id is in the log line.",
+    "mimeType": "text/markdown"
+  },
+  "combiner": "OR",
+  "conditions": [
+    {
+      "displayName": "karimi_red > 0",
+      "conditionThreshold": {
+        "filter": "metric.type=\"logging.googleapis.com/user/karimi_red\"",
+        "comparison": "COMPARISON_GT",
+        "thresholdValue": 0,
+        "duration": "0s",
+        "aggregations": [{"alignmentPeriod": "300s", "perSeriesAligner": "ALIGN_DELTA"}]
+      }
+    }
+  ],
+  "alertStrategy": {"autoClose": "86400s"},
+  "notificationChannels": ["CHANNEL"]
+}

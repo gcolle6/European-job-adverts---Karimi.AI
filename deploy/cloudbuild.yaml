@@ -1,0 +1,34 @@
+# Build the image in an EU region and push it to Artifact Registry there.
+#
+#   gcloud builds submit --region=europe-west1 --config=deploy/cloudbuild.yaml \
+#       --substitutions=_DICT_VERSION=0.1.0,_TAG=0.1.0
+#
+# `--region` is not optional: without it Cloud Build runs in `global`.
+# `.gcloudignore` keeps the upload to the code; the dictionary comes from the
+# EU bucket. Tests run BEFORE this, on your machine (`deploy/release.sh`):
+# the gates need the labelled sheets, which never leave it.
+
+substitutions:
+  _REGION: europe-west1            # open decision: europe-west1 (Belgium) or europe-west8 (Milan)
+  _REPO: karimi
+  _DICT_VERSION: ""
+  _TAG: ""
+
+options:
+  logging: CLOUD_LOGGING_ONLY      # logs go to the project's log buckets (EU: deploy/gcp_setup.sh step 9)
+  machineType: E2_HIGHCPU_8        # torch and the models make a ~4 GB image; the default machine is slow
+
+steps:
+  - id: dictionary
+    name: gcr.io/cloud-builders/gsutil
+    args: ["-m", "cp", "-r", "gs://${PROJECT_ID}-dictionaries/${_DICT_VERSION}", "dictionary"]
+
+  - id: image
+    name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "deploy/Dockerfile",
+           "-t", "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/karimi:${_TAG}", "."]
+
+images:
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/karimi:${_TAG}"
+
+timeout: 3600s

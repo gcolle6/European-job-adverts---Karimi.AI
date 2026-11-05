@@ -1,0 +1,45 @@
+# The check job: `karimi_normalise.check` with the calibrated judge inside it.
+# Built by Cloud Build in an EU region (deploy/cloudbuild_check.yaml).
+#
+# The judge is the model it was calibrated as, and nothing else: Qwen3-4B
+# Instruct 2507, Q4_K_M, the very file (sha256 checked at build), served by
+# llama.cpp at build b7923, the build that served it during calibration
+# (`tester.py`, 2026-11-05). A different model or build is a different judge
+# and needs calibrating again. It runs on CPU, inside the container: no text
+# leaves it.
+
+# --- llama.cpp, compiled at the calibrated build ---------------------------
+FROM debian:bookworm-slim AS llama
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git cmake build-essential ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+# Every CPU variant, chosen at start: the Cloud Run machine is not known here.
+RUN git clone --depth 1 --branch b7923 https://github.com/ggml-org/llama.cpp /src \
+ && cmake -S /src -B /build -DCMAKE_BUILD_TYPE=Release -DGGML_NATIVE=OFF \
+        -DGGML_BACKEND_DL=ON -DGGML_CPU_ALL_VARIANTS=ON -DLLAMA_CURL=OFF \
+        -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF \
+ && cmake --build /build -j "$(nproc)"
+
+# --- the check -------------------------------------------------------------
+FROM python:3.11-slim
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 curl \
+ && rm -rf /var/lib/apt/lists/*
+COPY --from=llama /build/bin/ /opt/llama/
+ENV LD_LIBRARY_PATH=/opt/llama
+
+WORKDIR /app
+COPY pyproject.toml ./
+COPY karimi ./karimi
+COPY karimi_normalise ./karimi_normalise
+# No torch: the check reads a job's results, it embeds and translates nothing.
+RUN pip install --no-cache-dir --timeout 120 --retries 10 ".[api]"
+
+# Copied into the build context by Cloud Build: the model from the models
+# bucket (sha256 checked there), the judge's reference from the dictionary.
+COPY model/judge.gguf /models/judge.gguf
+COPY judge_reference.json /app/judge_reference.json
+COPY deploy/check_entrypoint.sh /app/check_entrypoint.sh
+
+ENV PYTHONUNBUFFERED=1 KARIMI_JUDGE_URL=http://127.0.0.1:8080 \
+    KARIMI_JUDGE_REFERENCE=/app/judge_reference.json KARIMI_TESTER_OUT=/tmp/tester
+ENTRYPOINT ["sh", "/app/check_entrypoint.sh"]

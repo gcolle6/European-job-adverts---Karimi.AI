@@ -1,0 +1,39 @@
+{
+  "displayName": "karimi-normalise",
+  "mosaicLayout": {
+    "columns": 12,
+    "tiles": [
+      {"width": 6, "height": 4, "widget": {"title": "API requests per minute, by status",
+        "xyChart": {"dataSets": [{"timeSeriesQuery": {"timeSeriesFilter": {
+          "filter": "metric.type=\"run.googleapis.com/request_count\" resource.type=\"cloud_run_revision\" resource.label.service_name=\"karimi-api\"",
+          "aggregation": {"alignmentPeriod": "60s", "perSeriesAligner": "ALIGN_RATE", "crossSeriesReducer": "REDUCE_SUM", "groupByFields": ["metric.label.response_code_class"]}}},
+          "plotType": "STACKED_BAR"}]}}},
+      {"xPos": 6, "width": 6, "height": 4, "widget": {"title": "API latency, p50 and p95 (ms)",
+        "xyChart": {"dataSets": [
+          {"legendTemplate": "p50", "timeSeriesQuery": {"timeSeriesFilter": {
+            "filter": "metric.type=\"run.googleapis.com/request_latencies\" resource.type=\"cloud_run_revision\" resource.label.service_name=\"karimi-api\"",
+            "aggregation": {"alignmentPeriod": "60s", "perSeriesAligner": "ALIGN_DELTA", "crossSeriesReducer": "REDUCE_PERCENTILE_50"}}}},
+          {"legendTemplate": "p95", "timeSeriesQuery": {"timeSeriesFilter": {
+            "filter": "metric.type=\"run.googleapis.com/request_latencies\" resource.type=\"cloud_run_revision\" resource.label.service_name=\"karimi-api\"",
+            "aggregation": {"alignmentPeriod": "60s", "perSeriesAligner": "ALIGN_DELTA", "crossSeriesReducer": "REDUCE_PERCENTILE_95"}}}}]}}},
+      {"yPos": 4, "width": 6, "height": 4, "widget": {"title": "Job executions completed, by job",
+        "xyChart": {"dataSets": [{"timeSeriesQuery": {"timeSeriesFilter": {
+          "filter": "metric.type=\"run.googleapis.com/job/completed_execution_count\" resource.type=\"cloud_run_job\"",
+          "aggregation": {"alignmentPeriod": "3600s", "perSeriesAligner": "ALIGN_DELTA", "crossSeriesReducer": "REDUCE_SUM", "groupByFields": ["resource.label.job_name", "metric.label.result"]}}},
+          "plotType": "STACKED_BAR"}]}}},
+      {"xPos": 6, "yPos": 4, "width": 6, "height": 4, "widget": {"title": "Runs checked red (log metric karimi_red)",
+        "xyChart": {"dataSets": [{"timeSeriesQuery": {"timeSeriesFilter": {
+          "filter": "metric.type=\"logging.googleapis.com/user/karimi_red\"",
+          "aggregation": {"alignmentPeriod": "3600s", "perSeriesAligner": "ALIGN_DELTA", "crossSeriesReducer": "REDUCE_SUM"}}},
+          "plotType": "STACKED_BAR"}]}}},
+      {"yPos": 8, "width": 6, "height": 4, "widget": {"title": "Container instances, API",
+        "xyChart": {"dataSets": [{"timeSeriesQuery": {"timeSeriesFilter": {
+          "filter": "metric.type=\"run.googleapis.com/container/instance_count\" resource.type=\"cloud_run_revision\" resource.label.service_name=\"karimi-api\"",
+          "aggregation": {"alignmentPeriod": "60s", "perSeriesAligner": "ALIGN_MAX", "crossSeriesReducer": "REDUCE_SUM"}}}}]}}},
+      {"xPos": 6, "yPos": 8, "width": 6, "height": 4, "widget": {"title": "Seconds per chunk of 500 postings (log metric karimi_chunk_seconds)",
+        "xyChart": {"dataSets": [{"timeSeriesQuery": {"timeSeriesFilter": {
+          "filter": "metric.type=\"logging.googleapis.com/user/karimi_chunk_seconds\"",
+          "aggregation": {"alignmentPeriod": "3600s", "perSeriesAligner": "ALIGN_DELTA", "crossSeriesReducer": "REDUCE_PERCENTILE_50"}}}}]}}}
+    ]
+  }
+}

@@ -1,0 +1,44 @@
+# Build the check image (the judge inside) in an EU region.
+#
+#   gcloud builds submit --region=europe-west1 --config=deploy/cloudbuild_check.yaml \
+#       --substitutions=_DICT_VERSION=0.1.0,_TAG=0.1.0
+#
+# The model comes from the models bucket and is refused unless it is the very
+# file the judge was calibrated as. Compiling llama.cpp takes ~10 minutes.
+
+substitutions:
+  _REGION: europe-west1
+  _REPO: karimi
+  _DICT_VERSION: ""
+  _TAG: ""
+  _MODEL: Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+  _MODEL_SHA256: 3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8
+
+steps:
+  - id: model
+    name: gcr.io/cloud-builders/gsutil
+    entrypoint: sh
+    args:
+      - -c
+      - |
+        mkdir -p model \
+        && gsutil cp "gs://${PROJECT_ID}-models/${_MODEL}" model/judge.gguf \
+        && echo "${_MODEL_SHA256}  model/judge.gguf" | sha256sum -c -
+
+  - id: reference
+    name: gcr.io/cloud-builders/gsutil
+    args: ["cp", "gs://${PROJECT_ID}-dictionaries/${_DICT_VERSION}/judge_reference.json", "judge_reference.json"]
+
+  - id: image
+    name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "deploy/Dockerfile.check",
+           "-t", "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/karimi-check:${_TAG}", "."]
+
+images:
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/karimi-check:${_TAG}"
+
+timeout: 3600s
