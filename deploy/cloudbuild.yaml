@@ -21,7 +21,9 @@ options:
 steps:
   - id: dictionary
     name: gcr.io/cloud-builders/gsutil
-    args: ["-m", "cp", "-r", "gs://${PROJECT_ID}-dictionaries/${_DICT_VERSION}", "dictionary"]
+    entrypoint: sh
+    # the folder first: gsutil -m refuses a destination that does not exist
+    args: ["-c", "mkdir -p dictionary && gsutil -m cp 'gs://${PROJECT_ID}-dictionaries/${_DICT_VERSION}/*' dictionary/ && ls -l dictionary"]
 
   - id: image
     name: gcr.io/cloud-builders/docker

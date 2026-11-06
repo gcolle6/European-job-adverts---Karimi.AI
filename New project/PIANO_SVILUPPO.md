@@ -72,6 +72,21 @@ Fuori dal piano: **RAGAS**, che misura sistemi RAG (fedeltà al contesto
 recuperato), mentre qui non si recupera niente. E un LLM che faccia tutto lo
 split.
 
+**Stato reale al 2026-11-06**, riga per riga (dove diverge dalla tabella sopra,
+vale questo):
+
+| # | Pezzo | In piedi? | Come |
+|---|---|---|---|
+| 1 | Libreria | ✅ in locale | `karimi_normalise.process()`; non ancora distribuita: il magazzino Python `karimi-py` esiste, `release.sh` non è stato lanciato |
+| 2 | Versioni | ✅ | `rules_version` e `dict_version` su ogni riga; impronta delle regole controllata da un test; sha256 di ogni file del dizionario |
+| 3 | Test | ✅ in locale, non in cloud | 24 test veloci e 3 gate; Cloud Build non li lancia, perché i gate leggono etichette che restano sul PC. Hook pre-commit scritto, non attivato |
+| 4 | API | ⏳ deploy in corso | FastAPI su Cloud Run, chiave API per la prova; container provato in locale. **Ora offerta**, per la prova con Chiara |
+| 5 | Job a lotti | ⏳ deploy in corso | Cloud Run Job `karimi-batch`, a blocchi da 500; senza Workflows, che non serve |
+| 6 | Dati | ✅ | bucket UE: lavori (cancellati dopo 30 giorni), dizionari, appoggio delle build. **Niente BigQuery**: file JSONL e CSV, e lo storico in `history/runs.jsonl` |
+| 7 | Agente monitor | ⏳ codice provato, deploy dopo l'API | è il controllore `check.py` (livelli 1, 2, 4) e `karimi-sweep` ogni mattina; avviso email dai log |
+| 8 | Osservabilità | ⏳ in parte | righe JSON per richiesta e per blocco, metriche dai log, dashboard Cloud Monitoring. **Non c'è OpenTelemetry**: niente span per passo, solo l'id di traccia di Cloud Run sulle richieste |
+| 9 | Agente tester | ✅ tarato, ⏳ in cloud | **Qwen3-4B in locale con llama.cpp, dentro il job `karimi-check`**, non Vertex AI; niente DeepEval. Livello 3 del controllore |
+
 ### Struttura del codice (creata il 2026-11-04)
 
 Niente gira ancora in cloud. Tutto è provato in locale.

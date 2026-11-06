@@ -27,6 +27,9 @@ API_SA="karimi-api@${PROJECT_ID}.iam.gserviceaccount.com"
 JOB_SA="karimi-job@${PROJECT_ID}.iam.gserviceaccount.com"
 JOBS="gs://${PROJECT_ID}-jobs"
 DICTS="gs://${PROJECT_ID}-dictionaries"
+# Cloud Build stages the code here. Without it, a build makes gs://<project>_cloudbuild
+# in the US on its own (it did, 2026-11-06: code only, deleted).
+BUILD="gs://${PROJECT_ID}-build"
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/karimi/karimi:${DICT_VERSION}"
 CHECK_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/karimi/karimi-check:${DICT_VERSION}"
 
@@ -59,6 +62,7 @@ case "${1:?which step: 1-17}" in
     gcloud storage buckets create "$DICTS" --location="$REGION" --uniform-bucket-level-access
     gcloud storage buckets create "$JOBS" --location="$REGION" --uniform-bucket-level-access
     gcloud storage buckets update "$JOBS" --lifecycle-file=deploy/lifecycle.json
+    gcloud storage buckets create "$BUILD" --location="$REGION" --uniform-bucket-level-access
     ;;
 6)  # the dictionary and its quality card into the bucket
     gcloud storage cp -r "New project/output/dictionaries/${DICT_VERSION}" "${DICTS}/"
@@ -84,6 +88,7 @@ case "${1:?which step: 1-17}" in
     ;;
 8)  # build the image in the EU and push it
     gcloud builds submit --region="$REGION" --config=deploy/cloudbuild.yaml \
+        --gcs-source-staging-dir="${BUILD}/source" \
         --substitutions="_REGION=${REGION},_DICT_VERSION=${DICT_VERSION},_TAG=${DICT_VERSION}"
     ;;
 9)  # logs in the EU: a log bucket there, and the _Default sink pointed at it
@@ -125,6 +130,7 @@ case "${1:?which step: 1-17}" in
     gcloud storage cp "New project/output/tester/judge_reference_${DICT_VERSION}.json" \
         "${DICTS}/${DICT_VERSION}/judge_reference.json"
     gcloud builds submit --region="$REGION" --config=deploy/cloudbuild_check.yaml \
+        --gcs-source-staging-dir="${BUILD}/source" \
         --substitutions="_REGION=${REGION},_DICT_VERSION=${DICT_VERSION},_TAG=${DICT_VERSION}"
     ;;
 14) # the check job (judge inside), the sweep job, and the batch job told to start the check

@@ -7,9 +7,19 @@
   "combiner": "OR",
   "conditions": [
     {
-      "displayName": "karimi_red > 0",
+      "displayName": "karimi_red > 0 in a job (check, batch, sweep)",
       "conditionThreshold": {
-        "filter": "metric.type=\"logging.googleapis.com/user/karimi_red\"",
+        "filter": "metric.type=\"logging.googleapis.com/user/karimi_red\" AND resource.type=\"cloud_run_job\"",
+        "comparison": "COMPARISON_GT",
+        "thresholdValue": 0,
+        "duration": "0s",
+        "aggregations": [{"alignmentPeriod": "300s", "perSeriesAligner": "ALIGN_DELTA"}]
+      }
+    },
+    {
+      "displayName": "karimi_red > 0 in the API (a dead run found on a status call)",
+      "conditionThreshold": {
+        "filter": "metric.type=\"logging.googleapis.com/user/karimi_red\" AND resource.type=\"cloud_run_revision\"",
         "comparison": "COMPARISON_GT",
         "thresholdValue": 0,
         "duration": "0s",
