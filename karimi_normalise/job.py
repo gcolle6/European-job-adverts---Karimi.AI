@@ -8,11 +8,11 @@ keeps `<id>/status.json` current, then writes `<id>/report.json`, the run
 report over the WHOLE job, and the two CSV tables (`exports.py`).
 
 Why a job and not a request: a Cloud Run request ends at 60 minutes, and
-100,000 requirements (~50,000 items) took ~7 hours at the measured rate:
-8.1 minutes per 1,000 items on a 16-thread laptop, 2026-11-05, 94% of it
-translating the 31% of items not in English. A job runs until it is done
-(up to 24 hours) and costs nothing while no job runs. Cloud Run's 4 CPUs are
-not measured yet: read the first real job's `seconds`.
+100,000 requirements (~50,000 items) take about an hour. Measured on Cloud
+Run, 4 CPUs, 2026-11-06: 2,247 items in 172 s, 28% of them translated, so
+1.3 minutes per 1,000 items. (A laptop measurement the day before gave 8.1,
+taken while a Docker build ran beside it: not the number to plan with.) A
+job runs until it is done (up to 24 hours) and costs nothing while none runs.
 
 Chunks keep memory flat and make progress visible. The result is the same as
 one `process` call over everything: translation is cached per item within the

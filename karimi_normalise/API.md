@@ -91,10 +91,11 @@ the rules and comes back as a column of `postings.csv`.
 
 ## More: a job
 
-A job runs for as long as it needs. Measured on our side: about 8 minutes
-per 1,000 `must_have` items, nearly all of it translating the items not in
-English, so 100,000 requirements (~50,000 items) take several hours. Send
-`must_have_english` and the same job takes minutes.
+A job runs for as long as it needs. Measured: about 1.3 minutes per 1,000
+`must_have` items with a quarter of them translated, so 100,000 requirements
+(~50,000 items) take about an hour. Most of it is translation: send
+`must_have_english` and it is faster still. `/v1/process` answers 200
+postings in one to three minutes.
 
 ```python
 job = requests.post(f"{URL}/v1/jobs", headers=H, json={}).json()

@@ -2,9 +2,9 @@
 
     KARIMI_DICT=<dictionary folder> KARIMI_STORE=./jobs uvicorn karimi_normalise.api:app --workers 1
 
-Reopened 2026-11-05 next to the library, not in its place: a few dollars of
-compute a month for 100,000 requirements (estimated from the measured rate in
-`job.py`) makes the cost no reason to refuse it. Every answer is
+Reopened 2026-11-05 next to the library, not in its place: about an hour of
+4 CPUs for 100,000 requirements (measured on Cloud Run, `job.py`), well under
+a euro a month, makes the cost no reason to refuse it. Every answer is
 `process()`'s, so the API and the library cannot disagree.
 
 Two ways in:
