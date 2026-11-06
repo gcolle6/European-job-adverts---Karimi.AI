@@ -6,6 +6,37 @@ the rules and of the dictionary that made it.
 
 Interactive documentation, generated from the code: `<URL>/docs`.
 
+## The quickest try: your own CSV
+
+```bash
+pip install requests
+curl -O <URL>/try_api.py
+python try_api.py adverts.csv --url <URL> --key <KEY> --limit 200
+```
+
+It reads your CSV, sends the rows in batches of 200, and writes next to it
+`adverts_normalised.csv`: **your rows, every column kept**, plus the added
+ones (the role, the counts, the groups and topics found). Add
+`--per-requirement` for a second file with one row per requirement, if you
+want to count or pivot by requirement.
+
+It finds the columns `must_have` (required), `id`, `title` (or `job_title`,
+`job_title_english`) and `language` by name; other names with
+`--col-must-have`, `--col-id`, `--col-title`. A `must_have` cell can be a JSON
+list, one requirement per line, or items separated by ` | ` or `;`.
+
+**What is most useful to us:** 100-200 software or data adverts (the
+dictionary was built from those; other roles mostly come back `nuovo`), in
+any language, with an `id`. Then a look at 20 rows of `adverts_normalised.csv`
+and `adverts_requirements.csv`: is the advert split into the right number of
+requirements? are the groups sensible? Rows that look wrong, with their `id`,
+are the most valuable thing you can send back.
+
+All processing happens in the EU (Google Cloud, Belgium); nothing is sent to
+any other service. The input and results of each run are kept in our project
+for 30 days, so we can read them with you, then deleted; the public site
+shows only aggregate numbers, never the text of an advert.
+
 ## Access
 
 For the trial, every request carries the key we sent you, in the `X-API-Key`

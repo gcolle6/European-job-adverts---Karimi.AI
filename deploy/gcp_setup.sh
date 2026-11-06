@@ -29,8 +29,6 @@ JOBS="gs://${PROJECT_ID}-jobs"
 DICTS="gs://${PROJECT_ID}-dictionaries"
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/karimi/karimi:${DICT_VERSION}"
 CHECK_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/karimi/karimi-check:${DICT_VERSION}"
-MODELS="gs://${PROJECT_ID}-models"
-JUDGE_GGUF="${JUDGE_GGUF:-C:/Users/giaco/hf/gguf/qwen3_4b/Qwen3-4B-Instruct-2507-Q4_K_M.gguf}"
 
 case "${1:?which step: 1-17}" in
 1)  # the project, and the default for every later command
@@ -38,11 +36,12 @@ case "${1:?which step: 1-17}" in
     gcloud config set project "$PROJECT_ID"
     gcloud config set run/region "$REGION"
     ;;
-2)  # billing, and a budget that warns at 50%, 90%, 100% of 10 (in the billing account's currency)
+2)  # billing, and a budget that warns at 50%, 90%, 100%. The amount is in the billing
+    # account's own currency, which a currency code must match: 75 DKK is ~10 EUR
     gcloud billing projects link "$PROJECT_ID" --billing-account="${BILLING:?set BILLING}"
     gcloud services enable billingbudgets.googleapis.com
     gcloud billing budgets create --billing-account="$BILLING" --display-name="karimi" \
-        --budget-amount=10EUR --filter-projects="projects/${PROJECT_ID}" \
+        --budget-amount="${BUDGET:-75}" --filter-projects="projects/${PROJECT_ID}" \
         --threshold-rule=percent=0.5 --threshold-rule=percent=0.9 --threshold-rule=percent=1.0
     ;;
 3)  # the services used
@@ -120,9 +119,9 @@ case "${1:?which step: 1-17}" in
     echo "URL: $(gcloud run services describe karimi-api --region="$REGION" --format='value(status.url)')"
     echo "KEY: $(gcloud secrets versions access latest --secret=karimi-api-key)"
     ;;
-13) # the judge's model and reference: the very file it was calibrated as
-    gcloud storage buckets create "$MODELS" --location="$REGION" --uniform-bucket-level-access
-    gcloud storage cp "$JUDGE_GGUF" "${MODELS}/"
+13) # the judge's reference, then its image. The model itself is fetched by Cloud
+    #   Build from Hugging Face at a pinned commit and checked by sha256
+    #   (deploy/cloudbuild_check.yaml): 2.5 GB is not worth uploading from here.
     gcloud storage cp "New project/output/tester/judge_reference_${DICT_VERSION}.json" \
         "${DICTS}/${DICT_VERSION}/judge_reference.json"
     gcloud builds submit --region="$REGION" --config=deploy/cloudbuild_check.yaml \

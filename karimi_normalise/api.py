@@ -67,7 +67,7 @@ from .versions import RULES_VERSION
 MAX_SYNC = 200                 # postings per /v1/process call; more goes to a job
 MAX_UPLOAD_MB = 30             # Cloud Run caps a request body at 32 MiB
 FILES = ("results.jsonl", "report.json", "status.json", "check.json", "requirements.csv", "postings.csv")
-OPEN = ("/health", "/docs", "/openapi.json", "/redoc", "/v1/metrics")
+OPEN = ("/health", "/docs", "/openapi.json", "/redoc", "/v1/metrics", "/try_api.py", "/API.md")
 _JOB_ID = re.compile(r"^[0-9a-f]{16}$")
 
 app = FastAPI(title="karimi-normalise", version=RULES_VERSION,
@@ -141,6 +141,19 @@ def quality() -> dict:
     if _quality is None:
         raise HTTPException(404, "no quality card for these versions")
     return _quality
+
+
+@app.get("/try_api.py")
+def try_api_script() -> FileResponse:
+    """The tester's script (`try_api.py`): their CSV in, their CSV with added columns out."""
+    return FileResponse(Path(__file__).with_name("try_api.py"), media_type="text/x-python",
+                        filename="try_api.py")
+
+
+@app.get("/API.md")
+def api_guide() -> FileResponse:
+    """The instructions, as a file."""
+    return FileResponse(Path(__file__).with_name("API.md"), media_type="text/markdown", filename="API.md")
 
 
 @app.get("/v1/metrics")
