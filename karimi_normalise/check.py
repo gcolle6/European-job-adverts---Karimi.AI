@@ -19,6 +19,9 @@ say what they found, and a person changes the rules, with a new version.
    the same judge gives on our own data (`reference`), with a one-sided
    binomial test: a run is flagged when the judge disagrees with it MORE than
    with ours, not when it disagrees at all;
+   With every check the judge also answers `CANARIES`, planted pairs whose
+   answer is known: a judge that misses more than CANARY_MAX_MISSES is not
+   read, its lights go grey and a yellow finding says why;
 4. **drift**    — one line per job in `history/runs.jsonl`, no text: a signal
    off green in the last DRIFT_RUNS jobs in a row is a slow change no single
    run shows.
@@ -51,6 +54,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from . import errors
 from .store import jf, now, open_store, read_json, write_json
 
 STALE_MINUTES = 90          # a chunk of 500 postings takes 5-15 minutes; 90 is six chunks of silence
@@ -65,6 +69,43 @@ JUDGE_NAME = os.environ.get("KARIMI_JUDGE_NAME", "qwen3_4b")
 QUESTION = {"group": "strict", "topic": "theme", "variant": "role"}
 HISTORY = "history/runs.jsonl"
 _ORDER = {"green": 0, "grey": 0, "yellow": 1, "red": 2}
+
+# Planted pairs whose answer is known, put to the judge with every check and
+# never counted in its rates. They test the JUDGE, not the run: a judge that
+# has stopped working (another model behind the URL, a server answering
+# nonsense, a judge that says SAME to everything) would otherwise keep every
+# light green. Clear cases on purpose, both answers, all routed to the model
+# (`tester.by_code` answers none of them), none taken from the prompt or the
+# calibration sources. Checked 2026-11-07: qwen3_4b / v5 answers all 21.
+# Fixed the same day, BEFORE any run used them: more than CANARY_MAX_MISSES
+# wrong and the judge's lights go grey, with a yellow finding. On GCP the
+# answers cache is the execution's own /tmp, so they are asked every time;
+# a local run with a warm cache reads them back instead.
+CANARIES = [
+    # (sample, a, b, the right answer: same?)
+    ("group", "project management", "risk management", False),
+    ("group", "data visualization", "data protection", False),
+    ("group", "driving licence", "willingness to travel", False),
+    ("group", "customer support", "software testing", False),
+    ("group", "night shift availability", "remote work", False),
+    ("group", "communication skills", "skills in communication", True),
+    ("group", "attention to detail", "detail-oriented", True),
+    ("group", "ability to work independently", "ability to work autonomously", True),
+    ("group", "working in a team", "teamwork", True),
+    ("topic", "project management", "risk management", False),
+    ("topic", "data visualization", "data protection", False),
+    ("topic", "remote work", "customer support", False),
+    ("topic", "testing", "automated testing", True),
+    ("topic", "machine learning", "machine learning models", True),
+    ("topic", "cloud security", "security", True),
+    ("variant", "Data Analyst", "Data Architect", False),
+    ("variant", "Embedded Software Engineer", "Cloud Engineer", False),
+    ("variant", "QA Tester", "QA Manager", False),
+    ("variant", "Data Scientist", "Data Science Specialist", False),
+    ("variant", "ML Engineer", "Machine Learning Engineer", True),
+    ("variant", "BI Developer", "Business Intelligence Developer", True),
+]
+CANARY_MAX_MISSES = 1
 
 # ---------------------------------------------------------------- 1. health
 
@@ -127,12 +168,14 @@ def pairs_from_results(postings: list[dict]) -> pd.DataFrame:
         for r in p.get("requirements") or []:
             if r.get("match") in ("group", "topic") and r.get("match_via"):
                 rows.append({"sample": r["match"], "kind": "requirement", "a": r["core"], "b": r["match_via"],
-                             "context": r.get("head_group") or "(no head)", "a_example": r.get("atom", "")})
+                             "context": r.get("head_group") or "(no head)", "a_example": r.get("atom", ""),
+                             "item": r.get("item", ""), "translated": bool(r.get("translated"))})
         t = p.get("title")
         if t and t.get("match") == "variant" and t.get("title_name"):
             rows.append({"sample": "variant", "kind": "role", "a": t["title_role"], "b": t["title_name"],
-                         "context": "", "a_example": t.get("title", "")})
-    d = pd.DataFrame(rows, columns=["sample", "kind", "a", "b", "context", "a_example"])
+                         "context": "", "a_example": t.get("title", ""), "item": t.get("title", ""),
+                         "translated": False})
+    d = pd.DataFrame(rows, columns=["sample", "kind", "a", "b", "context", "a_example", "item", "translated"])
     return d.drop_duplicates(["sample", "a", "b"]).reset_index(drop=True)
 
 
@@ -151,6 +194,21 @@ def judge(pairs: pd.DataFrame, url: str, name: str = JUDGE_NAME) -> pd.DataFrame
                      group=[tester.group(k, a, b) for k, a, b in zip(pairs.kind, pairs.a, pairs.b)])
     a = tester.ask(url, name, JUDGE_PROMPT, d)
     return d.merge(a[["id", "judge_same", "by", "text"]], on="id")
+
+
+def canary_pairs() -> pd.DataFrame:
+    rows = [{"sample": s, "kind": "role" if s == "variant" else "requirement", "a": a, "b": b,
+             "context": "" if s == "variant" else "(no head)", "a_example": "", "answer": same}
+            for s, a, b, same in CANARIES]
+    return pd.DataFrame(rows)
+
+
+def canary_result(judged: pd.DataFrame) -> dict:
+    """How many planted pairs the judge got wrong; unanswered counts as wrong."""
+    wrong = judged[judged.judge_same.isna() | (judged.judge_same != judged.answer)]
+    return {"pairs": int(len(judged)), "missed": int(len(wrong)), "max_misses": CANARY_MAX_MISSES,
+            "trusted": bool(len(wrong) <= CANARY_MAX_MISSES),
+            "missed_pairs": wrong[["sample", "a", "b", "answer", "text"]].to_dict("records")}
 
 
 def rates(judged: pd.DataFrame) -> dict:
@@ -228,16 +286,24 @@ def check(job: str, store=None, judge_url: str | None = None, reference: dict | 
                              "what": f"{k} = {v['value']}, normal {v['normal_range'][0]}-{v['normal_range'][1]}"})
 
     # 3. judge
-    judged = {}
-    if report is not None and judge_url:
+    judged, canaries, postings, j = {}, None, None, None
+    if report is not None:
         with store.open_read(jf(job, "results.jsonl")) as f:
             postings = [json.loads(x) for x in f if x.strip()]
+    if report is not None and judge_url:
         sample = draw(pairs_from_results(postings), SAMPLE, job)
         j = judge(sample, judge_url) if len(sample) else sample.assign(judge_same=None, by="", text="")
+        canaries = canary_result(judge(canary_pairs(), judge_url))
+        if not canaries["trusted"]:
+            findings.append({"level": "judge", "light": "yellow", "code": "judge:canaries",
+                             "what": f"the judge got {canaries['missed']} of {canaries['pairs']} planted "
+                                     f"pairs wrong: its verdicts on this run are not read"})
         ref = reference if reference is not None else (
             json.loads(_reference_file().read_text(encoding="utf-8")) if _reference_file() else None)
         for k, rate in rates(j).items():
             light, p = judge_light(rate, (ref or {}).get("rates", {}).get(k))
+            if not canaries["trusted"]:
+                light = "grey"
             judged[k] = {**rate, "reference_share": ((ref or {}).get("rates", {}).get(k) or {}).get("share"),
                          "p": p, "light": light,
                          "flagged_pairs": j[(j["sample"] == k) & (j.judge_same == False)]  # noqa: E712
@@ -246,6 +312,17 @@ def check(job: str, store=None, judge_url: str | None = None, reference: dict | 
                 findings.append({"level": "judge", "light": light, "code": f"judge:{k}",
                                  "what": f"the judge calls {rate['flagged']} of {rate['answered']} {k} "
                                          f"decisions wrong, against {judged[k]['reference_share']} on our data"})
+
+    # The run's errors: normalisation, on the judge's sample, and only from a
+    # judge that passed its planted pairs. Splitting errors are measured per
+    # version on hand counts (`errors.py` says why); per run the shape rules
+    # only mark suspects, kept here and never counted.
+    err = err_examples = suspects = None
+    if postings is not None:
+        norm = errors.normalise_errors(j) if j is not None and len(j) and canaries["trusted"] else None
+        err, err_examples = errors.table(norm), errors.examples(norm)
+        sp = errors.split_suspects(postings)
+        suspects = {"of": sp["of"], "rows": errors.table(sp)["rows"], "examples": errors.examples(sp)}
 
     # 4. drift. The history line carries this run's own verdict (levels 1-3);
     # a drift finding can only add yellow, so it is read off the line, not in it.
@@ -256,10 +333,14 @@ def check(job: str, store=None, judge_url: str | None = None, reference: dict | 
                                "requirements": ((report or {}).get("summary") or {}).get("requirements"),
                                "seconds": s.get("seconds"), "lights": lights,
                                "judge": {k: v["share"] for k, v in judged.items()},
+                               "canaries_missed": canaries["missed"] if canaries else None,
+                               "errors": err,
                                "rules_version": s.get("rules_version"), "dict_version": s.get("dict_version")})
 
     overall = max((f["light"] for f in findings), key=_ORDER.get, default="green")
     out = {"job": job, "checked": now(), "overall": overall, "findings": findings, "judge": judged,
+           "canaries": canaries, "errors": err, "error_examples": err_examples,
+           "split_suspects": suspects,
            "judge_model": JUDGE_NAME if judge_url else None, "judge_prompt": JUDGE_PROMPT if judge_url else None,
            "to_check": {k: len(v) for k, v in (report or {}).get("to_check", {}).items()},
            "thresholds": {"p_red": P_RED, "p_yellow": P_YELLOW, "min_pairs": MIN_PAIRS, "ref_min_pairs": REF_MIN_PAIRS,
@@ -267,6 +348,11 @@ def check(job: str, store=None, judge_url: str | None = None, reference: dict | 
     write_json(store, jf(job, "check.json"), out)
     _log({"red": "ERROR", "yellow": "WARNING"}.get(overall, "INFO"), event="karimi_check", job=job,
          overall=overall, findings=[f["code"] for f in findings])
+    if canaries and not canaries["trusted"]:
+        # The run is only yellow, but every later check is blind until a person
+        # looks at the judge: this line is what emails (`gcp_setup.sh` step 16).
+        _log("ERROR", event="karimi_judge_untrusted", job=job, missed=canaries["missed"],
+             pairs=canaries["pairs"])
     return out
 
 

@@ -445,6 +445,77 @@ def ask(url: str, name: str, prompt: str, d: pd.DataFrame) -> pd.DataFrame:
                              "by": "model", "judge_same": _verdict(x["text"], last=reason_first)})
     return pd.DataFrame(rows)
 
+# ---------------------------------------------------------------- counting
+
+# The judge also COUNTS: how many requirements one item holds, by the rules
+# the human counted 120 items with (`validation/COUNT_GUIDE.md` and the user's
+# decisions of 2026-10-30). Where its count and the library's differ, the
+# split is probably wrong, and the direction says how: fewer is a merge, more
+# a fragment. Calibrated against the hand counts in
+# `New project/score_judge_counts.py`; the check uses it only if it passed.
+COUNT_GUIDE = Path(__file__).resolve().parent / "COUNT_GUIDE.md"
+COUNT_PROMPT = "c1"
+
+_COUNT_DECISIONS = """
+## Decisions taken after the first count (they override the table where they differ)
+
+1. Degrees times fields is a full cross-product: `Master's or PhD in Statistics,
+   Econometrics or Data Science` = 6.
+2. A part marked optional (`is a plus`, `ideally`, `preferably`) is NOT counted
+   when it adds to a required part. An item optional as a whole still counts 1.
+3. Adjectives sharing one SINGULAR noun are one requirement (`Structured and
+   independent way of working` = 1); before a PLURAL noun they split
+   (`analytical and problem-solving skills` = 2).
+4. Equivalent alternatives where any one suffices count 1: school-leaving
+   qualifications (`A-levels or a university entrance qualification` = 1) and
+   scopes after `within` (`experience within operations or planning` = 1).
+   Tools and languages in alternative still count one each (`C, C++ or Rust` = 3).
+"""
+
+
+COUNT_PROMPTS = {
+    # c1: the number first. Read half 2026-11-07: exact 0.73 against the
+    # library's 0.80, flag precision 0.28 — REJECTED.
+    "c1": "How many separate requirements does this item hold? Answer with one number on the first "
+          "line, then at most 15 words of reason.",
+    # c2: list them first, one per line, then the total: a small model counts
+    # what it has written better than what it holds in mind.
+    "c2": "Write each separate requirement this item holds on its own line, starting with `- `, "
+          "applying the guide. Then write a last line `TOTAL: <number>`.",
+}
+
+
+def _count_messages(item: str, prompt: str = COUNT_PROMPT) -> list[dict]:
+    guide = COUNT_GUIDE.read_text(encoding="utf-8")
+    system = ("You count requirements in items of job adverts, following this guide.\n\n" + guide
+              + "\n" + _COUNT_DECISIONS)
+    return [{"role": "system", "content": system},
+            {"role": "user", "content": f"item: {item}\n\n{COUNT_PROMPTS[prompt]}"}]
+
+
+def _count_answer(text: str) -> int | None:
+    total = re.search(r"TOTAL:\s*(\d{1,2})", text)
+    first = re.match(r"\s*(\d{1,2})\b", text)
+    return int((total or first).group(1)) if (total or first) else None
+
+
+def count(url: str, name: str, items: list[str], prompt: str = COUNT_PROMPT) -> list[int | None]:
+    """The judge's count for each item, cached like `ask`; None when it gave no number."""
+    seen, out = _cache(), []
+    OUT.mkdir(parents=True, exist_ok=True)
+    with CACHE.open("a", encoding="utf-8") as f:
+        for item in items:
+            m = _count_messages(item, prompt)
+            k = _key(name, m)
+            if k not in seen:
+                s = time.time()
+                seen[k] = {"key": k, "judge": name, "text": _chat(url, m, 40 if prompt == "c1" else 300).strip(),
+                           "seconds": round(time.time() - s, 2)}
+                f.write(json.dumps(seen[k], ensure_ascii=False) + "\n")
+                f.flush()
+            out.append(_count_answer(seen[k]["text"]))
+    return out
+
 # ---------------------------------------------------------------- scoring
 
 

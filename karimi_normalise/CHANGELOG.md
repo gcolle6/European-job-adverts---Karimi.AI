@@ -21,6 +21,21 @@ Format: version · date · what changed · how it was measured.
   the embedding is not installed; base install plus `[translate]`, `[embed]`. Then (2026-11-05): `match_via` on every
   requirement, the known core it was placed by, so a check can show both
   sides of a similarity decision. Rules unchanged.
+- **0.2.0** · 2026-11-07 · the item is cleaned before it is read
+  (`requirements.clean_item`): a bullet or list number, doubled spaces and
+  one closing `.`/`;`/`,` are removed, and an item with NO capital at all
+  gets its language's capitals back (`Dictionary.casing`: English from the
+  dictionary's cores, other languages from the employers' items in
+  `casing.json`, `New project/build_casing.py`). A known core is also found
+  in other capitals (`Dictionary._folded`). Why: `New project/invariance.py`
+  on 1,070 dev items — the whole item in lower case changed the output of
+  41.9% of items (English 37.7%), a bullet and a full stop 6.7% (other
+  languages 17.7%). Measured after: lower case 6.2% (English 2.7%, other
+  languages 12.6%: still above the 5% fixed beforehand, through the
+  translator); bullet, full stop, spaces, order 0.0%; titles 0.0%. Parity
+  with the batch 99.4% of 1,533 items (was 100%): the 9 differences are
+  Swedish items losing their full stop before translation and all-lower-case
+  French items getting a first capital, as intended.
 
 ## Dictionary
 

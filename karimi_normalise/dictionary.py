@@ -59,6 +59,44 @@ class ReqMatch:
     via: str = ""       # the known core it was matched to
 
 
+CASING_MIN_N = 5          # occurrences of a word, outside the first position of a core
+CASING_MIN_SHARE = 0.90   # of them in the one spelling with capitals
+
+
+def casing(cores) -> dict[str, str]:
+    """lower-case word -> the spelling the dictionary's cores give it, for names only.
+
+    `names` finds a product or a standard by its capitals, so an item written
+    all in lower case (`experience with kubernetes on azure`) has no names,
+    is compared with the wrong cores, and is lost. This is what puts the
+    capitals back (`requirements.clean_item`). A word is kept when it is
+    written with capitals in at least CASING_MIN_SHARE of its occurrences;
+    the first word of a core is not counted, since there a capital says
+    nothing. Thresholds fixed 2026-11-07, before measuring their effect.
+    """
+    forms: dict[str, dict[str, int]] = {}
+    for c in cores:
+        for i, tok in enumerate(normalise_req._NAME_TOKEN.findall(c)):
+            # One letter is too little to go on: `r` and `c` are words before they are languages.
+            if i == 0 or len(tok) < 2 or not any(ch.isalpha() for ch in tok):
+                continue
+            f = forms.setdefault(tok.lower(), {})
+            f[tok] = f.get(tok, 0) + 1
+    out = {}
+    for low, f in forms.items():
+        n = sum(f.values())
+        best, k = max(f.items(), key=lambda x: x[1])
+        if n >= CASING_MIN_N and best != low and k / n >= CASING_MIN_SHARE:
+            out[low] = best
+    return out
+
+
+def language_casing() -> dict[str, dict[str, str]]:
+    """The other languages' capitals, shipped with the rules (`karimi_normalise/casing.json`)."""
+    p = Path(__file__).resolve().parent / "casing.json"
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+
+
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -99,6 +137,22 @@ class Dictionary:
         self.vectors = vectors.astype(np.float32)
         self.reference = reference
         self._exact = {(h, c): i for i, (h, c) in enumerate(zip(cores.req_head_group, cores.req_core))}
+        # The same core in other capitals (`proficient in python`), found when the
+        # exact one is not. Only where every known spelling agrees on the group:
+        # a key two groups share is no evidence for either. Added 2026-11-07
+        # (rules 0.2.0) after `New project/invariance.py`: an item in lower case
+        # lost its group 38% of the time in English.
+        folded: dict[tuple[str, str], set[int]] = {}
+        for i, (h, c) in enumerate(zip(cores.req_head_group, cores.req_core)):
+            folded.setdefault((h, c.casefold()), set()).add(i)
+        self._folded = {k: min(v) for k, v in folded.items()
+                        if len({cores.req_group.iat[i] for i in v}) == 1}
+        # language code -> its map; English from these cores, the rest from the
+        # employers' own items (`casing.json`, `New project/build_casing.py`)
+        # with the cores' names under them: a product is written alike in every
+        # language and too rare in any one (`GitLab`, `SAP` in French items).
+        en = casing(cores.req_core)
+        self.casing = {"en": en, **{k: {**en, **m} for k, m in language_casing().items()}}
         self._topic_of = dict(zip(cores.req_group, cores.req_topic))
         # Candidates share the head group AND the names, so the index is by both.
         buckets: dict[tuple, list[int]] = {}
@@ -144,6 +198,8 @@ class Dictionary:
         if not core.strip():
             return ReqMatch("", "", "empty")
         i = self._exact.get((head, core))
+        if i is None:
+            i = self._folded.get((head, core.casefold()))
         if i is None and head == "":
             # A bare core is the competence with that core (`Python` / `Python
             # skills`), as in the batch: on an identical core only.

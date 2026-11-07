@@ -20,7 +20,7 @@ from __future__ import annotations
 from karimi import pos
 
 from .metrics import run_report
-from .requirements import english_items, split_posting
+from .requirements import clean_items, english_items, split_posting
 from .titles import normalise_title
 
 
@@ -41,11 +41,14 @@ def process(postings: list[dict], dictionary=None, translate: bool = True, cache
     (`metrics.run_report`: signals against the dictionary's reference, and
     the items worth a look).
     """
+    casing = dictionary.casing if dictionary is not None else None
     english = (english_items([(p.get("must_have") or [], p.get("language"), p.get("must_have_english"))
-                              for p in postings], cache, translator)
+                              for p in postings], cache, translator, casing)
                if translate else [{} for _ in postings])
     if translate:
-        pos.prime(e[it][0] if it in e else it for p, e in zip(postings, english) for it in p.get("must_have") or [])
+        clean = [clean_items(p.get("must_have") or [], casing, p.get("language")) for p in postings]
+        pos.prime(e[it][0] if it in e else cl[it][0]
+                  for p, e, cl in zip(postings, english, clean) for it in p.get("must_have") or [])
     out, runs, titles = [], [], []
     for k, (p, e) in enumerate(zip(postings, english)):
         reqs = split_posting(p.get("must_have") or [], dictionary, translate, english=e)

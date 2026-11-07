@@ -2,7 +2,7 @@
 # The whole GCP setup, for a personal account (no organisation). NOT RUN YET.
 # Read it, set the three variables, then run ONE STEP AT A TIME:
 #
-#   sh deploy/gcp_setup.sh 1      # ... up to 17
+#   sh deploy/gcp_setup.sh 1      # ... up to 19
 #
 # Without an organisation the policy that refuses non-EU locations is not
 # available (deploy/eu_setup.sh needs one), so REGION is written on every
@@ -32,8 +32,11 @@ DICTS="gs://${PROJECT_ID}-dictionaries"
 BUILD="gs://${PROJECT_ID}-build"
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/karimi/karimi:${DICT_VERSION}"
 CHECK_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/karimi/karimi-check:${DICT_VERSION}"
+# What emails: a red check, a check that could not run, a judge that could not
+# start or that failed its planted pairs (`check.CANARIES`, added 2026-11-07).
+ALERT_FILTER='jsonPayload.event=("karimi_check" OR "karimi_check_failed" OR "karimi_judge_not_started" OR "karimi_judge_untrusted") AND severity>=ERROR'
 
-case "${1:?which step: 1-17}" in
+case "${1:?which step: 1-19}" in
 1)  # the project, and the default for every later command
     gcloud projects create "$PROJECT_ID" --name="Karimi normalise"
     gcloud config set project "$PROJECT_ID"
@@ -167,7 +170,7 @@ case "${1:?which step: 1-17}" in
 16) # the alert: an email when a check is red, or a check could not run
     email="${2:?your email}"
     gcloud logging metrics create karimi_red --description="karimi check red, or check failed" \
-        --log-filter='jsonPayload.event=("karimi_check" OR "karimi_check_failed" OR "karimi_judge_not_started") AND severity>=ERROR'
+        --log-filter="$ALERT_FILTER"
     channel=$(gcloud beta monitoring channels create --display-name="karimi" --type=email \
         --channel-labels=email_address="$email" --format='value(name)')
     sed "s#CHANNEL#${channel}#" deploy/alert_policy.json > "${TMPDIR:-/tmp}/karimi_alert.json"
@@ -181,5 +184,28 @@ case "${1:?which step: 1-17}" in
         --log-filter='jsonPayload.event="karimi_timing"' --value-extractor='EXTRACT(jsonPayload.seconds)'
     gcloud monitoring dashboards create --config-from-file=deploy/dashboard.json
     echo "Logs Explorer query for one job:  jsonPayload.job=\"<id>\""
+    ;;
+18) # after a change to the check (2026-11-07: the planted pairs): the alert's
+    #   filter, a new check image, and both jobs moved onto it. Cloud Run pins a
+    #   job to the image digest it was deployed with, so the jobs are updated.
+    gcloud logging metrics update karimi_red --log-filter="$ALERT_FILTER"
+    gcloud builds submit --region="$REGION" --config=deploy/cloudbuild_check.yaml \
+        --gcs-source-staging-dir="${BUILD}/source" \
+        --substitutions="_REGION=${REGION},_DICT_VERSION=${DICT_VERSION},_TAG=${DICT_VERSION}"
+    gcloud run jobs update karimi-check --image="$CHECK_IMAGE" --region="$REGION"
+    gcloud run jobs update karimi-sweep --image="$CHECK_IMAGE" --region="$REGION"
+    ;;
+19) # a new RULES version on the same dictionary (2026-11-07: rules 0.2.0): its
+    #   quality card replaces the one the API serves, the image is rebuilt with
+    #   the new library, and the API and the batch job are moved onto it (Cloud
+    #   Run pins the digest it was deployed with). Run 18 too if the check changed.
+    RULES_VERSION="${RULES_VERSION:?set RULES_VERSION, e.g. 0.2.0}"
+    gcloud storage cp "New project/output/quality/quality_${RULES_VERSION}__${DICT_VERSION}.json" \
+        "${DICTS}/${DICT_VERSION}/quality.json"
+    gcloud builds submit --region="$REGION" --config=deploy/cloudbuild.yaml \
+        --gcs-source-staging-dir="${BUILD}/source" \
+        --substitutions="_REGION=${REGION},_DICT_VERSION=${DICT_VERSION},_TAG=${DICT_VERSION}"
+    gcloud run services update karimi-api --image="$IMAGE" --region="$REGION"
+    gcloud run jobs update karimi-batch --image="$IMAGE" --region="$REGION"
     ;;
 esac

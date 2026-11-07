@@ -18,8 +18,8 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-RULES_VERSION = "0.1.0"
-RULES_FINGERPRINT = "34e16127cc759dbd"
+RULES_VERSION = "0.2.0"
+RULES_FINGERPRINT = "b1d12d8ff7b96b3a"
 
 ROOT = Path(__file__).resolve().parents[1]
 # Every file whose change can change an output. `config.py` holds analysis
@@ -28,7 +28,7 @@ RULE_SOURCES = ["karimi/atomise.py", "karimi/normalise_req.py", "karimi/normalis
                 "karimi/pos.py", "karimi/language.py", "karimi/config.py",
                 "karimi_normalise/translate.py", "karimi_normalise/requirements.py",
                 "karimi_normalise/titles.py", "karimi_normalise/dictionary.py",
-                "karimi_normalise/process.py"]
+                "karimi_normalise/process.py", "karimi_normalise/casing.json"]
 
 
 def fingerprint() -> str:

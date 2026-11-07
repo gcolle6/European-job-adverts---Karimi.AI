@@ -42,6 +42,33 @@ def _quality_summary(q: dict | None) -> dict | None:
     }
 
 
+def _error_table(counts: dict, of: dict, runs: int, split: dict | None) -> dict:
+    """The error table, each row with the denominator it is a share of.
+
+    Normalisation: every run's judged errors summed, out of the decisions the
+    judge was shown, per object. Splitting: the version's own measure on the
+    hand-counted items (``split``, `score_split_errors.py` via the quality
+    card), out of those items; `errors.py` says why it is not per run."""
+    from .errors import CAUSES, ERRORS
+
+    counts = dict(counts)
+    for row in (split or {}).get("rows") or []:
+        counts[(row["stage"], row["object"], row["error"], row["cause"])] = row["count"]
+    denominator = {("splitting", "requirement"): ((split or {}).get("of") or {}).get("items_hand_counted", 0),
+                   ("normalisation", "requirement"): of.get("judged_requirements", 0),
+                   ("normalisation", "role"): of.get("judged_roles", 0)}
+    rows = []
+    for (stage, obj, error, cause), n in sorted(counts.items(), key=lambda x: -x[1]):
+        d = denominator.get((stage, obj), 0)
+        rows.append({"stage": stage, "object": obj, "error": error,
+                     "error_text": ERRORS.get((stage, obj), {}).get(error, error),
+                     "cause": cause, "cause_text": CAUSES.get(cause, cause),
+                     "count": n, "of": d, "share": round(n / d, 4) if d else None})
+    return {"runs": runs, "of": {**of, "items_hand_counted": denominator[("splitting", "requirement")]},
+            "rows": rows, "splitting": {k: (split or {}).get(k) for k in ("rules_version", "per_run_instruments")}
+            if split else None}
+
+
 def aggregate(store, quality: dict | None, dict_version: str, judge_reference: dict | None = None) -> dict:
     text = store.read_text("history/runs.jsonl") or ""
     runs = [json.loads(x) for x in text.splitlines() if x.strip()]
@@ -51,6 +78,17 @@ def aggregate(store, quality: dict | None, dict_version: str, judge_reference: d
         for k, v in (r.get("lights") or {}).items():
             lights.setdefault(k, {"green": 0, "yellow": 0, "red": 0})
             lights[k][v] = lights[k].get(v, 0) + 1
+    errors, of, with_errors = {}, {}, 0
+    for r in done:
+        e = r.get("errors")
+        if not e:
+            continue
+        with_errors += 1
+        for k, v in (e.get("of") or {}).items():
+            of[k] = of.get(k, 0) + (v or 0)
+        for row in e.get("rows") or []:
+            key = (row["stage"], row["object"], row["error"], row["cause"])
+            errors[key] = errors.get(key, 0) + row["count"]
     judge = {}
     for r in done:
         for k, v in (r.get("judge") or {}).items():
@@ -70,7 +108,9 @@ def aggregate(store, quality: dict | None, dict_version: str, judge_reference: d
         },
         "signals": lights,
         "judge": {k: {"runs": len(v), "mean_flagged_share": round(sum(v) / len(v), 4)} for k, v in judge.items()},
+        "errors": _error_table(errors, of, with_errors, (quality or {}).get("split_errors")),
         "runs": [{k: r.get(k) for k in ("job", "checked", "source", "state", "overall", "postings", "requirements",
-                                        "seconds", "lights", "judge", "rules_version", "dict_version")}
+                                        "seconds", "lights", "judge", "canaries_missed", "rules_version",
+                                        "dict_version")}
                  for r in runs[-LAST:]][::-1],
     }

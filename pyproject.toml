@@ -36,8 +36,8 @@ test = ["pytest>=8"]
 packages = ["karimi", "karimi_normalise"]
 
 [tool.setuptools.package-data]
-# the judge's guide (tester.GUIDE)
-karimi_normalise = ["*.md"]
+# the judge's guide (tester.GUIDE), and each language's capitals (casing.json)
+karimi_normalise = ["*.md", "*.json"]
 
 [tool.setuptools.dynamic]
 version = {attr = "karimi_normalise.versions.RULES_VERSION"}

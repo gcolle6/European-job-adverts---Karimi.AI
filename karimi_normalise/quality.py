@@ -135,9 +135,23 @@ def pairs() -> dict:
     return out
 
 
+def _invariance() -> dict | None:
+    """Share of items whose output moved under a meaning-preserving change (`invariance.py`)."""
+    p = BATCH / "invariance" / "summary.json"
+    if not p.exists():
+        return None
+    s = json.loads(p.read_text(encoding="utf-8"))
+    if s.get("rules_version") != RULES_VERSION:
+        return None
+    return {k: {"items": v["items"], "changed_share": v["changed_share"], "passes": v["passes"]}
+            for k, v in s["summary"].items()}
+
+
 def card(dict_version: str) -> dict:
     d = Dictionary(STORE / dict_version)
     parity = QUALITY / f"parity_{RULES_VERSION}__{dict_version}.json"
+    detectors = QUALITY / f"error_detectors_{RULES_VERSION}__{dict_version}.json"
+    split_errors = QUALITY / f"split_errors_{RULES_VERSION}__{dict_version}.json"
     return {
         "rules_version": RULES_VERSION,
         "dict_version": dict_version,
@@ -148,6 +162,11 @@ def card(dict_version: str) -> dict:
         "pairs": pairs(),
         "lookup_vs_batch": (d.reference or {}).get("lookup_vs_batch"),
         "parity_with_batch": json.loads(parity.read_text(encoding="utf-8")) if parity.exists() else None,
+        # how far the site's splitting-error counts can be trusted (`score_error_detectors.py`)
+        "error_detectors": json.loads(detectors.read_text(encoding="utf-8")) if detectors.exists() else None,
+        # the splitting half of the site's error table (`score_split_errors.py`)
+        "split_errors": json.loads(split_errors.read_text(encoding="utf-8")) if split_errors.exists() else None,
+        "invariance": _invariance(),
         "match_cosine": {"group_threshold": d.group_threshold, "topic_threshold": d.topic_threshold},
         "not_measured": NOT_MEASURED,
     }

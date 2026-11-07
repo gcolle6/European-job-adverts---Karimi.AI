@@ -62,11 +62,24 @@ def _job(store, job: str, light: str = "green") -> None:
         "to_check": {"requirements_nuovo": [{"requirement": "x", "n": 1}]}})
 
 
+def _judge(reply: str):
+    """A judge that answers the planted pairs right and everything else with ``reply``."""
+    known = {(a, b): same for _, a, b, same in check.CANARIES}
+
+    def chat(url, messages, n):
+        text = messages[-1]["content"]
+        for (a, b), same in known.items():
+            if f"a: {a}\n" in text and f"b: {b}\n" in text:
+                return "SAME\nplanted" if same else "DIFFERENT\nplanted"
+        return reply
+    return chat
+
+
 def test_judge_that_disagrees_makes_the_run_red(tmp_path, monkeypatch):
     store = LocalStore(tmp_path)
     monkeypatch.setattr(tester, "OUT", tmp_path / "tester")
     monkeypatch.setattr(tester, "CACHE", tmp_path / "tester" / "answers.jsonl")
-    monkeypatch.setattr(tester, "_chat", lambda url, m, n: "DIFFERENT\nnot the same thing")
+    monkeypatch.setattr(tester, "_chat", _judge("DIFFERENT\nnot the same thing"))
     _job(store, "aaaaaaaaaaaaaaaa")
     ref = {"rates": {"group": {"answered": 150, "share": 0.1}, "topic": {"answered": 100, "share": 0.1}}}
     out = check.check("aaaaaaaaaaaaaaaa", store, judge_url="http://judge", reference=ref)
@@ -80,11 +93,41 @@ def test_judge_that_agrees_keeps_it_green(tmp_path, monkeypatch):
     store = LocalStore(tmp_path)
     monkeypatch.setattr(tester, "OUT", tmp_path / "tester")
     monkeypatch.setattr(tester, "CACHE", tmp_path / "tester" / "answers.jsonl")
-    monkeypatch.setattr(tester, "_chat", lambda url, m, n: "SAME\nsame requirement")
+    monkeypatch.setattr(tester, "_chat", _judge("SAME\nsame requirement"))
     _job(store, "bbbbbbbbbbbbbbbb")
     ref = {"rates": {"group": {"answered": 150, "share": 0.1}, "topic": {"answered": 100, "share": 0.1}}}
     out = check.check("bbbbbbbbbbbbbbbb", store, judge_url="http://judge", reference=ref)
     assert out["overall"] == "green" and out["findings"] == []
+    assert out["canaries"]["missed"] == 0 and out["canaries"]["pairs"] == len(check.CANARIES)
+
+
+@pytest.mark.parametrize("reply", ["SAME\nsame", "DIFFERENT\nnot the same", "I cannot answer that"])
+def test_judge_that_misses_the_planted_pairs_is_not_read(tmp_path, monkeypatch, capsys, reply):
+    # A judge saying one word to everything, or nothing usable, would keep a run
+    # green (all SAME) or make it red (all DIFFERENT) on its own say-so.
+    store = LocalStore(tmp_path)
+    monkeypatch.setattr(tester, "OUT", tmp_path / "tester")
+    monkeypatch.setattr(tester, "CACHE", tmp_path / "tester" / "answers.jsonl")
+    monkeypatch.setattr(tester, "_chat", lambda url, m, n: reply)
+    _job(store, "ffffffffffffffff")
+    ref = {"rates": {"group": {"answered": 150, "share": 0.1}, "topic": {"answered": 100, "share": 0.1}}}
+    out = check.check("ffffffffffffffff", store, judge_url="http://judge", reference=ref)
+    assert out["overall"] == "yellow"
+    assert {f["code"] for f in out["findings"]} == {"judge:canaries"}
+    assert {v["light"] for v in out["judge"].values()} == {"grey"}
+    assert out["canaries"]["missed"] > check.CANARY_MAX_MISSES
+    logged = [json.loads(x) for x in capsys.readouterr().out.splitlines() if x.startswith("{")]
+    assert {"severity": "ERROR", "event": "karimi_judge_untrusted"}.items() <= logged[-1].items()
+    last = json.loads(store.read_text(check.HISTORY).splitlines()[-1])
+    assert last["canaries_missed"] == out["canaries"]["missed"]
+
+
+def test_canaries_reach_the_model():
+    # A planted pair the code answers (`tester.by_code`) tests nothing about the model.
+    d = check.canary_pairs()
+    groups = {tester.group(k, a, b) for k, a, b in zip(d.kind, d.a, d.b)}
+    assert not groups & {"spelling", "different_names", "developer_engineer"}
+    assert d.answer.any() and (~d.answer).any()
 
 
 def test_failed_run_is_red_and_drift_needs_three_in_a_row(tmp_path):
