@@ -266,6 +266,29 @@ def _log(severity: str, **fields) -> None:
     print(json.dumps({"severity": severity, **fields}, ensure_ascii=False), flush=True)
 
 
+def run_detail(report: dict | None, findings: list[dict], judged: dict | None, canaries: dict | None,
+               suspects: dict | None) -> dict:
+    """What the site shows for ONE run, beside the totals: counts, shares and codes, never text.
+
+    Read off the same objects the check writes to the job's private files, so
+    `dashboard.py` can rebuild it from `check.json` and `report.json` for a run
+    checked before these fields reached the history (2026-11-09)."""
+    return {
+        "signals": {k: {"value": v.get("value"), "normal_range": v.get("normal_range"), "light": v.get("light")}
+                    for k, v in ((report or {}).get("signals") or {}).items()},
+        # `what` is built from a signal name and numbers; a health finding's can
+        # carry an exception message, which may quote the input, so it is dropped
+        "findings": [{"level": f.get("level"), "light": f.get("light"), "code": f.get("code"),
+                      "what": f.get("what") if f.get("level") != "health" else None} for f in findings],
+        "judge_detail": {k: {x: v.get(x) for x in ("pairs", "answered", "flagged", "share", "reference_share",
+                                                   "light")} for k, v in (judged or {}).items()},
+        "canaries": {"pairs": canaries["pairs"], "missed": canaries["missed"]} if canaries else None,
+        "split_suspects": {"of": suspects.get("of"), "rows": suspects.get("rows")} if suspects else None,
+        "to_check": {k: len(v) if isinstance(v, list) else v
+                     for k, v in ((report or {}).get("to_check") or {}).items()},
+    }
+
+
 def check(job: str, store=None, judge_url: str | None = None, reference: dict | None = None) -> dict:
     store = store or open_store()
     s = read_json(store, jf(job, "status.json")) or {"job": job, "state": "unknown"}
@@ -335,6 +358,7 @@ def check(job: str, store=None, judge_url: str | None = None, reference: dict | 
                                "judge": {k: v["share"] for k, v in judged.items()},
                                "canaries_missed": canaries["missed"] if canaries else None,
                                "errors": err,
+                               **run_detail(report, findings, judged, canaries, suspects),
                                "rules_version": s.get("rules_version"), "dict_version": s.get("dict_version")})
 
     overall = max((f["light"] for f in findings), key=_ORDER.get, default="green")

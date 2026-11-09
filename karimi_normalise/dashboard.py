@@ -69,6 +69,41 @@ def _error_table(counts: dict, of: dict, runs: int, split: dict | None) -> dict:
             if split else None}
 
 
+_RUN = ("job", "checked", "source", "state", "overall", "postings", "requirements", "seconds", "lights", "judge",
+        "canaries_missed", "rules_version", "dict_version")
+_DETAIL = ("signals", "findings", "judge_detail", "canaries", "split_suspects", "to_check")
+
+
+def _with_texts(rows: list[dict] | None) -> list[dict]:
+    from .errors import CAUSES, ERRORS
+
+    return [{**r, "error_text": ERRORS.get((r["stage"], r["object"]), {}).get(r["error"], r["error"]),
+             "cause_text": CAUSES.get(r["cause"], r["cause"])} for r in rows or []]
+
+
+def _run(store, r: dict) -> dict:
+    """One run as the site shows it: the history line, plus its detail.
+
+    A line written before 2026-11-09 has no detail; it is rebuilt from the
+    job's `check.json` and `report.json` through `check.run_detail`, which keeps
+    only counts and codes. Splitting suspects are where to look, not errors
+    (`errors.py`), and the site says so."""
+    out = {k: r.get(k) for k in _RUN}
+    detail = {k: r.get(k) for k in _DETAIL}
+    if r.get("signals") is None and r.get("job") and r.get("state") == "done":
+        from .check import run_detail
+        from .store import jf, read_json
+
+        c = read_json(store, jf(r["job"], "check.json")) or {}
+        detail = run_detail(read_json(store, jf(r["job"], "report.json")), c.get("findings") or [],
+                            c.get("judge"), c.get("canaries"), c.get("split_suspects"))
+    e = r.get("errors")
+    out.update(detail, errors={"of": e.get("of"), "rows": _with_texts(e.get("rows"))} if e else None)
+    if out.get("split_suspects"):
+        out["split_suspects"] = {**out["split_suspects"], "rows": _with_texts(out["split_suspects"].get("rows"))}
+    return out
+
+
 def aggregate(store, quality: dict | None, dict_version: str, judge_reference: dict | None = None) -> dict:
     text = store.read_text("history/runs.jsonl") or ""
     runs = [json.loads(x) for x in text.splitlines() if x.strip()]
@@ -109,8 +144,5 @@ def aggregate(store, quality: dict | None, dict_version: str, judge_reference: d
         "signals": lights,
         "judge": {k: {"runs": len(v), "mean_flagged_share": round(sum(v) / len(v), 4)} for k, v in judge.items()},
         "errors": _error_table(errors, of, with_errors, (quality or {}).get("split_errors")),
-        "runs": [{k: r.get(k) for k in ("job", "checked", "source", "state", "overall", "postings", "requirements",
-                                        "seconds", "lights", "judge", "canaries_missed", "rules_version",
-                                        "dict_version")}
-                 for r in runs[-LAST:]][::-1],
+        "runs": [_run(store, r) for r in runs[-LAST:]][::-1],
     }

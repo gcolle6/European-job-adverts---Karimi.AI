@@ -122,6 +122,31 @@ def test_judge_that_misses_the_planted_pairs_is_not_read(tmp_path, monkeypatch, 
     assert last["canaries_missed"] == out["canaries"]["missed"]
 
 
+def test_each_run_carries_its_detail_and_no_text(tmp_path, monkeypatch):
+    from karimi_normalise import dashboard
+
+    store = LocalStore(tmp_path)
+    monkeypatch.setattr(tester, "OUT", tmp_path / "tester")
+    monkeypatch.setattr(tester, "CACHE", tmp_path / "tester" / "answers.jsonl")
+    monkeypatch.setattr(tester, "_chat", _judge("DIFFERENT\nnot the same thing"))
+    _job(store, "aaaaaaaaaaaaaaaa", light="yellow")
+    ref = {"rates": {"group": {"answered": 150, "share": 0.1}, "topic": {"answered": 100, "share": 0.1}}}
+    check.check("aaaaaaaaaaaaaaaa", store, judge_url="http://judge", reference=ref)
+    run = dashboard.aggregate(store, None, "0.1.0")["runs"][0]
+    assert run["signals"]["share_nuovo"] == {"value": 0.3, "normal_range": [0.1, 0.25], "light": "yellow"}
+    assert run["judge_detail"]["group"]["flagged"] == 15 and run["canaries"]["missed"] == 0
+    assert run["to_check"] == {"requirements_nuovo": 1}
+    assert {r["error"] for r in run["errors"]["rows"]} <= {"wrong_group", "wrong_topic"}
+    assert all(r["error_text"] and r["cause_text"] for r in run["errors"]["rows"])
+    assert "area" not in json.dumps(run)                      # no requirement reaches the site
+
+    # A run checked before the detail reached the history: rebuilt from its files.
+    line = json.loads(store.read_text(check.HISTORY))
+    store.write_text(check.HISTORY, json.dumps({k: v for k, v in line.items() if k not in dashboard._DETAIL}) + "\n")
+    old = dashboard.aggregate(store, None, "0.1.0")["runs"][0]
+    assert {k: old[k] for k in dashboard._DETAIL} == {k: run[k] for k in dashboard._DETAIL}
+
+
 def test_canaries_reach_the_model():
     # A planted pair the code answers (`tester.by_code`) tests nothing about the model.
     d = check.canary_pairs()
