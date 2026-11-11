@@ -173,3 +173,15 @@ def test_ideally_before_a_language_adds_one():
     # the user's call 2026-11-11: two requirements, both counted
     atoms, _ = _split("Fluent English, ideally German")
     assert atoms == ["Fluent English", "ideally German"] and atom.counted(atoms) == [True, True]
+
+
+@pytest.mark.parametrize("item, atoms", [
+    ("MSc or PhD in Physics", ["MSc in Physics", "PhD in Physics"]),
+    ("Bachelor's or Master's degree in Computer Science",
+     ["Bachelor's degree in Computer Science", "Master's degree in Computer Science"]),
+    ("MSc/PhD in Physics", ["MSc in Physics", "PhD in Physics"]),
+    ("BA or MA (or equivalent) in Economics", ["BA (or equivalent) in Economics", "MA (or equivalent) in Economics"]),
+])
+def test_degrees_in_alternative_share_the_field(item, atoms):
+    # rules 0.3.1: with one field the first degree was left bare (`MSc`), since 0.2.0
+    assert _split(item)[0] == atoms

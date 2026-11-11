@@ -996,9 +996,36 @@ _FRAME_PAIR_PRE = {"a", "an", "the", "solid", "strong", "good", "excellent", "de
                    "demonstrated", "previous", "prior", "relevant", "first", "some"}
 
 
+_DEG_WORD = (r"(?:bachelor(?:'s|’s|s)?|master(?:'s|’s|s)?|b\.?\s?sc\.?|m\.?\s?sc\.?|b\.?\s?a\.?|m\.?\s?a\.?|"
+             r"b\.?\s?eng\.?|m\.?\s?eng\.?|ph\.?\s?d\.?|doctorate|mba|diploma|licen[cs]e)")
+_DEG_ALT_RE = re.compile(
+    rf"^(?P<degs>{_DEG_WORD}(?:\s*(?:,|/|\bor\b|\band/or\b)\s*{_DEG_WORD})+)"
+    # a bracket reaches here masked (`@@0##`, `_atomise_once`)
+    r"(?P<tail>(?:\s+(?:degree|diploma|programme|program))?(?:\s*(?:\([^()]*\)|@@\d+##))?\s+(?:in|of)\s+"
+    r"(?P<field>.+))$", re.I)
+
+
+def _degree_alternatives(s: str) -> list[str] | None:
+    """`MSc or PhD in Physics` -> `MSc in Physics`, `PhD in Physics`.
+
+    With a list of fields the head-and-list path makes the cross product
+    (`MSc or PhD in Physics, Mathematics` = 4, convention of 2026-10-30); with
+    ONE field it split on `or` and left the first degree bare (`MSc`,
+    `Bachelor's`), in rules 0.2.0 already. Found in the first API test of
+    0.3.0, 2026-11-11; rules 0.3.1."""
+    m = _DEG_ALT_RE.match(s)
+    if not m or SPLIT_RE.search(m.group("field")):
+        return None
+    degs = [d for d in re.split(r"\s*(?:,|/|\bor\b|\band/or\b)\s*", m.group("degs"), flags=re.I) if d.strip()]
+    return [clean(f"{d}{m.group('tail')}") for d in degs] if len(degs) > 1 else None
+
+
 def _split_list(s: str) -> list[str]:
     """Split one clause, either as head + list or as a bare coordinated list."""
     if config.SPLIT_REPAIRS:
+        degrees = _degree_alternatives(s)
+        if degrees:
+            return degrees
         m = _FRAME_PAIR_RE.match(s)
         if m and any(w.lower() not in _FRAME_PAIR_PRE for w in m.group("pre").split()):
             # `business understanding as well as experience in X`: the first frame

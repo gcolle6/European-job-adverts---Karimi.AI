@@ -87,6 +87,11 @@ Format: version · date · what changed · how it was measured.
   and reading them 3 and then 1 were wrong (`Oracle RDBMS` -> `RDBMS`, since
   excluded). The judge passes nearly everything here, so precision rests on
   the detectors.
+- **0.3.1** · 2026-11-11 · degrees in alternative with ONE field share it:
+  `MSc or PhD in Physics` -> `MSc in Physics`, `PhD in Physics` (was `MSc`
+  and `PhD in Physics`, since 0.2.0; with a list of fields the cross product
+  was already right). Found in the first test call of the deployed 0.3.0.
+  Same dictionary (0.2.0): the cores it now makes were already known.
 
 ## Dictionary
 
