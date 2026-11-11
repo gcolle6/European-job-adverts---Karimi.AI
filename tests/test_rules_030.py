@@ -90,24 +90,30 @@ def test_one_key_however_it_is_asked(text, key, head_group):
     assert (d["key"], d["head_group"]) == (key, head_group)
 
 
-@pytest.mark.parametrize("text, field, degree", [
-    ("MSc in Physics", "Physics", "master"),
-    ("PhD in Physics", "Physics", "phd"),
-    ("Degree in Physics", "Physics", "degree"),
-    ("Completed studies in Computer Science", "Computer Science", "degree"),
-    ("Bachelor's degree in Economics", "Economics", "bachelor"),
-    ("MSc (or equivalent) in Telecommunication Engineering", "Telecommunication Engineering", "master"),
-    ("Ongoing studies in Data Science", "Data Science", "student"),
-    ("Bachelor's degree", "any field", "bachelor"),
+@pytest.mark.parametrize("text, key, degree", [
+    ("MSc in Physics", "Master in Physics", "master"),
+    ("M.Sc. in Physics", "Master in Physics", "master"),
+    ("Master's degree in Physics", "Master in Physics", "master"),
+    ("PhD in Physics", "PhD in Physics", "phd"),
+    ("Doctorate in Physics", "PhD in Physics", "phd"),
+    ("Degree in Physics", "Degree in Physics", "degree"),
+    ("Completed studies in Computer Science", "Degree in Computer Science", "degree"),
+    ("Bachelor's degree in Economics", "Bachelor in Economics", "bachelor"),
+    ("BSc in Economics", "Bachelor in Economics", "bachelor"),
+    ("MSc (or equivalent) in Telecommunication Engineering", "Master in Telecommunication Engineering", "master"),
+    ("Ongoing studies in Data Science", "Student in Data Science", "student"),
+    ("Bachelor's degree", "Bachelor (any field)", "bachelor"),
 ])
-def test_education_is_one_group_per_field(text, field, degree):
+def test_each_degree_is_its_own_requirement(text, key, degree):
+    # rules 0.4.0, the user's call 2026-11-11: `Master in Business` and `Bachelor in
+    # Business` are two requirements; every spelling of one degree is that degree
     d = normalise_req.decompose(text)
-    assert (d["key"], d["degree"], d["space"]) == (f"education: {field}", degree, "education")
+    assert (d["key"], d["degree"], d["space"]) == (f"education: {key}", degree, "education")
 
 
 def test_education_needs_the_degree_in_front():
     assert normalise_req.decompose("Experience in education technology")["head_group"] == "experience"
-    assert normalise_req.display("education", "Physics") == "Education in Physics"
+    assert normalise_req.display("education", "Master in Physics") == "Master in Physics"
 
 
 # The duplicates the site's explorer showed on 2026-11-10: one requirement, one key.

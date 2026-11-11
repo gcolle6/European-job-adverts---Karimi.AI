@@ -157,6 +157,12 @@ def main(dest: str) -> None:
     slug = _slugs(keep.index)
     meta = ads.set_index("posting_id")
     by_rows = {o: g for o, g in pa.groupby("obj")}
+    # Each degree is its own requirement since rules 0.4.0 (`Master in Physics`),
+    # so chart 3 shows, for a degree, how often its FIELD is asked at each
+    # degree level, across all of them: the user's view of 2026-11-10, kept.
+    edu = per[per.req_space == "education"]
+    field = edu.req_core.str.split(" in ", n=1).str[1].fillna("").map(normalise_req.canon)
+    by_field = edu.assign(field=field).groupby("field").req_degree.value_counts()
 
     reqs = []
     for o in keep.index:
@@ -167,7 +173,8 @@ def main(dest: str) -> None:
         roles = roles[(roles.index != "") & roles.index.map(lambda r: role_n.get(r, 0) >= MIN_ROLE_ADS)]
         asked = rows.req_head_group.value_counts()
         lv = rows.req_level.value_counts()
-        dg = rows.req_degree.value_counts()
+        f = normalise_req.canon(rows.req_core.iloc[0].split(" in ", 1)[1])             if (rows.req_space.iloc[0] == "education" and " in " in rows.req_core.iloc[0]) else None
+        dg = by_field.loc[f] if f and f in by_field.index.get_level_values(0) else rows.req_degree.value_counts()
         withs = []
         for o2 in keep.index:
             if o2 == o:

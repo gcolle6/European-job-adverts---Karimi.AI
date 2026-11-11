@@ -191,16 +191,19 @@ def display(space_: str, core: str) -> str:
     if not core:
         return ""
     if space_ == "education":
-        return "Education (any field)" if core == "any field" else f"Education in {core}"
+        # the core already names the degree: `Master in Business`, `PhD (any field)`
+        return core
     if " " not in core and core.islower() and core.endswith("al"):
         # `analytical` is what is left of `Strong analytical skills`
         return f"{core[:1].upper()}{core[1:]} skills"
     return core[:1].upper() + core[1:] if core[:1].islower() else core
 
 
-# Education (rules 0.3.0, the user's call 2026-11-10): `MSc in Physics`, `PhD in
-# Physics` and `Degree in Physics` are one group, `education: Physics`, and the
-# degree goes to its own column, as years go for experience.
+# Education. Rules 0.3.0 grouped `MSc in Physics`, `PhD in Physics` and `Degree
+# in Physics` as one, `education: Physics`; the user reversed that on 2026-11-11
+# (rules 0.4.0): each degree is its own requirement, `education: Master in
+# Physics`, with the level also in the `degree` column. Spellings of one degree
+# are that degree (`DEGREES`).
 DEGREES = [
     (r"bachelor(?:'s|’s|s)?|b\.?\s?sc\.?|b\.?\s?a\.?|b\.?\s?eng\.?|undergraduate|licen[cs]e|laurea triennale", "bachelor"),
     (r"master(?:'s|’s|s)?|m\.?\s?sc\.?|m\.?\s?a\.?|m\.?\s?eng\.?|postgraduate|diplom|laurea magistrale",
@@ -244,8 +247,18 @@ def _education(text: str) -> dict | None:
     field = re.sub(r"^(?:subject|discipline|field|area)s?\s+(?:of|in)\s+", "", field, flags=re.I)
     # `(economic) computer science`, `Computer Science (or equivalent)`: the field is outside the brackets
     field = re.sub(r"\s{2,}", " ", re.sub(r"\s*\([^()]*\)\s*", " ", field)).strip()
-    return {"head": m.group("deg").strip(), "head_group": "education", "degree": _degree(m.group("deg"), pre),
-            "core": field or "any field"}
+    degree = _degree(m.group("deg"), pre)
+    # The degree is part of the requirement (rules 0.4.0, the user's call
+    # 2026-11-11): `Master in Business` and `Bachelor in Business` are two, and
+    # every spelling of one degree is that degree (`MSc`, `M.Sc.`, `Master's`).
+    label = DEGREE_LABEL[degree]
+    return {"head": m.group("deg").strip(), "head_group": "education", "degree": degree,
+            "core": f"{label} in {field}" if field else f"{label} (any field)"}
+
+
+# How each degree is written in a requirement's core and name.
+DEGREE_LABEL = {"bachelor": "Bachelor", "master": "Master", "phd": "PhD", "mba": "MBA", "degree": "Degree",
+                "student": "Student"}
 
 
 _EDU_PRE = {"a", "an", "the", "completed", "complete", "finished", "successfully", "successful", "relevant",

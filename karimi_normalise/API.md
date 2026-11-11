@@ -140,11 +140,11 @@ Each requirement:
 | `item`, `item_split` | the item as written, and what was split (its English translation, or itself) |
 | `translated`, `translated_by` | whether it was translated, and by what (`opus-mt`, `given`) |
 | `atom`, `atom_norm` | the single requirement, as split and normalised |
-| `req_name` | the requirement as a reader names it: `Python`, `English`, `Education in Physics` |
+| `req_name` | the requirement as a reader names it: `Python`, `English`, `Master in Physics` |
 | `years_min`, `years_max`, `level` | taken out of the text into their own fields |
 | `degree` | for a degree: `bachelor`, `master`, `phd`, `mba`, `degree` (level not named) or `student` |
 | `head`, `head_group`, `core` | how it is asked (`experience`, `competence`, `ability`, `language`, `education`) and what is asked for |
-| `req_group`, `req_topic` | same requirement, same theme. Since rules 0.3.0 the group does not depend on how it is asked: `Experience with Python` and `Knowledge of Python` are both `python`; degrees are `education: physics` whatever the level |
+| `req_group`, `req_topic` | same requirement, same theme. Since rules 0.3.0 the group does not depend on how it is asked: `Experience with Python` and `Knowledge of Python` are both `python`. Each degree is its own requirement: `MSc in Physics` and `Master's degree in Physics` are `education: master in physics`, `PhD in Physics` another (rules 0.4.0) |
 | `match`, `match_cosine`, `match_via` | how it was found (below), how close, and the known requirement it was placed by |
 | `nice_to_have`, `counted` | flagged as optional; counted in the requirement total |
 | `rules_version`, `dict_version` | what made this row |
