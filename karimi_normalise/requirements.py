@@ -58,17 +58,21 @@ class Requirement:
     level: str
     level_words: str
     head: str
-    head_group: str
+    head_group: str         # how it was asked: experience | competence | ability | language | education | ""
+    degree: str             # education only: bachelor | master | phd | mba | degree | student
     core: str
     extra: str
     qualifier: str
     modes: str
+    space: str              # where it is grouped: language | education | "" (rules 0.3.0)
     key: str
     req_group: str = ""
     req_topic: str = ""
+    req_name: str = ""      # the requirement as a reader names it: its group's, else its own key
     match: str = ""         # known | group | topic | nuovo | empty | non_cercato, "" without a dictionary
     match_cosine: float | None = None
     match_via: str = ""      # the known core it was placed by: what a check compares it with
+    match_by: str = ""       # "" the frozen dictionary; `curator` an agent's resolved spelling (`curator.py`)
     rules_version: str = RULES_VERSION
     dict_version: str = ""
 
@@ -196,9 +200,10 @@ def split_posting(items: list[str], dictionary=None, translate: bool = True,
                                    nice_to_have=atom.nice_to_have(a), counted=counts[j],
                                    **normalise_req.decompose(norm)))
     if dictionary is not None:
-        for r, m in zip(out, dictionary.lookup_requirements([(r.head_group, r.core) for r in out])):
+        for r, m in zip(out, dictionary.lookup_requirements([(r.space, r.core) for r in out])):
             r.req_group, r.req_topic, r.match, r.match_cosine = m.group, m.topic, m.status, m.cosine
-            r.match_via = m.via
+            r.match_via, r.match_by = m.via, m.by
+            r.req_name = dictionary.name(m.group or m.topic) or normalise_req.display(r.space, r.core)
             r.dict_version = dictionary.version
     return out
 

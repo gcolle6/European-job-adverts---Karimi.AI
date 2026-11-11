@@ -60,7 +60,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field, ValidationError
 
-from . import Dictionary, check, dashboard, exports, normalise_title, process
+from . import Dictionary, check, curator, dashboard, exports, normalise_title, process
 from .store import LocalStore, jf, now, open_store, read_json, write_json
 from .versions import RULES_VERSION
 
@@ -78,6 +78,17 @@ _quality = (json.loads(Path(os.environ["KARIMI_QUALITY"]).read_text(encoding="ut
             if os.environ.get("KARIMI_QUALITY") and Path(os.environ["KARIMI_QUALITY"]).exists() else None)
 _judge_ref = (json.loads(check._reference_file().read_text(encoding="utf-8")) if check._reference_file() else None)
 _store = open_store()
+_aliases_read = 0.0
+ALIASES_EVERY = 300            # seconds: a spelling the curator resolved reaches the API within five minutes
+
+
+def _fresh_dictionary():
+    """The dictionary with the curator's resolved spellings, re-read at most every ALIASES_EVERY."""
+    global _aliases_read
+    if _dict is not None and time.time() - _aliases_read > ALIASES_EVERY:
+        curator.attach(_dict, _store)
+        _aliases_read = time.time()
+    return _dict
 _procs: dict[str, subprocess.Popen] = {}     # local runs only: on GCP, Cloud Run knows
 
 
@@ -129,7 +140,7 @@ def _postings_out(out: dict) -> list[dict]:
 
 @app.get("/health")
 def health() -> dict:
-    return {"rules_version": RULES_VERSION, "dict_version": _dict.version if _dict else "",
+    return {"rules_version": RULES_VERSION, "dict_version": _fresh_dictionary().version if _dict else "",
             "jobs": "cloud-run" if os.environ.get("KARIMI_RUN_JOB") else "local",
             "check": "cloud-run" if os.environ.get("KARIMI_RUN_CHECK") else "local",
             "access": "api-key" if os.environ.get("KARIMI_API_KEY") else "open"}
@@ -170,7 +181,7 @@ def process_now(run: Run, request: Request) -> dict:
         raise HTTPException(413, f"at most {MAX_SYNC} postings per call; use /v1/jobs for more")
     inputs = [p.model_dump(exclude_none=True) for p in run.postings]
     t0 = time.time()
-    out = process(inputs, _dict, translate=run.translate)
+    out = process(inputs, _fresh_dictionary(), translate=run.translate)
     postings = _postings_out(out)
     job = _keep(inputs, postings, out["report"], run.translate, round(time.time() - t0, 1))
     return {"job": job, "postings": postings, "report": out["report"],
@@ -187,6 +198,9 @@ def _keep(inputs: list[dict], postings: list[dict], report: dict, translate: boo
     req_csv, post_csv = exports.tables(inputs, postings)
     _store.write_text(jf(job, "requirements.csv"), req_csv)
     _store.write_text(jf(job, "postings.csv"), post_csv)
+    if _dict is not None:
+        # what the curator agent proposes; its check puts them to the judge
+        curator.save_detected(_store, job, curator.detect(postings, _dict, job))
     write_json(_store, jf(job, "status.json"), {
         "job": job, "source": "process", "state": "done", "created": now(), "finished": now(),
         "translate": translate, "postings_total": len(inputs), "postings_done": len(inputs),

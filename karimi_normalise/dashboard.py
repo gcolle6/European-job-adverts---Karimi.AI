@@ -71,7 +71,7 @@ def _error_table(counts: dict, of: dict, runs: int, split: dict | None) -> dict:
 
 _RUN = ("job", "checked", "source", "state", "overall", "postings", "requirements", "seconds", "lights", "judge",
         "canaries_missed", "rules_version", "dict_version")
-_DETAIL = ("signals", "findings", "judge_detail", "canaries", "split_suspects", "to_check")
+_DETAIL = ("signals", "findings", "judge_detail", "canaries", "split_suspects", "to_check", "curator")
 
 
 def _with_texts(rows: list[dict] | None) -> list[dict]:
@@ -95,12 +95,57 @@ def _run(store, r: dict) -> dict:
         from .store import jf, read_json
 
         c = read_json(store, jf(r["job"], "check.json")) or {}
-        detail = run_detail(read_json(store, jf(r["job"], "report.json")), c.get("findings") or [],
-                            c.get("judge"), c.get("canaries"), c.get("split_suspects"))
+        detail = {**run_detail(read_json(store, jf(r["job"], "report.json")), c.get("findings") or [],
+                               c.get("judge"), c.get("canaries"), c.get("split_suspects")),
+                  "curator": c.get("curator")}
     e = r.get("errors")
     out.update(detail, errors={"of": e.get("of"), "rows": _with_texts(e.get("rows"))} if e else None)
     if out.get("split_suspects"):
         out["split_suspects"] = {**out["split_suspects"], "rows": _with_texts(out["split_suspects"].get("rows"))}
+    return out
+
+
+PENDING_HOURS = 24
+
+
+def _curator(store) -> dict | None:
+    from . import curator
+
+    try:
+        return curator.summary(store)
+    except Exception:   # noqa: BLE001 - the site shows the rest without it
+        return None
+
+
+def _pending(store, seen: set[str]) -> list[dict]:
+    """Runs the check has not reached yet, so a call shows on the site when it ends.
+
+    The history gets a run only when its check is done, minutes later
+    (2026-11-10: the user saw Chiara's call missing and took it for a broken
+    site). These are read from the job's own `status.json`: counts only, no
+    lights, marked ``pending``. Older than PENDING_HOURS, a run the check never
+    reached is the sweep's business (`check.sweep`), not the site's."""
+    import datetime as dt
+
+    from .store import jf, read_json
+
+    out = []
+    cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=PENDING_HOURS)
+    for job in store.jobs():
+        if job in seen:
+            continue
+        s = read_json(store, jf(job, "status.json")) or {}
+        when = s.get("finished") or s.get("updated") or s.get("created")
+        try:
+            recent = when and dt.datetime.fromisoformat(when) >= cutoff
+        except ValueError:
+            recent = False
+        if not recent or s.get("state") not in ("queued", "running", "done"):
+            continue
+        out.append({**{k: None for k in _RUN}, "job": job, "checked": when, "source": s.get("source"),
+                    "state": s.get("state"), "postings": s.get("postings_total"), "seconds": s.get("seconds"),
+                    "rules_version": s.get("rules_version"), "dict_version": s.get("dict_version"),
+                    "pending": True})
     return out
 
 
@@ -144,5 +189,6 @@ def aggregate(store, quality: dict | None, dict_version: str, judge_reference: d
         "signals": lights,
         "judge": {k: {"runs": len(v), "mean_flagged_share": round(sum(v) / len(v), 4)} for k, v in judge.items()},
         "errors": _error_table(errors, of, with_errors, (quality or {}).get("split_errors")),
-        "runs": [_run(store, r) for r in runs[-LAST:]][::-1],
+        "agents": {"curator": _curator(store)},
+        "runs": _pending(store, {r.get("job") for r in runs}) + [_run(store, r) for r in runs[-LAST:]][::-1],
     }

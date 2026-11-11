@@ -136,7 +136,10 @@ _YEARS_RE = re.compile(
     r"(?:\b(?:at\s+least|minimum(?:\s+of)?|min\.?|more\s+than|over|up\s+to)\s+)?"
     r"\b(?P<a>\d{1,2})\s*(?P<plus>\+)?\s*(?:(?:-|–|to)\s*(?P<b>\d{1,2})\s*\+?\s*)?"
     r"(?:years?|yrs?)(?:['’]s?)?(?:\s+of)?(?!\w)|"
-    r"\b(?P<vague>several|many|a\s+few|multiple|some|a\s+couple\s+of|first)\s+years?(?:\s+of)?\b",
+    r"\b(?P<vague>several|many|a\s+few|multiple|some|a\s+couple\s+of|first)\s+years?(?:\s+of)?\b|"
+    # `Multi-year experience`, from German `Mehrjährige Erfahrung` (rules 0.3.0):
+    # it was the core, `experience: Multi-year`, and the object went to `extra`.
+    r"\b(?P<multi>multi-?years?|multiple-years?)\b",
     re.I)
 
 # The frame nouns a requirement is asked through, by group. A closed set: the
@@ -144,16 +147,112 @@ _YEARS_RE = re.compile(
 HEAD_GROUPS = {
     "competence": ["knowledge", "understanding", "familiarity", "proficiency", "expertise",
                    "mastery", "command", "grasp", "awareness", "know-how", "skills", "skill",
-                   "fluency"],
-    "experience": ["experience", "background", "track record", "exposure"],
-    "ability": ["ability", "capacity", "capability", "aptitude"],
+                   "fluency",
+                   # the same frames as adjectives (rules 0.3.0): `Proficient with Windows`
+                   # had no head, so its whole text was the key
+                   "proficient", "familiar", "knowledgeable", "skilled", "versed", "conversant",
+                   # `competencies`, and `use of Excel` (only opening the requirement:
+                   # `tool use` is not a frame; `_LEAD_ONLY`)
+                   "competencies", "competences", "competency", "use", "usage"],
+    "experience": ["experience", "background", "track record", "exposure", "experienced"],
+    "ability": ["ability", "capacity", "capability", "aptitude", "abilities", "capabilities", "capacities"],
 }
+# Frames that count only at the start, after level words: `Use of Excel` is
+# Excel, `AI use` is not `AI`.
+_LEAD_ONLY = {"use", "usage"}
 _HEAD_OF = {h: g for g, hs in HEAD_GROUPS.items() for h in hs}
 # What the frame noun itself says about the level (`familiarity` is less than
 # `expertise`), kept so that grouping on `competence` loses nothing.
 HEAD_LEVEL = {"familiarity": "basic", "awareness": "basic", "exposure": "basic",
               "proficiency": "advanced", "command": "advanced", "fluency": "strong", "expertise": "expert",
-              "mastery": "expert"}
+              "mastery": "expert", "proficient": "advanced", "familiar": "basic", "versed": "good",
+              "skilled": "good", "knowledgeable": "good", "conversant": "good"}
+
+# Where a requirement is grouped (rules 0.3.0, decided by the user 2026-11-10):
+# `Experience with Python`, `Knowledge of Python` and `Python skills` are ONE
+# requirement, Python, and how it was asked stays in `head_group` like years
+# and level. Languages and education keep a space of their own, since `English`
+# the language and `education: Physics` the degree are not `Physics` the field.
+SPACES = ("language", "education")
+
+
+def space(head_group: str) -> str:
+    return head_group if head_group in SPACES else ""
+
+
+def key(head_group: str, core: str) -> str:
+    """The grouping key: the core, in its space."""
+    s = space(head_group)
+    return f"{s}: {core}" if s else core
+
+
+def display(space_: str, core: str) -> str:
+    """How a reader names a requirement: `Python`, `English`, `Education in Physics`."""
+    if not core:
+        return ""
+    if space_ == "education":
+        return "Education (any field)" if core == "any field" else f"Education in {core}"
+    if " " not in core and core.islower() and core.endswith("al"):
+        # `analytical` is what is left of `Strong analytical skills`
+        return f"{core[:1].upper()}{core[1:]} skills"
+    return core[:1].upper() + core[1:] if core[:1].islower() else core
+
+
+# Education (rules 0.3.0, the user's call 2026-11-10): `MSc in Physics`, `PhD in
+# Physics` and `Degree in Physics` are one group, `education: Physics`, and the
+# degree goes to its own column, as years go for experience.
+DEGREES = [
+    (r"bachelor(?:'s|’s|s)?|b\.?\s?sc\.?|b\.?\s?a\.?|b\.?\s?eng\.?|undergraduate|licen[cs]e|laurea triennale", "bachelor"),
+    (r"master(?:'s|’s|s)?|m\.?\s?sc\.?|m\.?\s?a\.?|m\.?\s?eng\.?|postgraduate|diplom|laurea magistrale",
+     "master"),
+    (r"ph\.?\s?d\.?|doctorate|doctoral|doktor(?:at)?", "phd"),
+    (r"mba", "mba"),
+    (r"(?:university\s+|academic\s+|engineering\s+|technical\s+|college\s+|higher\s+)?(?:degree|diploma|"
+     r"studies|study|education|qualification|graduate)", "degree"),
+]
+_DEGREE_ALT = "|".join(f"(?:{p})" for p, _ in DEGREES)
+_EDU_RE = re.compile(
+    rf"^(?P<pre>(?:[\w'’-]+\s+){{0,3}}?)(?P<deg>(?:{_DEGREE_ALT})(?:\s+(?:degree|diploma|studies|programme|program))?)"
+    r"(?:\s*\([^)]*\))?(?:\s+(?:degree|diploma))?\s+(?:in|of|on)\s+(?:the\s+)?(?:field\s+of\s+)?(?P<field>.+)$",
+    re.I)
+_EDU_BARE_RE = re.compile(rf"^(?P<pre>(?:[\w'’-]+\s+){{0,3}}?)(?P<deg>{_DEGREE_ALT})(?:\s+(?:degree|diploma))?$",
+                          re.I)
+_STUDENT_RE = re.compile(r"\b(?:ongoing|current|currently|enrolled|pursuing|final[- ]year)\b", re.I)
+
+
+def _degree(words: str, pre: str) -> str:
+    if _STUDENT_RE.search(pre):
+        return "student"
+    w = words.strip().lower()
+    for p, level in DEGREES:
+        if re.fullmatch(rf"(?:{p})(?:\s+(?:degree|diploma|studies|programme|program))?", w, re.I):
+            return level
+    return "degree"
+
+
+def _education(text: str) -> dict | None:
+    """`Completed studies in Computer Science` -> education / degree / `Computer Science`."""
+    m = _EDU_RE.match(text) or _EDU_BARE_RE.match(text)
+    if not m:
+        return None
+    pre = m.group("pre") or ""
+    # Only degree and evidence words in front: `Experience in a degree ...` is not one.
+    if any(w.lower() not in _EDU_PRE for w in pre.split()):
+        return None
+    field = m.groupdict().get("field") or ""
+    field = re.sub(r"^(?:a|an|the)\s+", "", field.strip(" ,.:-"), flags=re.I)
+    field = re.sub(r"^(?:subject|discipline|field|area)s?\s+(?:of|in)\s+", "", field, flags=re.I)
+    # `(economic) computer science`, `Computer Science (or equivalent)`: the field is outside the brackets
+    field = re.sub(r"\s{2,}", " ", re.sub(r"\s*\([^()]*\)\s*", " ", field)).strip()
+    return {"head": m.group("deg").strip(), "head_group": "education", "degree": _degree(m.group("deg"), pre),
+            "core": field or "any field"}
+
+
+_EDU_PRE = {"a", "an", "the", "completed", "complete", "finished", "successfully", "successful", "relevant",
+            "related", "university", "academic", "technical", "higher", "ongoing", "current", "currently",
+            "enrolled", "pursuing", "final-year", "recognised", "recognized", "accredited", "formal",
+            "first", "second", "good", "excellent", "strong", "solid", "appropriate", "suitable", "minimum",
+            "at", "least", "of", "or", "equivalent", "advanced", "scientific", "engineering", "college"}
 # Degree and evidence words in front of the head: a small closed class.
 LEVEL_WORDS = {
     "basic": "basic", "first": "basic", "some": "basic", "initial": "basic", "fundamental": "basic",
@@ -167,6 +266,11 @@ LEVEL_WORDS = {
     "outstanding": "expert", "exceptional": "expert", "expert": "expert", "superior": "expert",
     "proven": "", "demonstrated": "", "demonstrable": "", "previous": "", "prior": "",
     "relevant": "", "professional": "", "a": "", "an": "", "the": "",
+    # Evidence words, not objects (rules 0.3.0): `related experience as a Data
+    # Scientist` had the core `related`, `Overall understanding of ...` `Overall`.
+    "related": "", "similar": "", "comparable": "", "overall": "", "general": "",
+    # `Ideally Excel` is Excel, marked optional (`atomise.nice_to_have`)
+    "ideally": "", "preferably": "", "especially": "", "particularly": "",
 }
 _LEVEL_RANK = {"": 0, "basic": 1, "good": 2, "strong": 3, "advanced": 3, "expert": 4}
 _HEAD_RE2 = re.compile(
@@ -179,9 +283,9 @@ def _years(text: str) -> tuple[str, int | None, int | None, str]:
     m = _YEARS_RE.search(text)
     if not m:
         return text, None, None, ""
-    if m.group("vague"):
+    if m.group("vague") or m.group("multi"):
         lo = hi = None
-        raw = m.group("vague").lower()
+        raw = (m.group("vague") or m.group("multi")).lower()
     else:
         lo = int(m.group("a"))
         hi = int(m.group("b")) if m.group("b") else (None if m.group("plus") or "least" in m.group(0).lower()
@@ -189,6 +293,12 @@ def _years(text: str) -> tuple[str, int | None, int | None, str]:
         raw = m.group(0).strip()
     rest = re.sub(r"\s{2,}", " ", (text[: m.start()] + " " + text[m.end():])).strip(" ,.-")
     return rest, lo, hi, raw
+
+
+def _named(text: str) -> bool:
+    """A capital or a digit anywhere, the first letter included: `Python` alone is a name here,
+    where `names` reads a first capital as the start of a sentence."""
+    return any(ch.isupper() or ch.isdigit() for ch in text)
 
 
 def decompose(text: str) -> dict:
@@ -202,8 +312,18 @@ def decompose(text: str) -> dict:
     """
     rest, lo, hi, years_raw = _years(text)
     out = {"years_min": lo, "years_max": hi, "years_raw": years_raw, "level": "",
-           "level_words": "", "head": "", "head_group": "", "core": rest, "extra": ""}
+           "level_words": "", "head": "", "head_group": "", "degree": "", "core": rest, "extra": ""}
+    edu = _education(rest)
+    if edu:
+        out.update(edu, qualifier="", modes="")
+        out["space"] = space(out["head_group"])
+        out["key"] = key(out["head_group"], out["core"])
+        return out
     m = _HEAD_RE2.match(rest)
+    if m and m.group("head").lower() in _LEAD_ONLY and (
+            any(w.lower() not in LEVEL_WORDS for w in m.group("pre").split())
+            or not re.match(r"\s+(?:of|in)\s", m.group("post"))):
+        m = None
     if m:
         pre = m.group("pre").split()
         head = m.group("head").lower()
@@ -215,12 +335,22 @@ def decompose(text: str) -> dict:
         # is something else (`problem-solving skills with excellent attention
         # to detail`): it goes to `extra`, not into the key.
         object_words = [w for w in pre if w.lower() not in LEVEL_WORDS]
-        post_obj = re.sub(r"^(?:of|in|with|on|for|at|to|regarding|around|within|across)\s+", "",
+        post_obj = re.sub(r"^(?:of|in|with|on|for|at|to|regarding|around|within|across|as|using)\s+", "",
                           post, flags=re.I) if post else ""
-        if object_words:
+        if object_words and post_obj != post.strip() and _named(post_obj) and not _named(" ".join(object_words)):
+            # `Good programming knowledge in Python`: the words in front say what
+            # kind, the name after the preposition is what is asked (rules 0.3.0;
+            # the core was `programming`, and Python went to `extra`).
+            core, extra = post_obj, " ".join(object_words)
+        elif object_words:
             core, extra = " ".join(object_words), post.strip(" ,.:-")
         else:
             core, extra = post_obj, ""
+        # `Python for modelling, data analysis and automation`: what it is for
+        # goes to `extra`, the name is the requirement.
+        fm = re.match(r"^(?P<obj>.+?)\s+for\s+(?P<why>.+)$", core)
+        if fm and _named(fm.group("obj")) and not _named(fm.group("why")):
+            core, extra = fm.group("obj"), " ".join(x for x in (extra, f"for {fm.group('why')}") if x)
         core = re.sub(r"^(?:the|a|an)\s+", "", core.strip(" ,.:-"), flags=re.I)
         # A preposition in front means the head was found inside a longer
         # phrase (`Analytical mindset with the ability to ...`): not a frame.
@@ -264,11 +394,155 @@ def decompose(text: str) -> dict:
     lang_core = re.sub(r"\s+(?:language|languages|skills?)$", "", re.sub(r"\s{2,}", " ", lang_core).strip(" ,"),
                        flags=re.I)
     lang_core = re.sub(r"^(?:in|of)\s+", "", lang_core, flags=re.I)
+    # `Speak English fluently` (rules 0.3.0): the verb and the adverb say how,
+    # the language is the demand.
+    spoken = _SPEAK_RE.match(lang_core)
+    if spoken:
+        lang_core = spoken.group("lang")
+    # `English (B2)`, `level of English`, `English required`, `technical
+    # English`, `communication in English`, `German is a plus`: one language
+    # with words around it that say how much or how, one key (rules 0.3.0; the
+    # site listed 15 Englishes).
+    cefr = _CEFR_RE.search(lang_core)
+    bare = _LANG_NOISE_RE.sub(" ", _CEFR_RE.sub(" ", lang_core))
+    bare = re.sub(r"[()\s,:-]+", " ", bare).strip()
+    if not _LANG_ONLY_RE.match(lang_core) and _LANG_ONLY_RE.match(bare):
+        lang_core = bare
+    elif not _LANG_ONLY_RE.match(lang_core):
+        # Word by word, for what the phrases above miss (`Communicate in English`,
+        # `High level of English`, `English, both in speech and writing`): one
+        # language, and every other word says how much or how.
+        words = re.findall(r"[^\W\d_]+|[ABCabc][12]", out["core"])
+        langs = {w.title() for w in words if _LANG_ONLY_RE.match(w)}
+        if len(langs) == 1 and all(_LANG_ONLY_RE.match(w) or w.lower() in _LANG_FILLER
+                                   or re.fullmatch(r"[ABCabc][12]", w) for w in words):
+            lang_core = langs.pop()
     if _LANG_ONLY_RE.match(lang_core):
         out.update(head_group="language", core=lang_core.title(),
                    modes=mm.group(0).strip().lower() if mm else "")
-    out["key"] = f"{out['head_group']}: {out['core']}" if out["head_group"] else out["core"]
+        if spoken and spoken.group("how") and not out["level"]:
+            out.update(level="strong", level_words=spoken.group("how").lower())
+        if cefr and not out["level_words"]:
+            out["level_words"] = cefr.group("cefr").upper()
+            out["level"] = out["level"] or _CEFR_LEVEL[cefr.group("cefr")[0].upper()]
+    elif out["core"]:
+        # An example in brackets at the end says which, not what (rules 0.3.0):
+        # `Containerization (Docker)` is Containerization, Docker goes to `extra`.
+        # And a preposition left in front names nothing (`In Python`).
+        pm = re.match(r"^(?P<c>.+?)\s*\((?P<p>[^()]+)\)$", out["core"])
+        if pm:
+            out["core"] = pm.group("c")
+            out["extra"] = " ".join(x for x in (out["extra"], pm.group("p")) if x)
+        out["core"] = re.sub(r"^(?:in|of|with|on|for)\s+(?=\S)", "", out["core"], flags=re.I)
+        # Degree words after the frame (`Safe handling of especially Excel`,
+        # `use of in particular Excel`): the level, not the object.
+        out["core"] = re.sub(r"^(?:in particular|expert-level)\s+(?=\S)", "", out["core"], flags=re.I)
+        lead = out["core"].split()
+        k = 0
+        while k < len(lead) - 1 and lead[k].lower() in LEVEL_WORDS:
+            k += 1
+        if k:
+            if not out["level"]:
+                lv = [LEVEL_WORDS[w.lower()] for w in lead[:k]]
+                out["level"] = max(lv, key=lambda l: _LEVEL_RANK[l])
+            out["core"] = " ".join(lead[k:])
+        # Product names written several ways (`Golang`, `PowerBI`, `MS Office`):
+        # one spelling, from a closed list (`ALIASES`). Then what names nothing.
+        out["core"] = ALIASES.get(canon(out["core"]), out["core"])
+        if canon(out["core"]) in JUNK or all(w.lower() in LEVEL_WORDS for w in out["core"].split()):
+            out["core"] = ""
+    # Grouped on the core alone, in its space (`key`, decided 2026-11-10): how it
+    # was asked is in `head_group`, as years are in `years_*`.
+    out["space"] = space(out["head_group"])
+    out["key"] = key(out["head_group"], out["core"])
     return out
+
+
+_CEFR_RE = re.compile(r"\b(?:(?:at\s+least|min(?:imum)?\.?)\s*)?(?:level\s+)?(?P<cefr>[ABCabc][12])\b(?:\s*level)?(?:\s*or\s+(?:higher|above))?")
+_CEFR_LEVEL = {"A": "basic", "B": "good", "C": "strong"}
+# The words that may stand around ONE language name and leave it the requirement.
+_LANG_FILLER = {
+    "communicate", "communicating", "communication", "speak", "speaks", "speaking", "spoken", "speech", "write",
+    "writes", "writing", "written", "read", "reading", "oral", "orally", "verbal", "verbally", "are", "is", "be",
+    "you", "fluent", "fluently", "fluency", "level", "knowledge", "command", "control", "mastery", "proficiency",
+    "proficient", "skills", "skill", "high", "good", "very", "excellent", "clear", "current", "professional",
+    "business", "technical", "strong", "solid", "basic", "native", "advanced", "working", "conversational",
+    "in", "of", "and", "both", "with", "a", "an", "the", "at", "least", "min", "minimum", "required",
+    "mandatory", "plus", "asset", "advantage", "as", "well", "language", "languages", "word", "words", "perfect",
+    "perfectly", "full", "complete", "proven", "demonstrated", "ability", "able", "to", "must", "have", "has",
+    "or", "equivalent", "certified", "certification", "nice"}
+_LANG_NOISE_RE = re.compile(
+    r"\b(?:is\s+(?:a\s+(?:strong\s+|big\s+)?plus|an?\s+(?:asset|advantage)|desirable|preferred|required|mandatory)|"
+    r"required|mandatory|preferred|essential|"
+    r"you\s+are\s+fluent\s+in|(?:with\s+)?(?:a\s+)?(?:good|very\s+good|excellent|strong|solid|basic)?\s*"
+    r"(?:knowledge|command|control|mastery|proficiency|level|fluency|communication|skills)\s+(?:of|in)|"
+    r"fluent\s+in|proficient\s+in|"
+    r"technical|business|professional|current|conversational|working|native|fluent|good|very|excellent|"
+    r"in\s+words?\s+and\s+(?:in\s+)?writing|language|languages|communication|skills?|level)\b",
+    re.I)
+
+# One spelling for a product or a standard written several ways (rules 0.3.0,
+# from the duplicates on the site's explorer, 2026-11-10). Keys are `canon`
+# forms. A closed list: what an embedding cannot merge because the NAMES differ
+# (`names` keeps `Golang` and `Go` apart, rightly for unknown pairs).
+ALIASES = {
+    "golang": "Go", "powerbi": "Power BI", "power bi": "Power BI", "microsoft power bi": "Power BI",
+    "ms office": "Microsoft Office", "microsoft office": "Microsoft Office",
+    "office package": "Microsoft Office", "office suite": "Microsoft Office", "ms office suite": "Microsoft Office",
+    "microsoft office suite": "Microsoft Office", "office": "Microsoft Office",
+    "microsoft excel": "Excel", "ms excel": "Excel", "excel": "Excel",
+    "microsoft azure": "Azure", "azure cloud": "Azure", "azure": "Azure",
+    "google cloud platform": "GCP", "google cloud": "GCP", "gcp": "GCP",
+    "amazon web service": "AWS", "aws cloud": "AWS",
+    "vue.j": "Vue", "vuej": "Vue", "vue": "Vue", "react.j": "React", "reactj": "React",
+    "node": "Node.js", "nodej": "Node.js", "node.j": "Node.js",
+    "apache spark": "Spark", "apache kafka": "Kafka", "apache airflow": "Airflow",
+    "restful api": "REST APIs", "rest api": "REST APIs", "rest": "REST APIs",
+    "k8": "Kubernetes", "postgre": "PostgreSQL", "postgresql": "PostgreSQL", "js": "JavaScript",
+    "html5": "HTML", "css3": "CSS", ".net": ".NET", "net": ".NET",
+    "ms sql server": "SQL Server", "microsoft sql server": "SQL Server", "mssql": "SQL Server",
+    "ci cd pipeline": "CI/CD", "ci/cd pipeline": "CI/CD", "ci/cd": "CI/CD", "ci cd": "CI/CD",
+    "infrastructure as code": "Infrastructure as Code", "iac": "Infrastructure as Code",
+    "llm": "LLMs", "large language model": "LLMs",
+    "ml": "machine learning", "artificial intelligence": "AI",
+    # keys are `canon` forms, so `licence` is already `license`
+    "driving license": "Driving licence", "driving license b": "Driving licence", "driver's license": "Driving licence",
+    "valid driver's license": "Driving licence", "valid driving license": "Driving licence",
+    "git version control": "Git",
+}
+# Cores that name nothing once the frame and level are out: debris of a split.
+JUNK = {"of", "one", "you have", "ideally", "preferably", "minimum", "confirmed", "consolidated", "successful",
+        "specific", "direct", "clear", "full", "high", "foundational", "general", "expert level", "senior level",
+        "multi year", "language", "interest", "unit", "equivalent", "equivalent through", "relevant", "similar",
+        "comparable", "required", "mandatory", "plus", "asset", "advantage", "other", "etc", "various", "good",
+        "ability", "skill", "knowledge", "experience", "competence", "understanding"}
+
+_BRITISH = {"modelling": "modeling", "labelling": "labeling", "organisation": "organization",
+            "organisational": "organizational", "optimisation": "optimization", "visualisation": "visualization",
+            "rigour": "rigor", "behaviour": "behavior", "colour": "color", "licence": "license",
+            "programme": "program", "centre": "center", "catalogue": "catalog", "analyse": "analyze",
+            "standardisation": "standardization", "digitalisation": "digitalization", "prioritisation": "prioritization",
+            "virtualisation": "virtualization", "containerisation": "containerization", "realisation": "realization",
+            "specialisation": "specialization", "utilisation": "utilization", "customisation": "customization"}
+
+
+def canon(core: str) -> str:
+    """The form two spellings of one requirement share, for comparison only.
+
+    Case, `’`, a hyphen for a space (`problem-solving`), British spelling
+    (`modelling`), and a plural on the last word (`data platforms`). Never
+    shown: what a reader sees is the commonest wording of the group."""
+    s = core.casefold().replace("’", "'").replace("&", " and ")
+    s = re.sub(r"(?<=\w)-(?=\w)", " ", s)
+    s = re.sub(r"[^\w+#./' ]+", " ", s)
+    words = [_BRITISH.get(w, w) for w in s.split()]
+    if words and len(words[-1]) > 3 and words[-1].endswith("s") and not words[-1].endswith(("ss", "us", "sis")):
+        words[-1] = words[-1][:-1]
+    return " ".join(words)
+
+
+_SPEAK_RE = re.compile(r"^(?:speak|speaks|speaking|write|writes|read|be)\s+(?P<lang>\w+)"
+                       r"(?:\s+(?P<how>fluently|well|fluent|natively))?$", re.I)
 
 
 _NAME_TOKEN = re.compile(r"[\w+#./-]+")

@@ -44,11 +44,11 @@ def freeze(version: str, group_threshold: float = 0.90, topic_threshold: float =
         raise FileExistsError(f"{out} exists: a dictionary is never overwritten, choose a new version")
     all_atoms = pd.read_parquet(batch / "must_have_atoms.parquet",
                                 columns=["posting_id", "item_idx", "atom", "route", "translated",
-                                         "req_head_group", "req_core", "req_group", "req_topic"])
+                                         "req_space", "req_core", "req_group", "req_topic"])
     if all_atoms.req_topic.isna().any():
         raise ValueError("req_topic missing: run group_requirements.py --topic first")
     atoms = all_atoms[all_atoms.req_core.str.strip() != ""]
-    cores = (atoms.groupby(["req_head_group", "req_core"])
+    cores = (atoms.groupby(["req_space", "req_core"])
              .agg(n=("req_group", "size"), req_group=("req_group", "first"),
                   groups=("req_group", "nunique"), req_topic=("req_topic", "first"))
              .reset_index())
@@ -123,7 +123,7 @@ def diff(old: str | Path, new: str | Path, store: Path = STORE) -> dict:
     """
     a = pd.read_parquet(Path(store) / str(old) / "req_cores.parquet")
     b = pd.read_parquet(Path(store) / str(new) / "req_cores.parquet")
-    m = a.merge(b[["req_head_group", "req_core", "req_group"]], on=["req_head_group", "req_core"],
+    m = a.merge(b[["req_space", "req_core", "req_group"]], on=["req_space", "req_core"],
                 how="left", suffixes=("", "_new"))
     fate = {}
     for g, sub in m.groupby("req_group"):
@@ -138,7 +138,7 @@ def diff(old: str | Path, new: str | Path, store: Path = STORE) -> dict:
         "occurrences_by_fate": {k: round(float(mass[kinds == k].sum() / mass.sum()), 4)
                                 for k in kinds.unique()},
         "new_groups_merged_from_several": int((merged > 1).sum()),
-        "cores_added": int(len(b) - b.merge(a[["req_head_group", "req_core"]]).shape[0]),
+        "cores_added": int(len(b) - b.merge(a[["req_space", "req_core"]]).shape[0]),
         "renamed": {g: m[m.req_group == g].req_group_new.dropna().iloc[0] for g in kinds[kinds == "renamed"].index},
     }
 

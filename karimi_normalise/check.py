@@ -54,7 +54,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import errors
+from . import curator, errors
 from .store import jf, now, open_store, read_json, write_json
 
 STALE_MINUTES = 90          # a chunk of 500 postings takes 5-15 minutes; 90 is six chunks of silence
@@ -347,6 +347,15 @@ def check(job: str, store=None, judge_url: str | None = None, reference: dict | 
         sp = errors.split_suspects(postings)
         suspects = {"of": sp["of"], "rows": errors.table(sp)["rows"], "examples": errors.examples(sp)}
 
+    # The curator agent's proposals for this run (`curator.py`), put to the
+    # judge only if it passed its planted pairs: otherwise they wait, detected.
+    cur = None
+    if postings is not None:
+        try:
+            cur = curator.resolve(store, job, judge_url if canaries and canaries["trusted"] else None)
+        except Exception as e:  # noqa: BLE001 - the agent never fails the check
+            _log("WARNING", event="karimi_curator_failed", job=job, error=type(e).__name__)
+
     # 4. drift. The history line carries this run's own verdict (levels 1-3);
     # a drift finding can only add yellow, so it is read off the line, not in it.
     own = max((f["light"] for f in findings), key=_ORDER.get, default="green")
@@ -359,12 +368,13 @@ def check(job: str, store=None, judge_url: str | None = None, reference: dict | 
                                "canaries_missed": canaries["missed"] if canaries else None,
                                "errors": err,
                                **run_detail(report, findings, judged, canaries, suspects),
+                               "curator": cur,
                                "rules_version": s.get("rules_version"), "dict_version": s.get("dict_version")})
 
     overall = max((f["light"] for f in findings), key=_ORDER.get, default="green")
     out = {"job": job, "checked": now(), "overall": overall, "findings": findings, "judge": judged,
            "canaries": canaries, "errors": err, "error_examples": err_examples,
-           "split_suspects": suspects,
+           "split_suspects": suspects, "curator": cur,
            "judge_model": JUDGE_NAME if judge_url else None, "judge_prompt": JUDGE_PROMPT if judge_url else None,
            "to_check": {k: len(v) for k, v in (report or {}).get("to_check", {}).items()},
            "thresholds": {"p_red": P_RED, "p_yellow": P_YELLOW, "min_pairs": MIN_PAIRS, "ref_min_pairs": REF_MIN_PAIRS,
@@ -415,7 +425,7 @@ def reference(dict_version: str, judge_url: str) -> dict:
     manifest = json.loads((d_dir / "manifest.json").read_text(encoding="utf-8"))
     atoms = pd.read_parquet(batch / "must_have_atoms.parquet",
                             columns=["posting_id", "item_idx", "atom", "route", "translated",
-                                     "req_head_group", "req_core", "req_group", "req_topic"])
+                                     "req_head_group", "req_space", "req_core", "req_group", "req_topic"])
     titles = pd.read_parquet(batch / "titles.parquet")
     hold = set(json.loads(Path(HOLDOUT).read_text(encoding="utf-8"))["software_holdout"])
     atoms, titles = atoms[~atoms.posting_id.isin(hold)], titles[~titles.posting_id.isin(hold)]

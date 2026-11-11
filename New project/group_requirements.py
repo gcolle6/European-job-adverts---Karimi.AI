@@ -16,8 +16,11 @@ embedding merges wordings no rule anticipates (`GitLab` / `Gitlab CI` /
 topic and can join different things (`Kommunikationsstärke` with `messaging
 systems`), so
 
-* cores are compared only within the same head group — competence never
-  merges with experience;
+* cores are compared only within the same SPACE (`normalise_req.space`):
+  language, education, or everything else. Until rules 0.3.0 it was the head
+  group, so `Experience with Python` and `Knowledge of Python` were two
+  groups; the user decided 2026-11-10 they are one, Python, with how it was
+  asked kept in `req_head_group`;
 * each core joins its most frequent neighbour above the threshold, ONE hop:
   no chains, so A~B and B~C never makes A~C;
 * the threshold is chosen by reading pairs from `software_dev` postings
@@ -45,6 +48,7 @@ sys.path.insert(0, str(HERE.parent))
 
 from karimi import embed  # noqa: E402
 from karimi.normalise_req import names  # noqa: E402,F401  (shared with karimi_normalise)
+from karimi.normalise_req import canon as normalise_canon  # noqa: E402
 
 OUT = HERE / "output"
 ATOMS = OUT / "must_have_atoms.parquet"
@@ -55,8 +59,8 @@ SEED = 20261101
 
 
 def cores(df: pd.DataFrame) -> pd.DataFrame:
-    """One row per (head group, core), with its occurrence count."""
-    g = df.groupby(["req_head_group", "req_core"]).size().rename("n").reset_index()
+    """One row per (space, core), with its occurrence count."""
+    g = df.groupby(["req_space", "req_core"]).size().rename("n").reset_index()
     return g[g.req_core.str.strip() != ""].reset_index(drop=True)
 
 
@@ -94,10 +98,10 @@ def neighbours_above(v: np.ndarray, t: float) -> list[np.ndarray]:
 
 def bands(df: pd.DataFrame, c: pd.DataFrame, v: np.ndarray) -> None:
     hold = set(json.loads(FROZEN.read_text(encoding="utf-8"))["software_holdout"])
-    dev_cores = set(zip(df[~df.posting_id.isin(hold)].req_head_group, df[~df.posting_id.isin(hold)].req_core))
+    dev_cores = set(zip(df[~df.posting_id.isin(hold)].req_space, df[~df.posting_id.isin(hold)].req_core))
     rng = random.Random(SEED)
     pairs = collections.defaultdict(list)
-    for g, sub in c.groupby("req_head_group"):
+    for g, sub in c.groupby("req_space"):
         idx = sub.index.to_numpy()
         best, sim = nearest(v[idx])
         for k, i in enumerate(idx):
@@ -115,7 +119,7 @@ def bands(df: pd.DataFrame, c: pd.DataFrame, v: np.ndarray) -> None:
 def assign(df: pd.DataFrame, c: pd.DataFrame, v: np.ndarray, t: float) -> pd.DataFrame:
     """Each core joins its most frequent neighbour at cosine >= t, one hop."""
     canon = c.req_core.copy()
-    for g, sub in c.groupby("req_head_group"):
+    for g, sub in c.groupby("req_space"):
         idx = sub.index.to_numpy()
         nb = neighbours_above(v[idx], t)
         n = c.n.to_numpy()[idx]
@@ -127,16 +131,25 @@ def assign(df: pd.DataFrame, c: pd.DataFrame, v: np.ndarray, t: float) -> pd.Dat
                 if n[j] > n[k] or (n[j] == n[k] and c.req_core[idx[j]] < c.req_core[i]):
                     canon[i] = c.req_core[idx[j]]
     c = c.assign(req_group_core=canon)
-    m = dict(zip(zip(c.req_head_group, c.req_core), c.req_group_core))
-    df = df.assign(req_group_core=[m.get((g, x), x) for g, x in zip(df.req_head_group, df.req_core)])
-    # A core with no frame noun names the same demand as the competence with
-    # that core: `Communication` and `communication skills`, `Python` and
-    # `Python skills`. Joined only on an identical group core, never by
-    # similarity across head groups.
-    comp = set(df.loc[df.req_head_group == "competence", "req_group_core"].str.casefold())
-    bare = (df.req_head_group == "") & df.req_group_core.str.casefold().isin(comp)
-    head = df.req_head_group.where(~bare, "competence")
-    df["req_group"] = np.where(head != "", head + ": " + df.req_group_core.str.casefold(),
+    # Two groups whose cores are one spelling apart are one group (rules 0.3.0):
+    # `problem-solving` / `problem solving`, `data modelling` / `data modeling`,
+    # `DevOps` / `devops`. The site's explorer listed them twice; the embedding
+    # leaves some below 0.90 and `names` keeps capitalised spellings apart. The
+    # group takes the commonest spelling.
+    size = c.groupby(["req_space", "req_group_core"]).n.sum()
+    form = {k: (k[0], normalise_canon(k[1])) for k in size.index}
+    best: dict[tuple[str, str], tuple[int, str]] = {}
+    for k, n_ in size.items():
+        f = form[k]
+        if f not in best or (n_, k[1]) > best[f]:
+            best[f] = (int(n_), k[1])
+    c = c.assign(req_group_core=[best[form[(s, g)]][1] for s, g in zip(c.req_space, c.req_group_core)])
+    m = dict(zip(zip(c.req_space, c.req_core), c.req_group_core))
+    df = df.assign(req_group_core=[m.get((g, x), x) for g, x in zip(df.req_space, df.req_core)])
+    # `Python`, `Python skills`, `Experience with Python`: one space, so one
+    # group by construction (rules 0.3.0); the label carries the space only
+    # where there is one (`language: english`, `education: physics`).
+    df["req_group"] = np.where(df.req_space != "", df.req_space + ": " + df.req_group_core.str.casefold(),
                                df.req_group_core.str.casefold())
     return df
 
@@ -153,11 +166,9 @@ def topics(df: pd.DataFrame, t: float) -> pd.DataFrame:
     that core), and those went to different topics. Each group is embedded by
     its commonest wording, under the head its label carries.
     """
-    head = np.where(df.req_group.str.startswith("competence: ") & (df.req_head_group == ""),
-                    "competence", df.req_head_group)
-    units = pd.DataFrame({"req_group": df.req_group, "req_head_group": head,
+    units = pd.DataFrame({"req_group": df.req_group, "req_space": df.req_space,
                           "req_core": df.req_group_core})
-    rep = units.groupby("req_group").agg(req_head_group=("req_head_group", "first"),
+    rep = units.groupby("req_group").agg(req_space=("req_space", "first"),
                                          req_core=("req_core", lambda s: s.value_counts().index[0]))
     g = units[["req_group"]].join(rep, on="req_group")
     c = cores(g)
@@ -178,7 +189,7 @@ def main() -> None:
               f"{out.req_topic.nunique():,} (topics per group, max: {nest})")
         return
     c = cores(df)
-    print(f"{len(c):,} distinct (head group, core) pairs")
+    print(f"{len(c):,} distinct (space, core) pairs")
     v = vectors(c.req_core.tolist())
     if "--bands" in sys.argv:
         bands(df, c, v)

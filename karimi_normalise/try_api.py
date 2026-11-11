@@ -32,7 +32,7 @@ import requests
 
 BATCH = 200
 ADDED = ["title_role", "title_level", "title_extra", "title_name", "title_match", "n_items", "n_requirements",
-         "n_counted", "n_known", "n_group", "n_topic", "n_nuovo", "n_items_kept_whole", "req_groups",
+         "n_counted", "n_known", "n_group", "n_topic", "n_nuovo", "n_items_kept_whole", "req_names", "req_groups",
          "req_topics", "rules_version", "dict_version", "karimi_job"]
 
 

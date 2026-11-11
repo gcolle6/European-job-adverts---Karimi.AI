@@ -125,7 +125,7 @@ For spreadsheets, beside the JSONL:
 
 | File | One row per | Columns |
 |---|---|---|
-| `postings.csv` | posting | every scalar field you sent (`id`, `title`, ...), then the added ones: `title_role`, `title_level`, `title_name`, `title_match`, `n_items`, `n_requirements`, `n_known`, `n_group`, `n_topic`, `n_nuovo`, `n_items_kept_whole`, `req_groups`, `req_topics` (joined with ` \| `), versions |
+| `postings.csv` | posting | every scalar field you sent (`id`, `title`, ...), then the added ones: `title_role`, `title_level`, `title_name`, `title_match`, `n_items`, `n_requirements`, `n_known`, `n_group`, `n_topic`, `n_nuovo`, `n_items_kept_whole`, `req_names` (every counted requirement by name), `req_groups`, `req_topics` (joined with ` \| `), versions |
 | `requirements.csv` | requirement | `posting_id`, the item as written, the requirement, its fields, group, topic, `match`, `match_cosine`, `match_via`, the title's role repeated |
 
 Join `postings.csv` to your own table on `id`: that is the "added columns"
@@ -140,9 +140,11 @@ Each requirement:
 | `item`, `item_split` | the item as written, and what was split (its English translation, or itself) |
 | `translated`, `translated_by` | whether it was translated, and by what (`opus-mt`, `given`) |
 | `atom`, `atom_norm` | the single requirement, as split and normalised |
+| `req_name` | the requirement as a reader names it: `Python`, `English`, `Education in Physics` |
 | `years_min`, `years_max`, `level` | taken out of the text into their own fields |
-| `head`, `core` | the kind of ask (`experience`, `competence`, ...) and what is asked for |
-| `req_group`, `req_topic` | same requirement, same theme |
+| `degree` | for a degree: `bachelor`, `master`, `phd`, `mba`, `degree` (level not named) or `student` |
+| `head`, `head_group`, `core` | how it is asked (`experience`, `competence`, `ability`, `language`, `education`) and what is asked for |
+| `req_group`, `req_topic` | same requirement, same theme. Since rules 0.3.0 the group does not depend on how it is asked: `Experience with Python` and `Knowledge of Python` are both `python`; degrees are `education: physics` whatever the level |
 | `match`, `match_cosine`, `match_via` | how it was found (below), how close, and the known requirement it was placed by |
 | `nice_to_have`, `counted` | flagged as optional; counted in the requirement total |
 | `rules_version`, `dict_version` | what made this row |

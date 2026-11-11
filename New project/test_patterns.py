@@ -63,6 +63,7 @@ CASES = [
     ("P6", "5-8 years of experience in SAP master data, ideally within life sciences or healthcare operations", 1),
     ("P6 both", "Excellent communicative skills, both in Dutch and English.", 2),
     ("P6 both", "Very good knowledge of Swedish and English, both in speech and writing.", 2),
+    # a second language after `ideally` is a requirement of its own (the user, 2026-11-11)
     ("P6 control", "Fluent English, ideally German", 2),
     ("P6 control", "Ability to communicate clearly with customers", 1),
     # P8 fillers and alternative paths
@@ -176,14 +177,14 @@ NORM_CASES = [
 
 # Decomposition (`normalise_req.decompose`): (text, expected key, expected level, years_min)
 KEY_CASES = [
-    ("3+ years of strong hands-on experience with Kubernetes", "experience: Kubernetes", "strong", 3),
-    ("Strong knowledge of SQL", "competence: SQL", "strong", None),
-    ("Proficiency in SQL", "competence: SQL", "advanced", None),
-    ("Familiarity with SQL", "competence: SQL", "basic", None),
-    ("SQL skills", "competence: SQL", "", None),
-    ("Minimum of 3 years' experience in data engineering", "experience: data engineering", "", 3),
-    ("5 years in software development", "experience: software development", "", 5),
-    ("Expertise in Power BI, particularly in complex data modeling", "competence: Power BI", "expert", None),
+    ("3+ years of strong hands-on experience with Kubernetes", "Kubernetes", "strong", 3),
+    ("Strong knowledge of SQL", "SQL", "strong", None),
+    ("Proficiency in SQL", "SQL", "advanced", None),
+    ("Familiarity with SQL", "SQL", "basic", None),
+    ("SQL skills", "SQL", "", None),
+    ("Minimum of 3 years' experience in data engineering", "data engineering", "", 3),
+    ("5 years in software development", "software development", "", 5),
+    ("Expertise in Power BI, particularly in complex data modeling", "Power BI", "expert", None),
     ("Fluent knowledge of German written and spoken", "language: German", "strong", None),
     ("Excellent written and verbal English skills", "language: English", "strong", None),
     ("Native German", "language: German", "expert", None),
@@ -191,7 +192,7 @@ KEY_CASES = [
     ("Python", "Python", "", None),
     ("Fluency in English", "language: English", "strong", None),
     ("in English", "language: English", "", None),
-    ("Strong problem-solving skills with excellent attention to detail", "competence: problem-solving", "strong", None),
+    ("Strong problem-solving skills with excellent attention to detail", "problem-solving", "strong", None),
     ("Analytical mindset with the ability to structure", "Analytical mindset with the ability to structure", "", None),
 ]
 

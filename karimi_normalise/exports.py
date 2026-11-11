@@ -3,7 +3,8 @@
 Two tables beside `results.jsonl`:
 
 * `requirements.csv` — one row per requirement: the posting it came from, the
-  item as written, the single requirement, its fields, its group and topic,
+  item as written, the single requirement and its readable name (`req_name`),
+  its fields, its group and topic,
   how it was found, and the title's role and group repeated on every row;
 * `postings.csv`     — one row per posting, the input's own scalar fields
   (`id`, `title`, `language`, anything else the caller sent, except the
@@ -20,14 +21,15 @@ import csv
 import io
 
 REQUIREMENT_COLUMNS = [
-    "posting_id", "item_idx", "item", "item_split", "translated_by", "route", "atom_idx", "atom", "atom_norm",
-    "counted", "nice_to_have", "years_min", "years_max", "level", "head", "head_group", "core", "extra",
-    "req_group", "req_topic", "match", "match_cosine", "match_via",
+    "posting_id", "item_idx", "item", "item_split", "translated_by", "route", "atom_idx", "atom", "req_name",
+    "atom_norm", "counted", "nice_to_have", "years_min", "years_max", "level", "degree", "head", "head_group",
+    "core", "extra", "req_group", "req_topic", "match", "match_cosine", "match_via", "match_by",
     "title", "title_role", "title_level", "title_name", "title_match", "rules_version", "dict_version",
 ]
 POSTING_ADDED = [
     "title_role", "title_level", "title_extra", "title_name", "title_match", "n_items", "n_requirements",
-    "n_counted", "n_known", "n_group", "n_topic", "n_nuovo", "n_items_kept_whole", "req_groups", "req_topics",
+    "n_counted", "n_known", "n_group", "n_topic", "n_nuovo", "n_items_kept_whole", "req_names", "req_groups",
+    "req_topics",
     "rules_version", "dict_version",
 ]
 
@@ -53,6 +55,10 @@ def _posting_row(posting: dict, requirements: list[dict], title: dict | None) ->
         "n_counted": sum(1 for r in requirements if r.get("counted")),
         **{f"n_{m}": sum(1 for r in requirements if r.get("match") == m) for m in ("known", "group", "topic", "nuovo")},
         "n_items_kept_whole": sum(1 for r in items.values() if r.get("route") in ("llm", "damaged")),
+        # Every counted requirement by its readable name (rules 0.3.0): `req_groups`
+        # leaves out the ones with no group, which are the new ones.
+        "req_names": " | ".join(dict.fromkeys(r["req_name"] for r in requirements
+                                              if r.get("req_name") and r.get("counted"))),
         "req_groups": " | ".join(dict.fromkeys(r["req_group"] for r in requirements if r.get("req_group"))),
         "req_topics": " | ".join(dict.fromkeys(r["req_topic"] for r in requirements if r.get("req_topic"))),
         "rules_version": requirements[0]["rules_version"] if requirements else "",

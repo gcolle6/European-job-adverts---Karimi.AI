@@ -57,6 +57,7 @@ class ReqMatch:
     status: str         # known | group | topic | nuovo | empty | non_cercato
     cosine: float | None = None
     via: str = ""       # the known core it was matched to
+    by: str = ""        # who placed it: "" the frozen dictionary, `curator` an agent's resolved entry
 
 
 CASING_MIN_N = 5          # occurrences of a word, outside the first position of a core
@@ -130,21 +131,28 @@ class Dictionary:
 
     def _setup(self, manifest, cores, vectors, titles, acronyms, reference) -> None:
         self.manifest = manifest
-        self.version = manifest["dict_version"]
+        self.version = self.base_version = manifest["dict_version"]
+        self._aliases: dict[tuple[str, str], dict] = {}
         self.group_threshold = manifest["group_threshold"]
         self.topic_threshold = manifest["topic_threshold"]
+        # Dictionaries from rules 0.3.0 on are keyed by space (`normalise_req.space`):
+        # experience, competence and ability share one. Older ones by head group.
+        if "req_space" not in cores:
+            cores = cores.assign(req_space=cores.req_head_group)
         self.cores = cores
         self.vectors = vectors.astype(np.float32)
         self.reference = reference
-        self._exact = {(h, c): i for i, (h, c) in enumerate(zip(cores.req_head_group, cores.req_core))}
+        self._exact = {(h, c): i for i, (h, c) in enumerate(zip(cores.req_space, cores.req_core))}
         # The same core in other capitals (`proficient in python`), found when the
         # exact one is not. Only where every known spelling agrees on the group:
         # a key two groups share is no evidence for either. Added 2026-11-07
         # (rules 0.2.0) after `New project/invariance.py`: an item in lower case
         # lost its group 38% of the time in English.
+        # Since rules 0.3.0 by `normalise_req.canon`, not only case: `time-management`
+        # finds `time management`, `data modelling` finds `data modeling`.
         folded: dict[tuple[str, str], set[int]] = {}
-        for i, (h, c) in enumerate(zip(cores.req_head_group, cores.req_core)):
-            folded.setdefault((h, c.casefold()), set()).add(i)
+        for i, (h, c) in enumerate(zip(cores.req_space, cores.req_core)):
+            folded.setdefault((h, normalise_req.canon(c)), set()).add(i)
         self._folded = {k: min(v) for k, v in folded.items()
                         if len({cores.req_group.iat[i] for i in v}) == 1}
         # language code -> its map; English from these cores, the rest from the
@@ -154,9 +162,18 @@ class Dictionary:
         en = casing(cores.req_core)
         self.casing = {"en": en, **{k: {**en, **m} for k, m in language_casing().items()}}
         self._topic_of = dict(zip(cores.req_group, cores.req_topic))
-        # Candidates share the head group AND the names, so the index is by both.
+        # A group's name is its commonest wording, as a reader writes it
+        # (`normalise_req.display`); a topic's, its commonest group's.
+        by_n = (cores if "n" in cores else cores.assign(n=1)).sort_values("n", ascending=False, kind="stable")
+        first = by_n.drop_duplicates("req_group")
+        self._name = {g: normalise_req.display(sp, c) for g, sp, c in
+                      zip(first.req_group, first.req_space, first.req_core)}
+        t = by_n.groupby("req_group", sort=False).n.sum().rename("gn").reset_index()             .merge(first[["req_group", "req_topic"]], on="req_group").sort_values("gn", ascending=False)             .drop_duplicates("req_topic")
+        for topic, g in zip(t.req_topic, t.req_group):
+            self._name.setdefault(topic, self._name[g])
+        # Candidates share the space AND the names, so the index is by both.
         buckets: dict[tuple, list[int]] = {}
-        for i, (h, c) in enumerate(zip(cores.req_head_group, cores.req_core)):
+        for i, (h, c) in enumerate(zip(cores.req_space, cores.req_core)):
             buckets.setdefault((h, normalise_req.names(c)), []).append(i)
         self._bucket = {k: np.array(v) for k, v in buckets.items()}
         self._title_group = dict(zip(titles.title_key, titles.title_group))
@@ -179,8 +196,8 @@ class Dictionary:
         return embed.encode(self._model, texts).astype(np.float32)
 
     def lookup_requirements(self, parts: list[tuple[str, str]]) -> list[ReqMatch]:
-        """(head group, core) -> match, for many at once: unknown cores are embedded together."""
-        out: list[ReqMatch | None] = [self._known(h, c) for h, c in parts]
+        """(space, core) -> match, for many at once: unknown cores are embedded together."""
+        out: list[ReqMatch | None] = [self._known(h, c) or self._alias(h, c) for h, c in parts]
         todo = [k for k, m in enumerate(out) if m is None]
         if todo:
             try:
@@ -194,12 +211,29 @@ class Dictionary:
                 out[k] = self._nearest(*parts[k], v)
         return out
 
+    def name(self, group_or_topic: str) -> str:
+        """The readable name of a group or topic, "" when unknown."""
+        return self._name.get(group_or_topic, "") if group_or_topic else ""
+
+    def set_aliases(self, entries: dict[tuple[str, str], dict]) -> None:
+        """Spellings an agent resolved (`curator.attach`): (space, canon) -> entry. The version
+        says how many, `0.2.0+a3`, so an output always names what made it."""
+        self._aliases = dict(entries)
+        self.version = f"{self.base_version}+a{len(entries)}" if entries else self.base_version
+
+    def _alias(self, head: str, core: str) -> ReqMatch | None:
+        e = self._aliases.get((head, normalise_req.canon(core))) if core.strip() else None
+        if e is None or e.get("target_group") not in self._topic_of:
+            return None
+        return ReqMatch(e["target_group"], self._topic_of[e["target_group"]], "known", 1.0,
+                        e.get("target_core", ""), by=e.get("detected_by", "curator"))
+
     def _known(self, head: str, core: str) -> ReqMatch | None:
         if not core.strip():
             return ReqMatch("", "", "empty")
         i = self._exact.get((head, core))
         if i is None:
-            i = self._folded.get((head, core.casefold()))
+            i = self._folded.get((head, normalise_req.canon(core)))
         if i is None and head == "":
             # A bare core is the competence with that core (`Python` / `Python
             # skills`), as in the batch: on an identical core only.

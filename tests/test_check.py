@@ -147,6 +147,20 @@ def test_each_run_carries_its_detail_and_no_text(tmp_path, monkeypatch):
     assert {k: old[k] for k in dashboard._DETAIL} == {k: run[k] for k in dashboard._DETAIL}
 
 
+def test_a_run_shows_before_its_check(tmp_path):
+    from karimi_normalise import dashboard
+
+    store = LocalStore(tmp_path)
+    _job(store, "9999999999999999")
+    write_json(store, jf("8888888888888888", "status.json"),          # never finished, a week ago
+               {"job": "8", "state": "running", "updated": _ago(7 * 24 * 60)})
+    runs = dashboard.aggregate(store, None, "0.1.0")["runs"]
+    assert [(r["job"], r["pending"], r["postings"]) for r in runs] == [("9999999999999999", True, 30)]
+    check.check("9999999999999999", store)
+    runs = dashboard.aggregate(store, None, "0.1.0")["runs"]
+    assert [r["job"] for r in runs] == ["9999999999999999"] and not runs[0].get("pending")
+
+
 def test_canaries_reach_the_model():
     # A planted pair the code answers (`tester.by_code`) tests nothing about the model.
     d = check.canary_pairs()

@@ -91,8 +91,8 @@ def split_count() -> dict:
 def _levels(d: pd.DataFrame) -> pd.DataFrame:
     """Requirement pairs: are a and b in one group, and in one topic, NOW?"""
     atoms = pd.read_parquet(BATCH / "must_have_atoms.parquet",
-                            columns=["req_head_group", "req_core", "req_group", "req_topic"])
-    where = atoms.drop_duplicates(["req_head_group", "req_core"]).set_index(["req_head_group", "req_core"])
+                            columns=["req_space", "req_core", "req_group", "req_topic"])
+    where = atoms.drop_duplicates(["req_space", "req_core"]).set_index(["req_space", "req_core"])
     out = []
     for _, r in d[d.kind == "requirement"].iterrows():
         h = "" if r.context == "(no head)" else r.context

@@ -17,8 +17,11 @@ Per requirement, the five charts of the explorer:
 5. with       — the requirements that come with it: how much more often than
                 anywhere (lift) and how many of its adverts ask for them too.
 
-A requirement is a `req_topic` without its head (`competence: python` and
-`experience: python` are both Python), the unit a reader means by "Python".
+A requirement is a `req_topic`, the unit a reader means by "Python": since
+rules 0.3.0 `Experience with Python` and `Knowledge of Python` are one group
+already, and how it was asked is chart 3. A degree keeps its space
+(`education: physics` is not `physics`), and its chart 3 adds the degree
+levels (bachelor, master, PhD, ...), the user's call of 2026-11-10.
 Listed only if at least MIN_ADS adverts from at least MIN_COMPANIES companies
 ask for it: one employer's template posted 131 times (`fof`, `ddx`, ...) is
 not a trend. Generic objects that name nothing (`technical`, `equivalent`)
@@ -36,6 +39,9 @@ from pathlib import Path
 import pandas as pd
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent))
+
+from karimi import normalise_req  # noqa: E402
 OUT = HERE / "output"
 EXPORT = HERE.parent / "wetransfer_karimi-jobs_2026-08-25_1346" / "software_data_europe.json"
 
@@ -49,7 +55,11 @@ TOP_ROLES, TOP_WITH = 12, 30
 SENIORITY = ["Internship", "Junior", "Mid-level", "Senior"]   # C-Level: 53 adverts, too few
 LEVELS = ["basic", "good", "strong", "advanced", "expert"]    # the five level words, by intensity
 ASKED = {"experience": "As experience", "competence": "As a skill", "ability": "As an ability",
-         "language": "As a language", "": "Named alone"}
+         "language": "As a language", "education": "As a degree", "": "Named alone"}
+# The degree an education requirement asks for (`normalise_req.DEGREES`), lowest first.
+DEGREES = ["student", "bachelor", "master", "phd", "mba", "degree"]
+DEGREE_NAME = {"student": "Student", "bachelor": "Bachelor", "master": "Master", "phd": "PhD", "mba": "MBA",
+               "degree": "Any degree"}
 COUNTRY_EN = {
     "Deutschland": "Germany", "Nederland": "Netherlands", "España": "Spain", "België": "Belgium",
     "Italia": "Italy", "Sverige": "Sweden", "Polska": "Poland", "Schweiz": "Switzerland", "România": "Romania",
@@ -60,6 +70,8 @@ COUNTRY_EN = {
 
 # Objects that name no requirement on their own: fragments of the frame.
 GENERIC = {
+    # `comparable qualification` and `methodologies` once the list around them is gone (2026-11-10)
+    "qualification", "methodologies",
     "technical", "equivalent", "work", "it", "development", "business", "experience", "data", "engineering",
     "tools", "team", "industry", "standards", "management", "services", "processes", "organization",
     "structured", "commercial", "production", "frameworks", "relational", "similar application",
@@ -92,11 +104,12 @@ def _shares(col: pd.Series, base: pd.Series, keep: list[str] | None = None) -> l
 
 def main(dest: str) -> None:
     a = pd.read_parquet(OUT / "must_have_atoms.parquet",
-                        columns=["posting_id", "req_topic", "req_head_group", "req_core", "req_level"])
+                        columns=["posting_id", "req_topic", "req_group", "req_space", "req_head_group", "req_core", "req_level",
+                                 "req_degree"])
     a = a[a.req_topic.notna() & (a.req_topic != "")]
     # One requirement whatever the apostrophe or the spacing: `master's` and
     # `master’s` were two before 2026-11-06.
-    a["obj"] = (a.req_topic.str.replace(r"^[a-z ]+: ", "", regex=True).str.replace("’", "'", regex=False)
+    a["obj"] = (a.req_topic.str.replace(r"^language: ", "", regex=True).str.replace("’", "'", regex=False)
                 .str.replace(r"\s+", " ", regex=True).str.strip().str.lower())
     a = a[~a.obj.isin(GENERIC) & (a.obj != "")]
 
@@ -122,8 +135,15 @@ def main(dest: str) -> None:
 
     pa = per[per.obj.isin(keep.index)]
     ad_sets = pa.groupby("obj").posting_id.agg(set).to_dict()
-    names = (pa.groupby(["obj", "req_core"]).size().reset_index(name="n").sort_values("n", ascending=False)
-             .drop_duplicates("obj").set_index("obj").req_core.to_dict())
+    # The name is the topic's largest GROUP, worded as that group is most often
+    # written. Counting wordings across the whole topic named `data analysis`
+    # `Data` (2026-11-10): its spellings split the count, one bare word did not.
+    big = (pa.groupby(["obj", "req_group"]).size().reset_index(name="n").sort_values("n", ascending=False)
+           .drop_duplicates("obj"))
+    pg = pa.merge(big[["obj", "req_group"]], on=["obj", "req_group"])
+    top = (pg.groupby(["obj", "req_space", "req_core"]).size().reset_index(name="n")
+           .sort_values(["n", "req_core"], ascending=[False, True]).drop_duplicates("obj"))
+    names = {o: normalise_req.display(sp, c) for o, sp, c in zip(top.obj, top.req_space, top.req_core)}
     slug = _slugs(keep.index)
     meta = ads.set_index("posting_id")
     by_rows = {o: g for o, g in pa.groupby("obj")}
@@ -137,6 +157,7 @@ def main(dest: str) -> None:
         roles = roles[(roles.index != "") & roles.index.map(lambda r: role_n.get(r, 0) >= MIN_ROLE_ADS)]
         asked = rows.req_head_group.value_counts()
         lv = rows.req_level.value_counts()
+        dg = rows.req_degree.value_counts()
         withs = []
         for o2 in keep.index:
             if o2 == o:
@@ -153,6 +174,7 @@ def main(dest: str) -> None:
             "seniority": _shares(m.seniority, sen_n, SENIORITY),
             "asked": [{"how": ASKED.get(k, k), "atoms": int(asked.get(k, 0))} for k in ASKED if asked.get(k, 0)],
             "levels": [{"level": k, "atoms": int(lv.get(k, 0))} for k in LEVELS],
+            "degrees": [{"degree": DEGREE_NAME[k], "atoms": int(dg.get(k, 0))} for k in DEGREES if dg.get(k, 0)],
             "atoms": int(len(rows)),
             "countries": sorted(_shares(m.country, country_n), key=lambda x: -x["share"]),
             "with": [{"id": slug[o2], "name": names.get(o2, o2), "ads": int(j), "share": round(j / len(s), 5),

@@ -80,7 +80,7 @@ def simulated_matches(atoms: pd.DataFrame, titles: pd.DataFrame, vectors: dict[s
     held = set(ids[: int(len(ids) * HELD)])
     a, b = atoms[~atoms.posting_id.isin(held)], atoms[atoms.posting_id.isin(held)]
     a = a[a.req_core.str.strip() != ""]
-    cores = (a.groupby(["req_head_group", "req_core"])
+    cores = (a.groupby(["req_space", "req_core"])
              .agg(req_group=("req_group", "first"), req_topic=("req_topic", "first"))
              .reset_index())
     v = np.stack([vectors[c] for c in cores.req_core])
@@ -89,9 +89,9 @@ def simulated_matches(atoms: pd.DataFrame, titles: pd.DataFrame, vectors: dict[s
                                          title_name=("title_name", "first")).reset_index()
     d = dc.Dictionary.from_tables(manifest, cores, v, tdict, acronyms,
                                   encoder=lambda texts: np.stack([vectors[t] for t in texts]))
-    parts = list(dict.fromkeys(zip(b.req_head_group, b.req_core)))
+    parts = list(dict.fromkeys(zip(b.req_space, b.req_core)))
     match = dict(zip(parts, d.lookup_requirements(parts)))
-    m = [match[p] for p in zip(b.req_head_group, b.req_core)]
+    m = [match[p] for p in zip(b.req_space, b.req_core)]
     b = b.assign(status=[x.status for x in m], via=[x.via for x in m],
                  same_group=[x.group == g for x, g in zip(m, b.req_group)],
                  same_topic=[x.topic == t for x, t in zip(m, b.req_topic)])

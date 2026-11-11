@@ -36,6 +36,57 @@ Format: version · date · what changed · how it was measured.
   with the batch 99.4% of 1,533 items (was 100%): the 9 differences are
   Swedish items losing their full stop before translation and all-lower-case
   French items getting a first capital, as intended.
+- **0.3.0** · 2026-11-10 · from the first real trial (Chiara, 2026-11-09, 10
+  adverts read row by row) and the duplicates the site's explorer showed.
+  *Grouping* (the user's calls of 2026-11-10): a requirement is grouped on its
+  object alone — `Experience with Python`, `Knowledge of Python`, `Python
+  skills` are one group, `python`; how it was asked stays in `head_group`.
+  Languages and degrees keep a space of their own (`space`): a new head group
+  `education`, `MSc / PhD / Degree in Physics` -> `education: Physics` with the
+  level in a new column `degree`. *Splitting*: two frames over one object are
+  one (`Solid knowledge and use of SQL`); the category before a list of names
+  is not a requirement of its own (`frameworks like Spark, ...`, also in
+  brackets); a bracket describing an ecosystem is dropped; languages after
+  `in combination with` and full language clauses split; `both Windows and
+  Linux` splits; bare traits split (`Reliable, proactive, and self-motivated`);
+  roles in alternative after `experience as` and purposes after `<name> for`
+  stay one; `their` pointing back keeps an item whole; `to` + verb is not the
+  head (`Willingness to acquire knowledge in Angular`); `ideally Excel, Qlik`
+  is kept and marked optional, so not counted beside what it qualifies.
+  *Normalisation*: `Multi-year`, `related`, `overall`, `ideally` are not the
+  object; a name after the preposition is (`programming knowledge in Python`
+  -> Python); `proficient`, `familiar`, `use of`, `abilities` are frames; one
+  key per language whatever surrounds it (`English (B2)`, `level of English`,
+  `communication in English`, `German is a plus`), CEFR level to `level_words`;
+  a closed list of product spellings (`ALIASES`: Golang, PowerBI, MS Office,
+  Microsoft Azure, ...); a bracketed example goes to `extra`; debris (`of`,
+  `You have`, `Senior-level`) is empty. Groups whose cores differ only by case,
+  hyphen, plural or British spelling are joined in the batch
+  (`normalise_req.canon`) and found by lookup. New output `req_name`, the
+  readable name. Measured: pattern cases 138/138 (9 key cases rewritten to the
+  new keys); `ideally` + names is optional and not counted, `ideally` + a
+  language counts (`Fluent English, ideally German` = 2, the user's call of
+  2026-11-11); blind count exact 78.0%, unchanged; parity with the
+  batch 99.4% of 1,533 items; the explorer's duplicate entries 49 -> 7 (835 ->
+  804 requirements; `English` 3,562 -> 5,777 adverts); Chiara's run re-done:
+  19 of 83 items split differently, known requirements 110 -> 123. ⚠️ Wrong merges are now barely measured: the
+  labelled pairs were drawn inside one head group, and only 1 requirement
+  merge pair still occurs in the output (was 14). Needs a new labelled draw.
+  Then (2026-11-11, same version, unreleased): the **curator agent**
+  (`curator.py`). At the end of every run it proposes, for each requirement the
+  run could not place, a known requirement it is a spelling of (a vendor in
+  front, a version or a lower-case generic word after, an acronym in
+  brackets); the check's judge decides; resolved joins are read by the API
+  within five minutes, marked `match_by = curator`, and the dictionary version
+  reads `0.2.0+a<n>`. It only joins a spelling to an existing group, never
+  makes or merges groups; a person can overrule (`python -m
+  karimi_normalise.curator --reject`). Measured on the dictionary's own
+  cores: the first detectors proposed 1,257 joins with obvious errors
+  (`Information Technology` -> `Information`, `ISO 27001` -> `ISO`); tightened
+  to 385. Two samples of 40 put to the real judge: it agreed with 38 and 39,
+  and reading them 3 and then 1 were wrong (`Oracle RDBMS` -> `RDBMS`, since
+  excluded). The judge passes nearly everything here, so precision rests on
+  the detectors.
 
 ## Dictionary
 
@@ -56,3 +107,18 @@ Format: version · date · what changed · how it was measured.
   postings the dictionary did not see: 59.7% known, 10.7% group by
   similarity, 11.5% topic only, 18.1% `nuovo`; titles `nuovo` 36.9% (38.0%
   before variant lookup).
+- **0.2.0** · 2026-11-10 · batch regenerated with rules 0.3.0: grouped by
+  space and object (`experience` and `competence` together, `education` and
+  `language` apart), cores one spelling apart joined. 97,628 cores, 74,033
+  groups (was 87,703), 49,120 topics (was 62,822). On postings the dictionary
+  did not see: 65.6% known (was 59.7%), 8.8% group by similarity, 11.3% topic
+  only, 13.2% `nuovo` (was 18.1%); titles unchanged. Lookup agrees with the
+  batch group 72.5% when it places by similarity (was 77.2%): the groups are
+  larger, so the nearest core and the batch's most frequent one differ more
+  often. Built and read with rules 0.3.0 only: older rules look it up with
+  keys it no longer holds. Judge's reference (`check --reference 0.2.0`): it calls
+  13 of 150 group decisions wrong, 8.7% (was 7, 4.7%; p ~ 0.25, not
+  significant), topics 10% (was 11%). Read: ~5 real errors (`Expresso` ~
+  `Express`, `Innate` ~ `Endevor`), the rest narrower/broader. Likely cost of
+  the one space: experience, competence and ability are now searched
+  together, so more cores sit above 0.90 by chance.

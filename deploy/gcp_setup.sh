@@ -2,7 +2,7 @@
 # The whole GCP setup, for a personal account (no organisation). NOT RUN YET.
 # Read it, set the three variables, then run ONE STEP AT A TIME:
 #
-#   sh deploy/gcp_setup.sh 1      # ... up to 19
+#   sh deploy/gcp_setup.sh 1      # ... up to 20
 #
 # Without an organisation the policy that refuses non-EU locations is not
 # available (deploy/eu_setup.sh needs one), so REGION is written on every
@@ -36,7 +36,7 @@ CHECK_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/karimi/karimi-check:${DICT_V
 # start or that failed its planted pairs (`check.CANARIES`, added 2026-11-07).
 ALERT_FILTER='jsonPayload.event=("karimi_check" OR "karimi_check_failed" OR "karimi_judge_not_started" OR "karimi_judge_untrusted") AND severity>=ERROR'
 
-case "${1:?which step: 1-19}" in
+case "${1:?which step: 1-20}" in
 1)  # the project, and the default for every later command
     gcloud projects create "$PROJECT_ID" --name="Karimi normalise"
     gcloud config set project "$PROJECT_ID"
@@ -205,6 +205,28 @@ case "${1:?which step: 1-19}" in
     gcloud builds submit --region="$REGION" --config=deploy/cloudbuild.yaml \
         --gcs-source-staging-dir="${BUILD}/source" \
         --substitutions="_REGION=${REGION},_DICT_VERSION=${DICT_VERSION},_TAG=${DICT_VERSION}"
+    gcloud run services update karimi-api --image="$IMAGE" --region="$REGION"
+    gcloud run jobs update karimi-batch --image="$IMAGE" --region="$REGION"
+    ;;
+20) # a new DICTIONARY with new rules (2026-11-10: rules 0.3.0, dictionary 0.2.0):
+    #   the dictionary, its quality card and the judge's reference into the
+    #   bucket under the new version, then both images built on it and every
+    #   service and job moved over. The old version stays in the bucket, so
+    #   going back is this step with the old numbers.
+    RULES_VERSION="${RULES_VERSION:?set RULES_VERSION, e.g. 0.3.0}"
+    gcloud storage cp -r "New project/output/dictionaries/${DICT_VERSION}" "${DICTS}/"
+    gcloud storage cp "New project/output/quality/quality_${RULES_VERSION}__${DICT_VERSION}.json" \
+        "${DICTS}/${DICT_VERSION}/quality.json"
+    gcloud storage cp "New project/output/tester/judge_reference_${DICT_VERSION}.json" \
+        "${DICTS}/${DICT_VERSION}/judge_reference.json"
+    gcloud builds submit --region="$REGION" --config=deploy/cloudbuild_check.yaml \
+        --gcs-source-staging-dir="${BUILD}/source" \
+        --substitutions="_REGION=${REGION},_DICT_VERSION=${DICT_VERSION},_TAG=${DICT_VERSION}"
+    gcloud builds submit --region="$REGION" --config=deploy/cloudbuild.yaml \
+        --gcs-source-staging-dir="${BUILD}/source" \
+        --substitutions="_REGION=${REGION},_DICT_VERSION=${DICT_VERSION},_TAG=${DICT_VERSION}"
+    gcloud run jobs update karimi-check --image="$CHECK_IMAGE" --region="$REGION"
+    gcloud run jobs update karimi-sweep --image="$CHECK_IMAGE" --region="$REGION"
     gcloud run services update karimi-api --image="$IMAGE" --region="$REGION"
     gcloud run jobs update karimi-batch --image="$IMAGE" --region="$REGION"
     ;;

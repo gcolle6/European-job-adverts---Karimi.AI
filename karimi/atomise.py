@@ -159,6 +159,20 @@ GENERIC_TAIL_RE = re.compile(
     re.I,
 )
 
+# Category nouns a list of names exemplifies, for the phrase BEFORE an
+# introducer only (rules 0.3.0, from the 2026-11-09 trial): `Experience using
+# frameworks like Spark, Tensorflow, ...` is the four names, and `Experience
+# using frameworks` was a fifth requirement that names nothing. Kept apart from
+# GENERIC_TAIL_RE for the reason recorded at PAREN_GENERIC_RE: widening that
+# one moves head trimming on every path.
+LEAD_CATEGORY_RE = re.compile(
+    # Not `databases`, `methodologies`, `services`: `relational databases` and
+    # `agile methodologies` are asked for in their own right.
+    r"\b(?:frameworks?|libraries|library|standards?|platforms?|solutions?|products?|"
+    r"packages?|stacks?|suites?|certifications?|certificates?|technologies)\s*$",
+    re.I,
+)
+
 # Adjectives coordinated in front of the noun they all modify. `fast, reliable,
 # real-time web-based applications` is one requirement described three ways, not
 # three requirements, and splitting it emits `reliable` — the defect recorded as
@@ -332,7 +346,12 @@ NUM_COMMA_RE = re.compile(r"\d,\d{3}(?!\d)")
 # A requirement the employer marks as optional: `Dutch is a strong plus`,
 # `Kafka would be an advantage`. Decided 2026-10-30 on the human count: such a
 # part stays in the text but is NOT counted (`nice_to_have`).
+_OPTIONAL_WORDS = (r"ideally|preferably|idealerweise|vorzugsweise|bevorzugt|de pr[eé]f[eé]rence|"
+                   r"id[eé]alement|preferibilmente|idealmente|bij voorkeur")
+_IDEALLY_TAIL_RE = re.compile(rf",\s*(?P<word>{_OPTIONAL_WORDS})\s+(?P<tail>.+)$", re.I)
 NICE_TO_HAVE_RE = re.compile(
+    # An atom OPENING with `ideally` is optional (rules 0.3.0): `Ideally Excel`.
+    rf"^(?:{_OPTIONAL_WORDS})\b|"
     r"\b(?:is|are|would be|will be|considered)\s+(?:an?\s+)?(?:(?:big|strong|real|huge|definite|"
     r"great|significant|distinct|nice|clear)\s+)?(?:plus|advantage|asset|bonus|benefit)\b|"
     r"\bnice[- ]to[- ]have\b|\b(?:is|are|would be)\s+(?:highly\s+)?(?:desirable|preferred|"
@@ -345,8 +364,15 @@ def nice_to_have(atom: str) -> bool:
     Only the atom carrying the phrase: `Background in IT support and
     maintenance experience is a plus` counts IT support and not maintenance, as
     the human count does. Applies whatever the flags, since it labels atoms
-    rather than splitting them; callers decide whether to count them."""
-    return bool(NICE_TO_HAVE_RE.search(atom))
+    rather than splitting them; callers decide whether to count them.
+
+    `ideally` before a LANGUAGE adds one (`Fluent English, ideally German` is
+    two, the user's call of 2026-11-11); before names it qualifies the
+    requirement they exemplify (`ideally Excel, Qlik Sense`, not counted)."""
+    m = NICE_TO_HAVE_RE.search(atom)
+    if m and m.start() == 0 and re.fullmatch(rf"(?:{_OPTIONAL_WORDS})\s+(?:{_LANGS})", atom.strip(), re.I):
+        return False
+    return bool(m)
 
 
 def counted(atoms: list[str]) -> list[bool]:
@@ -431,9 +457,27 @@ def _trim_head(head: str) -> str:
     m = PREP_RE.search(head)
     if config.SPLIT_REPAIRS:
         # The German `an` is also the English article: `Have an interest in
-        # ...` cut at `an` and distributed `Have an WAF`.
-        m = next((x for x in PREP_RE.finditer(head) if x.group().strip().lower() != "an"), None)
+        # ...` cut at `an` and distributed `Have an WAF`. And `to` before a
+        # verb is an infinitive, not the governing preposition: `Willingness to
+        # acquire knowledge in web technologies such as Angular` was cut to
+        # `Willingness to Angular` (rules 0.3.0).
+        m = next((x for x in PREP_RE.finditer(head) if x.group().strip().lower() != "an"
+                  and not (x.group().strip().lower() == "to" and _infinitive(head[x.end():]))), None)
+        if m is None and LEAD_CATEGORY_RE.search(head):
+            # `Ideally certifications such as CKA, CKS`: no preposition, and
+            # the category noun is what the names replace.
+            return clean(head[: LEAD_CATEGORY_RE.search(head).start()]) or clean(head)
     return clean(head[: m.end()]) if m else clean(head)
+
+
+def _infinitive(after: str) -> bool:
+    w = after.split()[:1]
+    if not w:
+        return False
+    if _use_pos():
+        return pos.tag(w[0])[1] == "VB"
+    return w[0].lower() in {"acquire", "learn", "work", "develop", "build", "use", "take", "travel",
+                            "deepen", "expand", "grow", "lead", "manage", "support"}
 
 
 def _head_alternatives(head: str) -> list[str]:
@@ -880,8 +924,94 @@ def _is_filler_item(p: str) -> bool:
     return len(words) == 1 or bool(_GENERIC_CATEGORY_RE.search(words[-1]))
 
 
+_CANDIDATE_RE = re.compile(r"^(?:are|be|you are|you're)\s+an?\s+", re.I)
+
+# Segments a rule decided are ONE requirement on purpose, so `route` labels
+# them `single` and not `llm` (looks compound, could not be separated).
+_DECIDED_ONE: set[str] = set()
+
+
+def _one(s: str) -> list[str]:
+    _DECIDED_ONE.add(clean(s))
+    return [s]
+
+
+def _trait(word: str) -> bool:
+    """A one-word adjective that is a trait on its own (`Reliable`, `self-motivated`).
+    Not an adverb: `independently and collaboratively` qualify one verb."""
+    if " " in word or word.lower().endswith("ly"):
+        return False
+    if _use_pos():
+        p, fine = pos.tag(word)
+        return p == "ADJ" or fine == "VBN"
+    return bool(ADJECTIVAL_RE.match(word)) and not NOMINAL_RE.search(word)
+
+
+_AS_ROLE_RE = re.compile(r"\b(?:experience|background|years?|work(?:ed|ing)?)\s+as\s+(?:an?\s+)?", re.I)
+_ROLE_END_RE = re.compile(
+    r"\b(?:engineers?|developers?|scientists?|analysts?|architects?|managers?|consultants?|"
+    r"specialists?|administrators?|designers?|testers?|leads?|owners?|officers?|"
+    r"similar|equivalent|comparable|role|roles|position|positions)\s*$", re.I)
+_FOR_NAME_RE = re.compile(r"^(?P<name>.*?[A-Z0-9#+].*?)\s+for\s+\S", re.S)
+
+
+def _merge_purposes(items: list[str]) -> list[str]:
+    """`Python for modelling, data analysis and automation` is one requirement.
+
+    After an item `<name> for <purpose>`, the lower-case items that follow are
+    more purposes of that name, not new requirements: `Proficiency in data
+    analysis` was not asked, Python for data analysis was. An item opening
+    with a capital is a name and starts a new requirement (`C/C++ for embedded
+    systems, Git version control and Python for ...` stays three). Only when
+    the part before `for` holds a name: `tools for monitoring, logging` is a
+    list of tools by purpose and is left to the other rules. Rules 0.3.0.
+    """
+    out: list[str] = []
+    purposes: list[str] = []
+
+    def close():
+        if purposes:
+            *first, last = purposes
+            out[-1] = f"{out[-1]}, {', '.join(first)} and {last}" if first else f"{out[-1]} and {last}"
+            purposes.clear()
+
+    for it in items:
+        if out and _FOR_NAME_RE.match(out[-1]) and it[:1].islower():
+            purposes.append(it)
+            continue
+        close()
+        out.append(it)
+    close()
+    return out
+
+
+_FRAME_PAIR_RE = re.compile(
+    r"^(?P<pre>.*?)\b(?P<h1>knowledge|understanding|experience|expertise|proficiency|command|use)"
+    r"\s+(?:and|&|as well as)\s+(?:(?:practical|hands-on|working|good|solid|strong)\s+)?"
+    r"(?:use|usage|application|experience|knowledge|understanding|practice|handling|expertise)"
+    r"\s+(?:of|in|with)\s+(?P<obj>.+)$", re.I)
+_FRAME_PREP = {"experience": "with", "expertise": "in", "proficiency": "in"}
+_FRAME_PAIR_PRE = {"a", "an", "the", "solid", "strong", "good", "excellent", "deep", "sound", "basic", "proven",
+                   "practical", "hands-on", "working", "very", "extensive", "thorough", "in-depth", "advanced",
+                   "demonstrated", "previous", "prior", "relevant", "first", "some"}
+
+
 def _split_list(s: str) -> list[str]:
     """Split one clause, either as head + list or as a bare coordinated list."""
+    if config.SPLIT_REPAIRS:
+        m = _FRAME_PAIR_RE.match(s)
+        if m and any(w.lower() not in _FRAME_PAIR_PRE for w in m.group("pre").split()):
+            # `business understanding as well as experience in X`: the first frame
+            # has its own object in front, so the two are two requirements.
+            m = None
+        if m:
+            # `Solid knowledge and use of SQL`: two frame nouns over one object
+            # are one ask, as coordinated verbs are (2026-10-29); the first frame
+            # keeps the object. Rules 0.3.0, from the 2026-11-09 trial.
+            h1 = m.group("h1")
+            s = clean(f"{m.group('pre')}{h1} {_FRAME_PREP.get(h1.lower(), 'of')} {m.group('obj')}")
+            if not SPLIT_RE.search(m.group("obj")):
+                return _one(s)
     if _use_pos() and SALES_PATTERNS:
         clauses = _split_gerund_clauses(s)
         if clauses:
@@ -896,7 +1026,8 @@ def _split_list(s: str) -> list[str]:
     if intro:
         pre = clean(s[: intro.start()])
         head, rest = _trim_head(pre), s[intro.end():]
-        if pre and not GENERIC_TAIL_RE.search(pre) and len(pre.split()) > 1:
+        if pre and not GENERIC_TAIL_RE.search(pre) and len(pre.split()) > 1 \
+                and not (config.SPLIT_REPAIRS and LEAD_CATEGORY_RE.search(pre)):
             lead = [pre]
     else:
         matches = list(TRIGGER_RE.finditer(s))
@@ -904,9 +1035,35 @@ def _split_list(s: str) -> list[str]:
             head, rest = s[: matches[-1].end()], s[matches[-1].end():]
 
     if CORREL_LEAD_RE.match(rest.strip()):
-        return [s]
+        # `both written and spoken` is one ask, but `both Windows and Linux OS`
+        # names two systems: when every item is a name, `both` only stresses the
+        # list (rules 0.3.0).
+        plain = CORREL_LEAD_RE.sub("", rest.strip())
+        if not (config.SPLIT_REPAIRS and len(_cut(plain)) > 1
+                and all(i[:1].isupper() or i[:1].isdigit() for i in _cut(plain))):
+            return [s]
+        rest = plain
+        s = clean(f"{head} {plain}") if head else plain
+
+    if config.SPLIT_REPAIRS:
+        m = _AS_ROLE_RE.search(s)
+        if m and _ROLE_END_RE.search(s[m.end():]) and SPLIT_RE.search(s[m.end():]):
+            # `2+ years of experience as a Machine Learning or Software engineer`:
+            # roles in alternative, any one will do — one requirement, by the
+            # convention for equivalent alternatives (rules 0.3.0).
+            return _one(s)
+        if _CANDIDATE_RE.match(s) and re.search(r"\s+or\s+an?\s+", s, re.I):
+            # `Are a student in your final year or a young professional with ...`:
+            # two descriptions of who may apply, either will do.
+            return _one(s)
 
     items = _cut(rest)
+    if config.SPLIT_REPAIRS and head.strip():
+        merged = _merge_purposes(items)
+        if merged != items:
+            heads = _head_alternatives(head.strip())
+            out = lead + [clean(f"{h} {i}") for h in heads for i in merged]
+            return _one(out[0]) if len(out) == 1 else out
     if config.SPLIT_REPAIRS:
         # STOP_RE drops `equivalent experience` as filler, but it is an
         # alternative route into the job, and without it the ask is stricter
@@ -983,6 +1140,12 @@ def _split_list(s: str) -> list[str]:
             return [s]
         if tailed:
             return tailed
+    if config.SPLIT_REPAIRS and resolved and len(resolved) > 1 and all(_trait(i) for i in resolved):
+        # `Reliable, proactive, and self-motivated`: adjectives with no noun
+        # after them describe the person, each a requirement. Before a noun they
+        # share it and stay one (`Structured and project-based work`, convention
+        # of 2026-10-30), which `_is_modifier_run` keeps. Rules 0.3.0.
+        return resolved
     if resolved is not None and _is_list(resolved):
         return _distribute_shared_head(resolved)
     if config.SPLIT_REPAIRS:
@@ -1161,6 +1324,9 @@ def _split_ability(s: str) -> list[str] | None:
 # The distinction is countable, so it is applied by counting rather than by
 # guessing: two or more comma-separated items inside the bracket is a list.
 PAREN_LIST_RE = re.compile(r"\(([^()]{2,200})\)")
+# A whole named world whose bracket describes its parts (see `_atomise_once`).
+ECOSYSTEM_RE = re.compile(r"\b(?:ecosystems?|landscapes?|universe|world|[oö]kosystem|[ée]cosyst[eè]me)\s*$",
+                          re.I)
 
 # Generic nouns a bracket typically exemplifies. Kept separate from
 # GENERIC_TAIL_RE on purpose: widening that one changed head trimming on every
@@ -1278,6 +1444,11 @@ def _split_paren_list(segment: str) -> list[str] | None:
     # The phrase before the bracket is usually a requirement in its own right,
     # exactly as with an unbracketed introducer.
     keep_before = not GENERIC_TAIL_RE.search(before)
+    if config.SPLIT_REPAIRS and keep_before and LEAD_CATEGORY_RE.search(before):
+        # `integration platforms (Boomi, MuleSoft, Talend)` as `frameworks like
+        # Spark, ...` in `_split_list`: the category the names stand for is not
+        # a requirement beside them (rules 0.3.0).
+        keep_before = False
     if config.SPLIT_REPAIRS and not keep_before:
         # Dropping the generic noun phrase is the labelled convention, but a
         # name inside it is a requirement: `Proficiency in Linux environments
@@ -1500,6 +1671,9 @@ def _split_languages(segment: str) -> list[str] | None:
     ~530 occurrences stayed whole. Each language takes everything around it:
     `Excellent written and spoken German skills`.
     """
+    clauses = _language_clauses(segment)
+    if clauses:
+        return clauses
     m = _LANG_LIST_RE.match(segment)
     if not m:
         return None
@@ -1512,7 +1686,39 @@ def _split_languages(segment: str) -> list[str] | None:
     if len(langs) < 2:
         return None
     pre, post = m.group("pre"), m.group("post")
+    combo = _LANG_COMBO_RE.match(pre) if config.SPLIT_REPAIRS else None
+    if combo:
+        # `Speak English fluently, in combination with Dutch or French`: the
+        # first language is a requirement of its own, and the ones after the
+        # connector are not asked the way the first is (rules 0.3.0).
+        return [clean(combo.group("first"))] + langs
     return [clean(f"{pre}{lang}{post}") for lang in langs]
+
+
+# A clause naming a language, then a connector that adds more languages.
+_LANG_COMBO_RE = re.compile(
+    rf"^(?P<first>.*\b(?:{_LANGS})\b.*?)\s*,?\s*(?:in combination with|combined with|together with|"
+    r"along with|alongside|plus|as well as|and ideally|and preferably|and also)\s+$", re.I)
+_LANG_PART_SEP = re.compile(r"\s*,\s*|\s+(?:and|as well as|&)\s+", re.I)
+
+
+def _language_clauses(segment: str) -> list[str] | None:
+    """`Very good knowledge of German and good knowledge of English` -> two.
+
+    Each part is a requirement written in full, one language each, so the list
+    test reads them as clauses and gives up (route `llm`). Only when EVERY part
+    has two words or more and exactly one language, all different: `German
+    and English` has a bare part, and `_LANG_LIST_RE` gives it its head.
+    Rules 0.3.0, from the 2026-11-09 trial."""
+    if not config.SPLIT_REPAIRS or "(" in segment:
+        return None
+    parts = [clean(p) for p in _LANG_PART_SEP.split(segment) if clean(p)]
+    if len(parts) < 2 or any(len(p.split()) < 2 for p in parts):
+        return None
+    langs = [re.findall(rf"\b(?:{_LANGS})\b", p) for p in parts]
+    if any(len(x) != 1 for x in langs) or len({x[0] for x in langs}) < len(parts):
+        return None
+    return parts
 
 
 _MODE_WORDS = {"written", "verbal", "oral", "spoken", "reading", "writing", "speaking",
@@ -1646,6 +1852,24 @@ def _atomise_once(segment: str) -> list[str]:
         parts = [p for p in parts if p]
         if len(parts) > 1:
             return [a for p in parts for a in _atomise_once(p)]
+    if config.SPLIT_REPAIRS:
+        m = _IDEALLY_TAIL_RE.search(segment)
+        main = clean(segment[: m.start()]) if m else ""
+        names = _cut(m.group("tail")) if m else []
+        if len(main.split()) > 1 and len(names) > 1 and all(n[:1].isupper() for n in names):
+            # `Experience with analytics and BI tools, ideally Excel, Qlik Sense
+            # or comparable solutions`: `ideally` qualifies, it does not add
+            # (COUNT_GUIDE). The names stay, marked optional, and are not
+            # counted beside the requirement they qualify (`counted`). Rules 0.3.0.
+            word = m.group("word")
+            return (_atomise_once(main) or [main]) + [f"{word[:1].upper()}{word[1:]} {n}" for n in names]
+        # `Understanding of the Microsoft ecosystem (Azure, data, AI, custom
+        # development)`: the bracket lists what the ecosystem is made of, not
+        # what is asked, and the user's reading of the 2026-11-09 trial keeps the
+        # one requirement, bracket dropped (rules 0.3.0).
+        m = PAREN_LIST_RE.search(segment)
+        if m and ECOSYSTEM_RE.search(segment[: m.start()]) and not clean(segment[m.end():]):
+            return [clean(segment[: m.start()])]
     if config.EXPAND_PAREN_LISTS:
         paren = _split_paren_list(segment)
         if paren and len(paren) > 1:
@@ -1862,7 +2086,16 @@ def damage_reason(segment: str, pieces: list[str]) -> str | None:
                 return "bracket_juxtaposition"
     if len({normalise(p) for p in pieces}) < len(pieces):
         return "duplicate"
+    if config.SPLIT_REPAIRS and _BACK_REF_RE.search(segment) \
+            and any(re.search(r"\b(?:their|its)\b", p, re.I) for p in pieces[1:]):
+        # `the process of creating ML models and their life cycle`: `their`
+        # points back into the first part, so the second is not a requirement
+        # on its own (`the process of their life cycle`). Rules 0.3.0.
+        return "back_reference"
     return None
+
+
+_BACK_REF_RE = re.compile(r"\b(?:and|or|as well as)\s+(?:their|its)\b", re.I)
 
 
 def route(segment: str) -> tuple[list[str], str]:
@@ -1885,6 +2118,12 @@ def route(segment: str) -> tuple[list[str], str]:
         if config.SPLIT_REPAIRS and damage_reason(segment, pieces):
             return [clean(segment)], "damaged"
         return pieces, "rules"
+    if config.SPLIT_REPAIRS and pieces and clean(pieces[0]) in _DECIDED_ONE:
+        return pieces, "single"
+    if config.SPLIT_REPAIRS and pieces and "(" in segment and "(" not in pieces[0]:
+        # The rules removed a bracket on purpose (`ECOSYSTEM_RE`): what is left
+        # is read for compounds, not the bracket's commas.
+        return pieces, "llm" if needs_llm(pieces[0], pieces) else "single"
     return pieces, "llm" if needs_llm(segment, pieces) else "single"
 
 

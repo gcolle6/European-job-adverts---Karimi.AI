@@ -30,7 +30,7 @@ import os
 import sys
 import time
 
-from . import Dictionary, check, exports, process
+from . import Dictionary, check, curator, exports, process
 from .metrics import run_report
 from .store import jf, now, open_store, read_json, write_json
 from .versions import RULES_VERSION
@@ -50,6 +50,7 @@ def run(job: str, store=None, dictionary=None) -> dict:
     s = read_json(store, jf(job, "status.json")) or {}
     try:
         d = dictionary or Dictionary(os.environ["KARIMI_DICT"])
+        curator.attach(d, store)          # the spellings the curator agent resolved so far
         with store.open_read(jf(job, "input.jsonl")) as f:
             postings = [json.loads(line) for line in f if line.strip()]
         _status(store, job, state="running", started=now(), postings_total=len(postings), postings_done=0,
@@ -76,6 +77,7 @@ def run(job: str, store=None, dictionary=None) -> dict:
         req_csv, post_csv = exports.tables(postings, results)
         store.write_text(jf(job, "requirements.csv"), req_csv)
         store.write_text(jf(job, "postings.csv"), post_csv)
+        curator.save_detected(store, job, curator.detect(results, d, job))
         out = _status(store, job, state="done", finished=now(), seconds=round(time.time() - t0, 1))
         check._log("INFO", event="karimi_job_done", job=job, postings=len(postings),
                    requirements=sum(len(r) for r in runs), seconds=out["seconds"])
