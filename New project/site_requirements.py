@@ -32,6 +32,7 @@ one small file per requirement, fetched when it is chosen.
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -42,6 +43,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
 from karimi import normalise_req  # noqa: E402
+from site_categories import ORDER, categorise  # noqa: E402
 OUT = HERE / "output"
 EXPORT = HERE.parent / "wetransfer_karimi-jobs_2026-08-25_1346" / "software_data_europe.json"
 
@@ -72,6 +74,9 @@ COUNTRY_EN = {
 GENERIC = {
     # `comparable qualification` and `methodologies` once the list around them is gone (2026-11-10)
     "qualification", "methodologies",
+    # one word left from a broken split, read on the list 2026-11-11
+    "ample", "have", "higher", "highly", "large", "problem", "position", "well", "field", "function",
+    "demonstrate", "role", "user", "setting up", "synthesis", "listening",
     "technical", "equivalent", "work", "it", "development", "business", "experience", "data", "engineering",
     "tools", "team", "industry", "standards", "management", "services", "processes", "organization",
     "structured", "commercial", "production", "frameworks", "relational", "similar application",
@@ -144,6 +149,11 @@ def main(dest: str) -> None:
     top = (pg.groupby(["obj", "req_space", "req_core"]).size().reset_index(name="n")
            .sort_values(["n", "req_core"], ascending=[False, True]).drop_duplicates("obj"))
     names = {o: normalise_req.display(sp, c) for o, sp, c in zip(top.obj, top.req_space, top.req_core)}
+    space = dict(zip(top.obj, top.req_space))
+    # the project's local model names the categories when it is running (`site_categories.py`)
+    category = dict(zip(keep.index, categorise([names.get(o, o) for o in keep.index],
+                                               [space.get(o, "") for o in keep.index],
+                                               judge_url=os.environ.get("KARIMI_JUDGE_URL"))))
     slug = _slugs(keep.index)
     meta = ads.set_index("posting_id")
     by_rows = {o: g for o, g in pa.groupby("obj")}
@@ -167,7 +177,8 @@ def main(dest: str) -> None:
                 withs.append((o2, j, j * total / (len(s) * len(ad_sets[o2]))))
         withs = sorted(withs, key=lambda x: (-x[2], -x[1]))[:TOP_WITH]
         reqs.append({
-            "id": slug[o], "name": names.get(o, o), "ads": int(len(s)), "companies": int(keep.companies[o]),
+            "id": slug[o], "name": names.get(o, o), "category": category[o],
+            "ads": int(len(s)), "companies": int(keep.companies[o]),
             "share": round(len(s) / total, 5), "family": FAMILY,
             "roles": sorted([{"role": r, "ads": int(n), "of": int(role_n[r]), "share": round(n / role_n[r], 5)}
                              for r, n in roles.items()], key=lambda x: -x["share"])[:TOP_ROLES],
@@ -191,7 +202,10 @@ def main(dest: str) -> None:
                    "rules": {"min_ads": MIN_ADS, "min_companies": MIN_COMPANIES, "min_role_ads": MIN_ROLE_ADS,
                              "min_group_ads": MIN_GROUP_ADS, "min_joint": MIN_JOINT}},
         "families": [{"family": FAMILY, "ads": total}],
-        "requirements": [{"id": r["id"], "name": r["name"], "ads": r["ads"], "share": r["share"]} for r in reqs],
+        # the explorer's browsing window groups by these, in this order (`site_categories.py`)
+        "categories": [c for c in ORDER if any(r["category"] == c for r in reqs)],
+        "requirements": [{"id": r["id"], "name": r["name"], "category": r["category"], "ads": r["ads"],
+                          "share": r["share"]} for r in reqs],
     }
     (base / "index.json").write_text(json.dumps(index, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     for r in reqs:
