@@ -267,7 +267,7 @@ def _log(severity: str, **fields) -> None:
 
 
 def run_detail(report: dict | None, findings: list[dict], judged: dict | None, canaries: dict | None,
-               suspects: dict | None) -> dict:
+               suspects: dict | None, degrees: dict | None = None) -> dict:
     """What the site shows for ONE run, beside the totals: counts, shares and codes, never text.
 
     Read off the same objects the check writes to the job's private files, so
@@ -284,6 +284,7 @@ def run_detail(report: dict | None, findings: list[dict], judged: dict | None, c
                                                    "light")} for k, v in (judged or {}).items()},
         "canaries": {"pairs": canaries["pairs"], "missed": canaries["missed"]} if canaries else None,
         "split_suspects": {"of": suspects.get("of"), "rows": suspects.get("rows")} if suspects else None,
+        "degree_suspects": {"of": degrees.get("of"), "rows": degrees.get("rows")} if degrees else None,
         "to_check": {k: len(v) if isinstance(v, list) else v
                      for k, v in ((report or {}).get("to_check") or {}).items()},
     }
@@ -340,12 +341,16 @@ def check(job: str, store=None, judge_url: str | None = None, reference: dict | 
     # judge that passed its planted pairs. Splitting errors are measured per
     # version on hand counts (`errors.py` says why); per run the shape rules
     # only mark suspects, kept here and never counted.
-    err = err_examples = suspects = None
+    err = err_examples = suspects = degrees = None
     if postings is not None:
         norm = errors.normalise_errors(j) if j is not None and len(j) and canaries["trusted"] else None
         err, err_examples = errors.table(norm), errors.examples(norm)
         sp = errors.split_suspects(postings)
         suspects = {"of": sp["of"], "rows": errors.table(sp)["rows"], "examples": errors.examples(sp)}
+        # the inspector agent: degrees read wrong (`errors.degree_flag`), detected only
+        dg = errors.degree_suspects(postings)
+        degrees = {"agent": errors.INSPECTOR, "of": dg["of"], "rows": errors.table(dg)["rows"],
+                   "examples": errors.examples(dg)}
 
     # The curator agent's proposals for this run (`curator.py`), put to the
     # judge only if it passed its planted pairs: otherwise they wait, detected.
@@ -367,14 +372,14 @@ def check(job: str, store=None, judge_url: str | None = None, reference: dict | 
                                "judge": {k: v["share"] for k, v in judged.items()},
                                "canaries_missed": canaries["missed"] if canaries else None,
                                "errors": err,
-                               **run_detail(report, findings, judged, canaries, suspects),
+                               **run_detail(report, findings, judged, canaries, suspects, degrees),
                                "curator": cur,
                                "rules_version": s.get("rules_version"), "dict_version": s.get("dict_version")})
 
     overall = max((f["light"] for f in findings), key=_ORDER.get, default="green")
     out = {"job": job, "checked": now(), "overall": overall, "findings": findings, "judge": judged,
            "canaries": canaries, "errors": err, "error_examples": err_examples,
-           "split_suspects": suspects, "curator": cur,
+           "split_suspects": suspects, "degree_suspects": degrees, "curator": cur,
            "judge_model": JUDGE_NAME if judge_url else None, "judge_prompt": JUDGE_PROMPT if judge_url else None,
            "to_check": {k: len(v) for k, v in (report or {}).get("to_check", {}).items()},
            "thresholds": {"p_red": P_RED, "p_yellow": P_YELLOW, "min_pairs": MIN_PAIRS, "ref_min_pairs": REF_MIN_PAIRS,

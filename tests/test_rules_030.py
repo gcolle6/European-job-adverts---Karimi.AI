@@ -191,3 +191,52 @@ def test_ideally_before_a_language_adds_one():
 def test_degrees_in_alternative_share_the_field(item, atoms):
     # rules 0.3.1: with one field the first degree was left bare (`MSc`), since 0.2.0
     assert _split(item)[0] == atoms
+
+
+# Rules 0.4.1: degrees read wrong in the API test of 2026-11-13, then counted
+# across the batch (318 + 119 + 74 + 58 + 68 + ~900 Bac+ atoms).
+@pytest.mark.parametrize("item, keys", [
+    ("A Bachelor’s or Master’s degree in Computer Science, Software Engineering, or a related field",
+     ["Bachelor in Computer Science", "Bachelor in Software Engineering",
+      "Master in Computer Science", "Master in Software Engineering"]),
+    ("A Bachelor's Degree, Master's Degree or PhD in Physics, Chemistry",
+     ["Bachelor in Physics", "Bachelor in Chemistry", "Master in Physics", "Master in Chemistry",
+      "PhD in Physics", "PhD in Chemistry"]),
+    ("Bachelor of Master in Informatica, Data Science of gelijkwaardig",
+     ["Bachelor in Informatica", "Bachelor in Data Science", "Master in Informatica", "Master in Data Science"]),
+    ("Degree in Computer Engineering, Telecommunications Engineering, or equivalent technical qualification",
+     ["Degree in Computer Engineering", "Degree in Telecommunications Engineering"]),
+    ("Bac+5 degree in Computer Science (University or Engineering School)", ["Master in Computer Science"]),
+    ("Bachelor of Science in Computer Science", ["Bachelor in Computer Science"]),
+    ("Degree of Master of Science", ["Master in Science"]),
+])
+def test_degrees_read_as_degrees(item, keys):
+    atoms, _ = _split(item)
+    got = [normalise_req.decompose(normalise_req.normalise_requirement(a, False)) for a in atoms]
+    assert [d["core"] for d in got] == keys and all(d["space"] == "education" for d in got)
+
+
+def test_a_degree_with_an_experience_is_two():
+    atoms, _ = _split("Bachelor's degree in business administration with Financial systems experience required")
+    assert atoms == ["Bachelor's degree in business administration", "Financial systems experience"]
+
+
+def test_an_equivalent_experience_is_still_a_route():
+    atoms, _ = _split("Bachelor's degree in Computer Science or equivalent experience")
+    assert len(atoms) == 2
+
+
+@pytest.mark.parametrize("text, degree", [("Bac+5 in Computer Science", "master"), ("BAC+3 minimum", "bachelor"),
+                                          ("Bac+2 to Bac+5 in IT", "degree"), ("Bac+8 in Physics", "phd")])
+def test_the_french_level_is_a_degree(text, degree):
+    assert normalise_req.decompose(text)["degree"] == degree
+
+
+@pytest.mark.parametrize("item, english, key", [
+    ("Maîtrise de Kafka", "Master's degree in Kafka", "Kafka"),
+    ("Maîtrise de l'anglais", "Master in English", "language: English"),
+    ("Maîtrise en informatique", "Master's degree in computer science", "education: Master in computer science"),
+])
+def test_maitrise_de_is_command_not_a_degree(item, english, key):
+    text = atom.repair_translation(item, english)
+    assert normalise_req.decompose(normalise_req.normalise_requirement(text, True))["key"].endswith(key)

@@ -210,23 +210,49 @@ DEGREES = [
      "master"),
     (r"ph\.?\s?d\.?|doctorate|doctoral|doktor(?:at)?", "phd"),
     (r"mba", "mba"),
+    # The French level, years after the baccalauréat (rules 0.4.1): Bac+3 is
+    # the licence, Bac+4/5 the master, Bac+8 the doctorate. A range (`Bac+3 à
+    # Bac+5`) is read at its lowest step, the minimum the employer accepts.
+    # `Bachelor's degree+5` is the translator's `Bac+5`.
+    (r"(?:bac|bachelor(?:'s|’s)?\s+degree)\s*\+\s*\d(?:\s*(?:/|-|to|à|a|or|ou)\s*(?:bac\s*)?\+?\s*\d)?", "bac"),
     (r"(?:university\s+|academic\s+|engineering\s+|technical\s+|college\s+|higher\s+)?(?:degree|diploma|"
      r"studies|study|education|qualification|graduate)", "degree"),
 ]
 _DEGREE_ALT = "|".join(f"(?:{p})" for p, _ in DEGREES)
+# Words after the degree that are still the degree (rules 0.4.1: `Bac+5
+# training in`, `Master's student in`, `BAC+3 specialized in`).
+_DEG_SUFFIX = (r"(?:\s+(?:degree|diploma|studies|programme|program|training|qualification|level|holder|student|"
+               r"speciali[sz]ed|higher\s+education))*")
 _EDU_RE = re.compile(
-    rf"^(?P<pre>(?:[\w'’-]+\s+){{0,3}}?)(?P<deg>(?:{_DEGREE_ALT})(?:\s+(?:degree|diploma|studies|programme|program))?)"
+    rf"^(?P<pre>(?:[\w'’-]+\s+){{0,3}}?)(?P<deg>(?:{_DEGREE_ALT}){_DEG_SUFFIX})"
     r"(?:\s*\([^)]*\))?(?:\s+(?:degree|diploma))?\s+(?:in|of|on)\s+(?:the\s+)?(?:field\s+of\s+)?(?P<field>.+)$",
     re.I)
-_EDU_BARE_RE = re.compile(rf"^(?P<pre>(?:[\w'’-]+\s+){{0,3}}?)(?P<deg>{_DEGREE_ALT})(?:\s+(?:degree|diploma))?$",
-                          re.I)
+_EDU_BARE_RE = re.compile(rf"^(?P<pre>(?:[\w'’-]+\s+){{0,3}}?)(?P<deg>(?:{_DEGREE_ALT}){_DEG_SUFFIX})"
+                          r"(?:\s+(?:minimum|obtained|completed|required))?$", re.I)
+# `Master's degree Signal Processing`: the field with no `in`, only after the
+# word `degree`, and not opening on a word that starts something else. 0.4.1.
+_EDU_NOPREP_RE = re.compile(
+    rf"^(?P<pre>(?:[\w'’-]+\s+){{0,3}}?)(?P<deg>(?:{_DEGREE_ALT})\s+degree)\s+"
+    r"(?!(?:with|or|and|from|at|for|to|by|as|obtained|completed|required|holder|preferably|ideally|is|are))"
+    r"(?P<field>[^\W\d_][^,;+]*)$", re.I)
 _STUDENT_RE = re.compile(r"\b(?:ongoing|current|currently|enrolled|pursuing|final[- ]year)\b", re.I)
+_BAC_STEP = {2: "degree", 3: "bachelor", 4: "master", 5: "master", 6: "master", 7: "master", 8: "phd"}
+# `Master of Science in Physics`: `of Science` names the degree, not the field (rules 0.4.1)
+_DEGREE_NAME_RE = re.compile(r"^(?:(?:applied\s+)?sciences?|arts|engineering|technology|commerce|laws?)\s+(?:in|of)\s+",
+                             re.I)
+_DEGREE_START_RE = re.compile(rf"^(?:{_DEGREE_ALT})\b", re.I)
 
 
 def _degree(words: str, pre: str) -> str:
     if _STUDENT_RE.search(pre):
         return "student"
     w = words.strip().lower()
+    if re.search(r"student$", w):
+        return "student"
+    w = re.sub(r"(?:\s+(?:training|qualification|level|holder|speciali[sz]ed|higher\s+education))+$", "", w)
+    bac = re.match(r"(?:bac|bachelor(?:'s|’s)?\s+degree)\s*\+\s*(\d)", w)
+    if bac:
+        return _BAC_STEP.get(int(bac.group(1)), "degree")
     for p, level in DEGREES:
         if re.fullmatch(rf"(?:{p})(?:\s+(?:degree|diploma|studies|programme|program))?", w, re.I):
             return level
@@ -235,7 +261,7 @@ def _degree(words: str, pre: str) -> str:
 
 def _education(text: str) -> dict | None:
     """`Completed studies in Computer Science` -> education / degree / `Computer Science`."""
-    m = _EDU_RE.match(text) or _EDU_BARE_RE.match(text)
+    m = _EDU_RE.match(text) or _EDU_BARE_RE.match(text) or _EDU_NOPREP_RE.match(text)
     if not m:
         return None
     pre = m.group("pre") or ""
@@ -247,13 +273,22 @@ def _education(text: str) -> dict | None:
     field = re.sub(r"^(?:subject|discipline|field|area)s?\s+(?:of|in)\s+", "", field, flags=re.I)
     # `(economic) computer science`, `Computer Science (or equivalent)`: the field is outside the brackets
     field = re.sub(r"\s{2,}", " ", re.sub(r"\s*\([^()]*\)\s*", " ", field)).strip()
+    field = _DEGREE_NAME_RE.sub("", field)
     degree = _degree(m.group("deg"), pre)
+    # A degree named inside the field (`Degree of Master of Science`, `Graduate
+    # in Bachelor's`): the inner one is the requirement. Under a named outer
+    # degree only its field is taken. Rules 0.4.1.
+    inner = _education(field) if _DEGREE_START_RE.match(field) else None
+    if inner and inner["degree"] != "degree":       # `Degree in Education` keeps its field
+        if degree == "degree":
+            return inner
+        field = inner["field"]
     # The degree is part of the requirement (rules 0.4.0, the user's call
     # 2026-11-11): `Master in Business` and `Bachelor in Business` are two, and
     # every spelling of one degree is that degree (`MSc`, `M.Sc.`, `Master's`).
     label = DEGREE_LABEL[degree]
     return {"head": m.group("deg").strip(), "head_group": "education", "degree": degree,
-            "core": f"{label} in {field}" if field else f"{label} (any field)"}
+            "core": f"{label} in {field}" if field else f"{label} (any field)", "field": field}
 
 
 # How each degree is written in a requirement's core and name.
@@ -265,7 +300,8 @@ _EDU_PRE = {"a", "an", "the", "completed", "complete", "finished", "successfully
             "related", "university", "academic", "technical", "higher", "ongoing", "current", "currently",
             "enrolled", "pursuing", "final-year", "recognised", "recognized", "accredited", "formal",
             "first", "second", "good", "excellent", "strong", "solid", "appropriate", "suitable", "minimum",
-            "at", "least", "of", "or", "equivalent", "advanced", "scientific", "engineering", "college"}
+            "at", "least", "of", "or", "equivalent", "advanced", "scientific", "engineering", "college",
+            "graduated", "from", "diploma"}
 # Degree and evidence words in front of the head: a small closed class.
 LEVEL_WORDS = {
     "basic": "basic", "first": "basic", "some": "basic", "initial": "basic", "fundamental": "basic",
@@ -328,6 +364,7 @@ def decompose(text: str) -> dict:
            "level_words": "", "head": "", "head_group": "", "degree": "", "core": rest, "extra": ""}
     edu = _education(rest)
     if edu:
+        edu.pop("field")
         out.update(edu, qualifier="", modes="")
         out["space"] = space(out["head_group"])
         out["key"] = key(out["head_group"], out["core"])

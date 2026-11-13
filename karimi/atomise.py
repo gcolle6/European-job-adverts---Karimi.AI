@@ -498,6 +498,10 @@ def _head_alternatives(head: str) -> list[str]:
     prep = head[prep_m.start():].strip() if prep_m else ""
     core = clean(head[: prep_m.start()]) if prep_m else clean(head)
 
+    degrees = _degree_parts(core) if config.SPLIT_REPAIRS else None
+    if degrees:
+        return [clean(f"{d} {prep}") for d in degrees]
+
     if "," in core or len(core.split()) > config.MAX_HEAD_ALT_WORDS:
         return [head]
 
@@ -998,11 +1002,68 @@ _FRAME_PAIR_PRE = {"a", "an", "the", "solid", "strong", "good", "excellent", "de
 
 _DEG_WORD = (r"(?:bachelor(?:'s|’s|s)?|master(?:'s|’s|s)?|b\.?\s?sc\.?|m\.?\s?sc\.?|b\.?\s?a\.?|m\.?\s?a\.?|"
              r"b\.?\s?eng\.?|m\.?\s?eng\.?|ph\.?\s?d\.?|doctorate|mba|diploma|licen[cs]e)")
+# Between two degrees: `,`, `, or`, `/`, `or`, `and/or`, and the Dutch `of`
+# (`Bachelor of Master in Informatica`), which cannot mean the English `of`
+# between two degree words. Rules 0.4.1.
+_DEG_SEP = r"\s*,\s*(?:(?:or|and/or)\s+)?|\s*/\s*|\s+(?:or|and/or|of)\s+"
+_DEG_PART_RE = re.compile(rf"^(?:(?:a|an|the)\s+)?(?P<deg>{_DEG_WORD})(?P<noun>\s+(?:degree|diploma)s?)?$", re.I)
+
+
+def _degree_parts(core: str) -> list[str] | None:
+    """`A Bachelor's, Master's or PhD degree` -> one head per degree, the noun carried.
+
+    `_head_alternatives` took exactly two alternatives with no article, so `A
+    Bachelor's or Master's degree in X, Y` kept the article on the left one,
+    could not hand it the noun, and wrote `A Bachelor's X`, which no rule then
+    read as a degree (318 atoms in the batch). Found reading the API test of
+    2026-11-13; rules 0.4.1."""
+    prep = re.search(r"\s+(?:in|of|on)$", core, re.I)
+    if prep:
+        core, prep = core[: prep.start()], prep.group(0)
+    parts = [p.strip() for p in re.split(_DEG_SEP, core, flags=re.I) if p and p.strip()]
+    if len(parts) < 2:
+        return None
+    found = [_DEG_PART_RE.match(p) for p in parts]
+    if not all(found):
+        return None
+    noun = next((m.group("noun") for m in reversed(found) if m.group("noun")), "")
+    return [f"{m.group('deg')}{m.group('noun') or noun}{prep or ''}" for m in found]
+
+
+_DEG_UNIT = rf"{_DEG_WORD}(?:\s+degree)?"
 _DEG_ALT_RE = re.compile(
-    rf"^(?P<degs>{_DEG_WORD}(?:\s*(?:,|/|\bor\b|\band/or\b)\s*{_DEG_WORD})+)"
+    rf"^(?:(?:a|an|the)\s+)?(?P<degs>{_DEG_UNIT}(?:(?:{_DEG_SEP}){_DEG_UNIT})+)"
     # a bracket reaches here masked (`@@0##`, `_atomise_once`)
     r"(?P<tail>(?:\s+(?:degree|diploma|programme|program))?(?:\s*(?:\([^()]*\)|@@\d+##))?\s+(?:in|of)\s+"
     r"(?P<field>.+))$", re.I)
+
+
+_DEG_ANY_RE = re.compile(rf"(?<!\w)(?:{_DEG_WORD}|degree)(?!\w)", re.I)
+
+# `Maîtrise de X` is command of X; the translator writes `Master's degree in
+# X` (`Maîtrise de l'anglais` -> `Master in English`, 119 atoms in the
+# batch). Only where the French opens on it and the English opens on a degree.
+_MAITRISE_RE = re.compile(r"^\W*(?:(?:une?|la|bonne|excellente|parfaite|tr[eè]s\s+bonne)\s+)?"
+                          r"ma[iî]trise\s+(?:de|du|des|d['’])", re.I)
+_MASTER_EN_RE = re.compile(r"^(?:(?:a|an|the)\s+)?(?:(?:good|excellent|perfect|very\s+good)\s+)?"
+                           r"master(?:'s|’s|s)?(?:\s+degree)?(?:\s+(?:in|of))?\s+", re.I)
+
+
+def repair_translation(item: str, english: str) -> str:
+    """The translation, with the one mistranslation that changes a requirement's kind put right.
+
+    Both the batch and the library call it between translating and splitting,
+    so they read the same English. Rules 0.4.1."""
+    if english != item and _MAITRISE_RE.match(item) and _MASTER_EN_RE.match(english):
+        return _MASTER_EN_RE.sub("Strong knowledge of ", english, count=1)
+    return english
+
+
+_DEG_WITH_EXP_RE = re.compile(
+    rf"^(?P<deg>(?:(?:a|an|the|university|academic|completed)\s+)?(?:{_DEG_WORD}|degree)(?!\w).*?)"
+    r"(?:\s*,?\s+(?:combined\s+|together\s+)?with|\s+(?:\+|plus))\s+"
+    r"(?P<exp>(?:(?!\bwith\b).)*?\bexperiences?\b.*?)"
+    r"(?:\s+(?:is\s+)?required)?$", re.I)
 
 
 def _degree_alternatives(s: str) -> list[str] | None:
@@ -1012,17 +1073,35 @@ def _degree_alternatives(s: str) -> list[str] | None:
     (`MSc or PhD in Physics, Mathematics` = 4, convention of 2026-10-30); with
     ONE field it split on `or` and left the first degree bare (`MSc`,
     `Bachelor's`), in rules 0.2.0 already. Found in the first API test of
-    0.3.0, 2026-11-11; rules 0.3.1."""
+    0.3.0, 2026-11-11; rules 0.3.1.
+
+    Since rules 0.4.1 a list of fields is crossed here too, one degree at a
+    time through the ordinary path: the head-and-list path cannot read three
+    degrees (`Bachelor's Degree, Master's Degree or PhD in X, Y`) because the
+    commas between them look like the list."""
     m = _DEG_ALT_RE.match(s)
-    if not m or SPLIT_RE.search(m.group("field")):
+    if not m:
         return None
-    degs = [d for d in re.split(r"\s*(?:,|/|\bor\b|\band/or\b)\s*", m.group("degs"), flags=re.I) if d.strip()]
-    return [clean(f"{d}{m.group('tail')}") for d in degs] if len(degs) > 1 else None
+    degs = [d for d in re.split(_DEG_SEP, m.group("degs"), flags=re.I) if d and d.strip()]
+    if len(degs) < 2:
+        return None
+    # `Bachelor's or Master's degree`: the noun written once is every degree's
+    noun = next((n.group(0) for n in (re.search(r"\s+degree$", d, re.I) for d in reversed(degs)) if n), "")
+    degs = [d if re.search(r"\s+degree$", d, re.I) else f"{d}{noun}" for d in degs]
+    if SPLIT_RE.search(m.group("field")):
+        return [a for d in degs for a in _split_list(clean(f"{d}{m.group('tail')}"))]
+    return [clean(f"{d}{m.group('tail')}") for d in degs]
 
 
 def _split_list(s: str) -> list[str]:
     """Split one clause, either as head + list or as a bare coordinated list."""
     if config.SPLIT_REPAIRS:
+        m = _DEG_WITH_EXP_RE.match(s)
+        if m:
+            # `Bachelor's degree in IT with Financial systems experience
+            # required`: a degree and an experience, two requirements. Left
+            # whole, the experience became part of the degree's field. Rules 0.4.1.
+            return _split_list(clean(m.group("deg"))) + [clean(m.group("exp"))]
         degrees = _degree_alternatives(s)
         if degrees:
             return degrees
@@ -1599,6 +1678,11 @@ _ALT_TAIL_RE = re.compile(
     r"gleichwertig\w*|[aä]hnlich\w*|equivalent[ei]|comparabil[ei])\b[^,;()]*)|"
     r"of\s+(?P<alt_nl>(?:een\s+)?(?:gelijkwaardig|vergelijkbar)\w*\b[^,;()]*))[.]?$", re.I)
 
+_EQUIV_DEGREE_RE = re.compile(
+    r"^(?:(?:an?|the)\s+)?(?:equivalent|similar|comparable)"
+    r"(?:\s+(?:relevant|technical|academic|professional|university|scientific|higher))*"
+    r"\s+(?:qualifications?|degrees?|diplomas?|education|studies)$", re.I)
+
 # An alternative route into the job, which is a requirement, not filler.
 _ALT_PATH_RE = re.compile(
     r"\b(?:experience|qualifications?|background|education|training|degrees?|diploma|"
@@ -1864,7 +1948,20 @@ def _atomise_once(segment: str) -> list[str]:
         # Qualifikation`) nor dropped by STOP_RE.
         m = _ALT_TAIL_RE.search(segment)
         alt = m and (m.group("alt") or m.group("alt_nl"))
-        if alt and _ALT_PATH_RE.search(alt) and clean(segment[: m.start()]):
+        main = clean(segment[: m.start()]) if m else ""
+        if alt and main and _DEG_ANY_RE.search(main) and _EQUIV_DEGREE_RE.match(alt):
+            # `Degree in X, Y, or equivalent technical qualification`: another
+            # degree that would do as well, so the alternatives count once
+            # (the user's convention of 2026-10-30). Kept, it was read as
+            # `Degree (any field)`. An equivalent EXPERIENCE is a different
+            # route and stays below. English only: the German labels keep
+            # `vergleichbare Qualifikation`. Rules 0.4.1.
+            return _atomise_once(main) or [main]
+        if m and m.group("alt_nl") and main and not _ALT_PATH_RE.search(alt):
+            # The Dutch `of gelijkwaardig` is `or equivalent`: filler, which no
+            # split saw because `of` is not a conjunction elsewhere. Rules 0.4.1.
+            segment = main
+        elif alt and _ALT_PATH_RE.search(alt) and main:
             # The alternative is split like anything else: `equivalent
             # experience in Physics or Engineering` is two.
             return _atomise_once(clean(segment[: m.start()])) + _atomise_once(clean(alt))
@@ -1974,7 +2071,19 @@ def _use_pos() -> bool:
     return config.SPLIT_REPAIRS and config.SPLIT_POS
 
 
+# A bracket naming only kinds of school says where the degree is from, not a
+# field: `Bac+5 degree in Data (University or Engineering School)` was crossed
+# into `Bac+5 degree in University`. Dropped. Rules 0.4.1.
+_SCHOOL = (r"(?:(?:an?|the|une?)\s+)?(?:universit(?:y|ies|[eé]s?|[aä]t)|(?:engineering|business|technical)\s+schools?|"
+           r"schools?\s+of\s+engineer(?:ing|s)?|[eé]coles?\s+(?:d['’]\s*)?(?:ing[eé]nieurs?|de\s+commerce)|"
+           r"grandes?\s+[eé]coles?|colleges?|(?:fach)?hochschulen?|polytechnics?)")
+_SCHOOL_BRACKET_RE = re.compile(rf"\s*\(\s*{_SCHOOL}(?:\s*(?:,|/|\bor\b|\bou\b|\band\b|\bet\b|\boder\b)\s*{_SCHOOL})*"
+                                r"\s*\)", re.I)
+
+
 def _atomise(segment: str) -> list[str]:
+    if config.SPLIT_REPAIRS:
+        segment = _SCHOOL_BRACKET_RE.sub("", segment)
     out = _atomise_once(segment)
     for _ in range(max(0, config.ATOMISE_MAX_PASSES - 1)):
         nxt: list[str] = []

@@ -103,6 +103,24 @@ Format: version · date · what changed · how it was measured.
   gets grey signals, which no longer colour it — the one-posting test of
   11/11 was red for one one-word requirement in nine. The site reads older
   history lines the same way (`dashboard._too_small`). Outputs unchanged.
+- **0.4.1** · 2026-11-13 · degrees read right. Found reading the API test
+  of that day by hand, then counted on the batch with the new inspector
+  agent (`errors.degree_flag`): 1,782 atoms flagged under 0.4.0, 362 under
+  0.4.1 on the same items. Fixed: `A Bachelor's or Master's degree in X, Y`
+  (the article cost the Bachelor its noun: `A Bachelor's X`, not a degree);
+  three or more degrees (`Bachelor's, Master's or PhD in X, Y`); the Dutch
+  `Bachelor of Master` and `of gelijkwaardig`; `Bachelor of Science in X` is
+  `Bachelor in X`; a degree inside the field (`Degree of Master of
+  Science`); `or equivalent qualification` after a degree is not a second
+  requirement (equivalent alternatives = 1, the user's 2026-10-30
+  convention; an equivalent EXPERIENCE still is one); a degree `with` or `+`
+  an experience is two; the French `Bac+N` is a degree (3 = Bachelor, 4–5 =
+  Master, 8 = PhD, a range at its lowest step; also the translator's
+  `Bachelor's degree+5`); `Master's degree X` with no `in`; `Master's
+  student`; a bracket naming only kinds of school is dropped; `Maîtrise de
+  X`, which the translator wrote `Master's degree in X`, is command of X
+  (`atomise.repair_translation`, called by both batch and library). Needs
+  dictionary 0.3.1.
 
 ## Dictionary
 

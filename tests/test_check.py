@@ -19,7 +19,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from karimi_normalise import check, tester  # noqa: E402
+from karimi_normalise import check, errors, tester  # noqa: E402
 from karimi_normalise.store import LocalStore, jf, write_json  # noqa: E402
 
 
@@ -166,6 +166,35 @@ def test_a_run_too_small_to_read_is_not_red_for_its_signals(tmp_path):
     assert judged["overall"] == "yellow"                       # the judge still counts
     assert big["overall"] == "red"                             # a run of size keeps its light
     assert out["signals"]["share_one_word"] == {"green": 0, "yellow": 0, "red": 1}
+
+
+@pytest.mark.parametrize("r, flag", [
+    ({"atom": "A Bachelor’s Computer Science", "space": "", "core": "Bachelor’s Computer Science"},
+     "degree_not_read"),
+    ({"atom": "Bac+5 Diploma in Data", "space": "", "core": "Bac+5 Diploma in Data"}, "degree_not_read"),
+    ({"atom": "Master's degree in Kafka", "space": "education", "core": "Master in English"}, "degree_field_odd"),
+    ({"atom": "x", "space": "education", "core": "Bachelor in Master in Informatica"}, "degree_field_odd"),
+    ({"atom": "x", "space": "education", "core": "Degree in IT with experience"}, "degree_field_odd"),
+    ({"atom": "Master data management", "space": "", "core": "Master data management"}, None),
+    ({"atom": "Master’s degree in Physics", "space": "education", "core": "Master in Physics"}, None),
+    ({"atom": "Degree in Education", "space": "education", "core": "Degree in Education"}, None),
+])
+def test_the_inspector_finds_degrees_read_wrong(r, flag):
+    assert errors.degree_flag(r) == flag
+
+
+def test_the_inspector_reaches_the_run_and_the_log(tmp_path):
+    from karimi_normalise import dashboard
+
+    store = LocalStore(tmp_path)
+    _job(store, "dddddddddddddddd")
+    check.check("dddddddddddddddd", store)
+    out = dashboard.aggregate(store, None, "0.1.0")
+    run = out["runs"][0]
+    assert run["degree_suspects"]["of"]["requirements"] >= 1
+    log = out["agents"]["inspector"]
+    assert log["runs"] == 1 and log["entries"][0]["job"] == "dddddddddddddddd"
+    assert {d["key"] for d in log["detectors"]} == set(errors.DEGREE_DETECTORS)
 
 
 def test_a_run_shows_before_its_check(tmp_path):

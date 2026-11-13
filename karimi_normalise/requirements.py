@@ -189,6 +189,7 @@ def split_posting(items: list[str], dictionary=None, translate: bool = True,
     out: list[Requirement] = []
     for i, item in enumerate(items):
         text, by = english.get(item, (clean[item], ""))
+        text = atom.repair_translation(item, text)
         was = item in english and text != clean[item]
         atoms, how = atom.route(text)
         counts = atom.counted(atoms)

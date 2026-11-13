@@ -50,6 +50,7 @@ ERRORS = {
     ("normalisation", "requirement"): {
         "wrong_group": "placed in a group that is not the same requirement",
         "wrong_topic": "placed under a topic it does not belong to",
+        "wrong_degree": "a degree read wrong",
     },
     ("normalisation", "role"): {
         "wrong_role": "matched to a different role",
@@ -74,6 +75,8 @@ CAUSES = {
     "no_shared_word": "different things with no word in common",
     "same_job_word": "same job word, different specialty",
     "different_job_word": "a different job word",
+    "degree_not_read": "it names a degree, and the rules did not read it as one",
+    "degree_field_odd": "the degree's field holds another degree, an experience or a language",
     "other": "no rule names it",
 }
 
@@ -158,6 +161,57 @@ def split_suspects(postings: list[dict], examples: int = 3) -> dict:
                 if len(ex[key]) < examples:
                     ex[key].append({"item": item, "atom": r.get("atom", ""), "mechanism": f[1]})
     return {"of": {"items": items, "requirements": reqs}, "counts": count, "examples": ex}
+
+
+# The inspector agent (2026-11-13). Reading the API test of that day by hand
+# found degrees read wrong in six ways that no check looked for; each was
+# fixed in rules 0.4.1, and these two tests watch every later run for the
+# same kinds. Unlike the shape rules above they test a property, not a
+# guess: an atom that opens on a degree and is not education was not read,
+# and a field that is itself a degree, an experience or a language is not a
+# field. Detected only — a fix is a rules version (`RESOLVED_IN`).
+INSPECTOR = "inspector"
+DEGREE_DETECTORS = ["degree_not_read", "degree_field_odd"]
+RESOLVED_IN = {"degree_not_read": "0.4.1", "degree_field_odd": "0.4.1"}
+_DEGREE_OPENS_RE = re.compile(
+    r"^(?:(?:a|an|the)\s+)?(?:(?:bachelor|master)(?:'s|’s|s)?(?=\s+(?:degree|in|of)\b|$)|"
+    r"(?:bachelor|master)(?:'s|’s)(?!\w)|m\.?\s?sc\.?(?!\w)|b\.?\s?sc\.?(?!\w)|ph\.?\s?d\.?(?!\w)|mba(?!\w)|"
+    r"doctorate(?!\w)|bac\s*\+\s*\d)", re.I)
+_DEGREE_IN_FIELD_RE = re.compile(r"^(?:bachelor|master|m\.?\s?sc|b\.?\s?sc|ph\.?\s?d|mba|degree|diploma)(?!\w)",
+                                 re.I)
+
+
+def degree_flag(r: dict) -> str | None:
+    """The inspector's two tests on one requirement; the first that fires, or None."""
+    atom = r.get("atom") or ""
+    if r.get("space") != "education":
+        return "degree_not_read" if _DEGREE_OPENS_RE.match(atom) else None
+    core = r.get("core") or ""
+    field = core.split(" in ", 1)[1] if " in " in core else ""
+    if not field:
+        return None
+    from karimi import normalise_req
+    if _DEGREE_IN_FIELD_RE.match(field) or re.search(r"\bexperiences?\b", field, re.I) \
+            or normalise_req.decompose(field).get("space") == "language":
+        return "degree_field_odd"
+    return None
+
+
+def degree_suspects(postings: list[dict], examples: int = 3) -> dict:
+    """Every requirement of a run, read by `degree_flag`: what the inspector agent detected."""
+    count, ex = Counter(), defaultdict(list)
+    reqs = 0
+    for p in postings:
+        for r in p.get("requirements") or []:
+            reqs += 1
+            f = degree_flag(r)
+            if f is None:
+                continue
+            key = ("normalisation", "requirement", "wrong_degree", f)
+            count[key] += 1
+            if len(ex[key]) < examples:
+                ex[key].append({"item": r.get("item", ""), "atom": r.get("atom", ""), "core": r.get("core", "")})
+    return {"of": {"requirements": reqs}, "counts": count, "examples": ex}
 
 
 # A part marked optional the splitter did not recognise as one (an atom it

@@ -71,7 +71,8 @@ def _error_table(counts: dict, of: dict, runs: int, split: dict | None) -> dict:
 
 _RUN = ("job", "checked", "source", "state", "overall", "postings", "requirements", "seconds", "lights", "judge",
         "canaries_missed", "rules_version", "dict_version")
-_DETAIL = ("signals", "findings", "judge_detail", "canaries", "split_suspects", "to_check", "curator")
+_DETAIL = ("signals", "findings", "judge_detail", "canaries", "split_suspects", "degree_suspects", "to_check",
+           "curator")
 
 
 def _with_texts(rows: list[dict] | None) -> list[dict]:
@@ -96,12 +97,14 @@ def _run(store, r: dict) -> dict:
 
         c = read_json(store, jf(r["job"], "check.json")) or {}
         detail = {**run_detail(read_json(store, jf(r["job"], "report.json")), c.get("findings") or [],
-                               c.get("judge"), c.get("canaries"), c.get("split_suspects")),
+                               c.get("judge"), c.get("canaries"), c.get("split_suspects"),
+                               c.get("degree_suspects")),
                   "curator": c.get("curator")}
     e = r.get("errors")
     out.update(detail, errors={"of": e.get("of"), "rows": _with_texts(e.get("rows"))} if e else None)
-    if out.get("split_suspects"):
-        out["split_suspects"] = {**out["split_suspects"], "rows": _with_texts(out["split_suspects"].get("rows"))}
+    for k in ("split_suspects", "degree_suspects"):
+        if out.get(k):
+            out[k] = {**out[k], "rows": _with_texts(out[k].get("rows"))}
     return _too_small(out)
 
 
@@ -126,6 +129,26 @@ def _too_small(r: dict) -> dict:
 
 
 PENDING_HOURS = 24
+
+
+def _inspector(runs: list[dict]) -> dict:
+    """The inspector agent's log: per run, the degrees it found read wrong, and the
+    rules version each kind was fixed in. Counts and codes only."""
+    from .errors import CAUSES, DEGREE_DETECTORS, INSPECTOR, RESOLVED_IN
+
+    entries, totals = [], {k: 0 for k in DEGREE_DETECTORS}
+    for r in runs:
+        d = r.get("degree_suspects")
+        if not d:
+            continue
+        found = {row["cause"]: row["count"] for row in d.get("rows") or []}
+        for k, n in found.items():
+            totals[k] = totals.get(k, 0) + n
+        entries.append({"job": r.get("job"), "checked": r.get("checked"), "rules_version": r.get("rules_version"),
+                        "requirements": (d.get("of") or {}).get("requirements"), "found": found})
+    return {"agent": INSPECTOR, "runs": len(entries), "totals": totals,
+            "detectors": [{"key": k, "text": CAUSES[k], "resolved_in": RESOLVED_IN.get(k)} for k in DEGREE_DETECTORS],
+            "entries": entries[-20:][::-1]}
 
 
 def _curator(store) -> dict | None:
@@ -211,6 +234,6 @@ def aggregate(store, quality: dict | None, dict_version: str, judge_reference: d
         "signals": lights,
         "judge": {k: {"runs": len(v), "mean_flagged_share": round(sum(v) / len(v), 4)} for k, v in judge.items()},
         "errors": _error_table(errors, of, with_errors, (quality or {}).get("split_errors")),
-        "agents": {"curator": _curator(store)},
+        "agents": {"curator": _curator(store), "inspector": _inspector(runs)},
         "runs": _pending(store, {r.get("job") for r in runs}) + [_run(store, r) for r in runs[-LAST:]][::-1],
     }

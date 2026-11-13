@@ -69,6 +69,8 @@ def split_export(rows: list[dict], translated: dict[str, str] | None = None) -> 
     config.SPLIT_POS = bool(translated)
     translated = translated or {}
     unique = {it for r in rows for it in r["must_have"]}
+    # The library repairs the same mistranslation at the same point (rules 0.4.1).
+    translated = {it: atom.repair_translation(it, en) for it, en in translated.items()}
     if config.SPLIT_POS:
         from karimi import pos
         pos.prime(translated.get(it, it) for it in unique)
