@@ -161,3 +161,11 @@ Format: version · date · what changed · how it was measured.
   dictionary did not see: 65.5% known, 8.9% group by similarity, 11.2% topic
   only, 13.2% `nuovo`. Judge's reference: 11 of 150 group decisions called
   wrong (7.3%), topics 9%.
+- **0.3.1** · 2026-11-13 · batch regenerated with rules 0.4.1 (degrees read
+  right). 97,749 cores, 73,968 groups, 49,161 topics. Parity with the batch
+  99.4% of 1,533 items; blind count 78.0% exact (unchanged); release gates
+  pass. Lookup on held-out postings agrees with the batch group 99.6% when
+  known, 72.5% when placed by similarity. Judge's reference: 8 of 150 group
+  decisions called wrong (5.3%, was 7.3%), topics 12% (was 9%; 150 pairs,
+  within noise). Explore: Bachelor in Computer Science 873 adverts (was
+  747), Master in Computer Science 811 (was 622).
