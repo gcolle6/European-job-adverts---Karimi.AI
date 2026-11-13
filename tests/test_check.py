@@ -147,6 +147,27 @@ def test_each_run_carries_its_detail_and_no_text(tmp_path, monkeypatch):
     assert {k: old[k] for k in dashboard._DETAIL} == {k: run[k] for k in dashboard._DETAIL}
 
 
+def test_a_run_too_small_to_read_is_not_red_for_its_signals(tmp_path):
+    # 2026-11-13: the one-posting test of 11/11 went red on one one-word requirement in nine.
+    from karimi_normalise import dashboard
+
+    store = LocalStore(tmp_path)
+    sig = {"value": 0.11, "normal_range": [0.0, 0.07], "light": "red"}
+    line = {"job": "41a172c6ea052afc", "state": "done", "overall": "red", "postings": 1,
+            "lights": {"share_one_word": "red"}, "signals": {"share_one_word": sig},
+            "findings": [{"level": "signals", "light": "red", "code": "signal:share_one_word", "what": None}]}
+    judged = {**line, "job": "b" * 16,
+              "findings": line["findings"] + [{"level": "judge", "light": "yellow", "code": "judge:group"}]}
+    big = {**line, "job": "c" * 16, "postings": 30}
+    store.write_text(check.HISTORY, "".join(json.dumps(x) + "\n" for x in (line, judged, big)))
+    out = dashboard.aggregate(store, None, "0.1.0")
+    small, judged, big = out["runs"][::-1]
+    assert small["overall"] == "green" and small["signals"]["share_one_word"]["light"] == "grey"
+    assert judged["overall"] == "yellow"                       # the judge still counts
+    assert big["overall"] == "red"                             # a run of size keeps its light
+    assert out["signals"]["share_one_word"] == {"green": 0, "yellow": 0, "red": 1}
+
+
 def test_a_run_shows_before_its_check(tmp_path):
     from karimi_normalise import dashboard
 

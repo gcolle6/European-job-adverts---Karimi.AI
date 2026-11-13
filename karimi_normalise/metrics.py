@@ -105,6 +105,11 @@ def run_report(postings: list[list[Requirement]], titles: list[Title] | None = N
     reqs = [r for p in postings for r in p]
     ref = dictionary.reference if dictionary is not None else None
     signals = {}
+    # Added 2026-11-13: a run smaller than the smallest reference run is read
+    # against runs ten times its size, so one one-word requirement in nine
+    # turned a clean test red. Its signals are shown but go grey, as the
+    # judge's do under MIN_PAIRS.
+    too_small = bool(ref) and m["postings"] < ref["sizes"][0]
     if ref:
         sizes = [s for s in ref["sizes"] if s <= max(m["postings"], 1)] or ref["sizes"][:1]
         size = str(sizes[-1])
@@ -113,7 +118,7 @@ def run_report(postings: list[list[Requirement]], titles: list[Title] | None = N
                 continue
             pct = ref["signals"][name]["by_size"][size]
             signals[name] = {"value": m[name], "typical": pct["50"], "normal_range": [pct["5"], pct["95"]],
-                             "light": _light(m[name], pct, side), "meaning": meaning}
+                             "light": "grey" if too_small else _light(m[name], pct, side), "meaning": meaning}
     lights = collections.Counter(s["light"] for s in signals.values())
     # A setup problem, not a property of the run, so it is a warning and no band.
     warnings = []
@@ -131,7 +136,8 @@ def run_report(postings: list[list[Requirement]], titles: list[Title] | None = N
                      "dict_version": dictionary.version if dictionary is not None else ""},
         "summary": {k: m[k] for k in ("postings", "items", "requirements", "requirements_per_item")},
         "overall": "red" if lights["red"] else "yellow" if lights["yellow"] else "green",
-        "compared_with": (f"random runs of {size} postings from the corpus the quality card "
+        "compared_with": (f"too few postings to read: the smallest reference run has {size}" if too_small
+                          else f"random runs of {size} postings from the corpus the quality card "
                           f"was measured on" if ref else "no reference: dictionary has none"),
         "signals": signals,
         "warnings": warnings,

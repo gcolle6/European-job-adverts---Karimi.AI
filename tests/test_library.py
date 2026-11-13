@@ -91,6 +91,19 @@ def test_run_light_reads_only_the_bad_side():
     assert _light(0.01, pct, "low") == "red"
 
 
+def test_run_smaller_than_the_reference_is_not_read():
+    from types import SimpleNamespace
+
+    from karimi_normalise.metrics import run_report
+    pct = {"1": 0.0, "5": 0.0, "50": 0.02, "95": 0.05, "99": 0.06}
+    ref = {"sizes": [10, 30], "signals": {"share_one_word": {"by_size": {"10": pct, "30": pct}}}}
+    posting = split_posting(["Python", "Experience with SQL and Spark"])
+    out = run_report([posting], dictionary=SimpleNamespace(reference=ref, version="x"))
+    assert out["signals"]["share_one_word"]["light"] == "grey" and out["overall"] == "green"
+    out = run_report([posting] * 10, dictionary=SimpleNamespace(reference=ref, version="x"))
+    assert out["signals"]["share_one_word"]["light"] == "red" and out["overall"] == "red"
+
+
 def test_cache_key_matches_batch(tmp_path):
     tm = _load("translate_must_have")
     assert tr.cache_key("de", "Teamfähigkeit") == tm._key("de", "Teamfähigkeit")

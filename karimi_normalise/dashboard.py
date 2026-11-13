@@ -102,7 +102,27 @@ def _run(store, r: dict) -> dict:
     out.update(detail, errors={"of": e.get("of"), "rows": _with_texts(e.get("rows"))} if e else None)
     if out.get("split_suspects"):
         out["split_suspects"] = {**out["split_suspects"], "rows": _with_texts(out["split_suspects"].get("rows"))}
-    return out
+    return _too_small(out)
+
+
+def _too_small(r: dict) -> dict:
+    """A run under the smallest reference size, read as `metrics.run_report` now reads it.
+
+    Lines checked before 2026-11-13 carry signal lights against runs ten times
+    their size: the one-posting test of 11/11 was red for one one-word
+    requirement in nine. Its signals go grey and stop counting towards the
+    run's colour; findings from the judge or the run's state still count."""
+    from .check import _ORDER
+    from .reference import SIZES
+
+    if r.get("postings") is None or r["postings"] >= SIZES[0] or not r.get("lights"):
+        return r
+    findings = [f for f in r.get("findings") or [] if f.get("level") != "signals"]
+    signals = {k: {**v, "light": "grey"} for k, v in (r.get("signals") or {}).items()} or r.get("signals")
+    overall = max((f["light"] for f in findings), key=_ORDER.get, default="green") \
+        if r.get("findings") is not None else r.get("overall")
+    return {**r, "lights": {k: "grey" for k in r["lights"]}, "signals": signals, "findings": findings,
+            "overall": overall}
 
 
 PENDING_HOURS = 24
@@ -151,11 +171,13 @@ def _pending(store, seen: set[str]) -> list[dict]:
 
 def aggregate(store, quality: dict | None, dict_version: str, judge_reference: dict | None = None) -> dict:
     text = store.read_text("history/runs.jsonl") or ""
-    runs = [json.loads(x) for x in text.splitlines() if x.strip()]
+    runs = [_too_small(json.loads(x)) for x in text.splitlines() if x.strip()]
     done = [r for r in runs if r.get("state") == "done"]
     lights = {}
     for r in runs:
         for k, v in (r.get("lights") or {}).items():
+            if v == "grey":
+                continue
             lights.setdefault(k, {"green": 0, "yellow": 0, "red": 0})
             lights[k][v] = lights[k].get(v, 0) + 1
     errors, of, with_errors = {}, {}, 0

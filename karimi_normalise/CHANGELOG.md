@@ -92,6 +92,17 @@ Format: version · date · what changed · how it was measured.
   and `PhD in Physics`, since 0.2.0; with a list of fields the cross product
   was already right). Found in the first test call of the deployed 0.3.0.
   Same dictionary (0.2.0): the cores it now makes were already known.
+- **0.4.0** · 2026-11-11 · each degree is its own requirement, the user's
+  call reversing 0.3.0: `Master in Business` and `Bachelor in Business` are
+  two groups, `education: Master in Business`, and every spelling of one
+  degree is that degree (`MSc`, `M.Sc.`, `Master's` -> Master; `Doctorate` ->
+  PhD; a degree with no level stays `Degree in ...`). The level is still in
+  `degree`. Needs dictionary 0.3.0. Measured: pattern cases 138/138, blind
+  count 78.0%, parity with the batch 99.4%.
+  Then (2026-11-13): a run under the smallest reference size (10 postings)
+  gets grey signals, which no longer colour it — the one-posting test of
+  11/11 was red for one one-word requirement in nine. The site reads older
+  history lines the same way (`dashboard._too_small`). Outputs unchanged.
 
 ## Dictionary
 
@@ -127,3 +138,8 @@ Format: version · date · what changed · how it was measured.
   `Express`, `Innate` ~ `Endevor`), the rest narrower/broader. Likely cost of
   the one space: experience, competence and ability are now searched
   together, so more cores sit above 0.90 by chance.
+- **0.3.0** · 2026-11-11 · batch regenerated with rules 0.4.0 (one group per
+  degree). 98,396 cores, 74,470 groups, 49,543 topics. On postings the
+  dictionary did not see: 65.5% known, 8.9% group by similarity, 11.2% topic
+  only, 13.2% `nuovo`. Judge's reference: 11 of 150 group decisions called
+  wrong (7.3%), topics 9%.
