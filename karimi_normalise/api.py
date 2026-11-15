@@ -25,8 +25,9 @@ site. Nothing in that aggregate is requirement text.
 Access, decided 2026-11-05 for the trial: an API key in the `X-API-Key`
 header, compared with `KARIMI_API_KEY` (a Secret Manager secret on Cloud
 Run). Simpler for the caller than a Google identity; to be replaced by IAM if
-the service becomes permanent. Unset locally = no check. `/health`, `/docs`
-and `/v1/metrics` are open: the last is what the site reads from the browser.
+the service becomes permanent. Unset locally = no check. `/health`, `/docs`,
+`/v1/metrics` and `/v1/explore` are open: the last two are what the site
+reads from the browser, counts only (`dashboard.py`, `explore.py`).
 
 Settings, all by environment:
 
@@ -60,14 +61,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field, ValidationError
 
-from . import Dictionary, check, curator, dashboard, exports, normalise_title, process
+from . import Dictionary, check, curator, dashboard, explore, exports, normalise_title, process
 from .store import LocalStore, jf, now, open_store, read_json, write_json
 from .versions import RULES_VERSION
 
 MAX_SYNC = 200                 # postings per /v1/process call; more goes to a job
 MAX_UPLOAD_MB = 30             # Cloud Run caps a request body at 32 MiB
 FILES = ("results.jsonl", "report.json", "status.json", "check.json", "requirements.csv", "postings.csv")
-OPEN = ("/health", "/docs", "/openapi.json", "/redoc", "/v1/metrics", "/try_api.py", "/API.md")
+OPEN = ("/health", "/docs", "/openapi.json", "/redoc", "/v1/metrics", "/v1/explore", "/try_api.py", "/API.md")
+EXPLORE_EVERY = 60             # seconds: a rebuilt explorer reaches the site within a minute
 _JOB_ID = re.compile(r"^[0-9a-f]{16}$")
 
 app = FastAPI(title="karimi-normalise", version=RULES_VERSION,
@@ -171,6 +173,37 @@ def api_guide() -> FileResponse:
 def metrics() -> dict:
     """What the site shows: every checked run, as counts, shares and lights. No text."""
     return dashboard.aggregate(_store, _quality, _dict.version if _dict else "", _judge_ref)
+
+
+_explore: dict = {"read": 0.0, "index": None, "requirements": {}}
+
+
+def _explorer() -> dict:
+    """The explorer as the last check built it (`explore.rebuild`), re-read at most every EXPLORE_EVERY."""
+    if time.time() - _explore["read"] > EXPLORE_EVERY:
+        index = read_json(_store, explore.INDEX)
+        if index is not None:
+            _explore.update(index=index, requirements=read_json(_store, explore.REQUIREMENTS) or {})
+        _explore["read"] = time.time()
+    return _explore
+
+
+@app.get("/v1/explore")
+def explore_index() -> dict:
+    """The explorer's index: every requirement shown, with its count of adverts. No text of an advert."""
+    e = _explorer()
+    if e["index"] is None:
+        raise HTTPException(404, "the explorer has not been built yet")
+    return e["index"]
+
+
+@app.get("/v1/explore/req/{rid}")
+def explore_requirement(rid: str) -> dict:
+    """One requirement's five charts: roles, seniority, how it is asked, countries, what comes with it."""
+    r = _explorer()["requirements"].get(rid)
+    if r is None:
+        raise HTTPException(404, f"no requirement {rid!r} in the explorer")
+    return r
 
 
 @app.post("/v1/process")

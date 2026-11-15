@@ -72,6 +72,8 @@ def test_key_is_required_except_on_open_paths(api):
     bare = TestClient(mod.app)
     assert bare.get("/health").status_code == 200
     assert bare.get("/v1/metrics").status_code == 200
+    assert bare.get("/v1/explore").status_code == 404            # open, and not built yet in a new store
+    assert bare.get("/v1/explore/req/python").status_code == 404
     assert "def main" in bare.get("/try_api.py").text
     assert bare.get("/API.md").text.startswith("# karimi-normalise API")
     assert bare.post("/v1/process", json={"postings": POSTINGS}).status_code == 401

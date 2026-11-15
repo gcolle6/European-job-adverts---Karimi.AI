@@ -185,6 +185,101 @@ giudice; il giudice è ritarato se cambiano modello o build di llama.cpp; i
 log non contengono mai testo degli annunci; i file dei lavori si cancellano
 dopo 30 giorni, lo storico no.
 
+### Annunci nuovi: lotto 1 (2026-11-15)
+
+**Che cosa sono.** Il file `software_data_missing_from_ids_used.json`
+contiene 18.254 annunci software e data. Nessun id è in comune con
+`software_data_europe.json`, e solo 310 testi coincidono, quindi è il primo
+test fuori campione. 1.320 annunci non hanno `must_have` e sono saltati. A
+differenza del corpus del dizionario non sono solo europei, e manca il campo
+lingua. Il file resta fuori da git.
+
+**Come.** Lo abbiamo chiamato come farebbe un esterno, seguendo solo
+`API.md`: un client che usa solo `requests` e nessun codice della libreria.
+Gli annunci vengono mescolati una volta, con il seme 20261115; il lotto k è
+`[k*1000, (k+1)*1000)`. Il lotto 1 è il job `4e0ddade887f5fd1`, con 1.000
+annunci e 8.111 righe. I file sono in `output/new_postings/batch_01/`.
+
+**Ogni passo, verificato:**
+
+| passo | esito |
+|---|---|
+| `/health`, creazione del job, upload firmato, avvio | ✅ 200 / 202 |
+| elaborazione | ✅ 17,4 minuti. Le 5 letture di stato fallite per errore SSL non compaiono nei log del server: sono un problema di rete del client, che le ha ritentate. Il server non ha nessuna risposta ≥ 400; l'unico ERROR è quello voluto del controllo rosso, che fa partire l'avviso via email |
+| risultati, report, i due CSV | ✅ 16.098 requisiti, 1,98 per riga |
+| controllo (`check.json`) | ✅ pronto 8,6 minuti dopo la fine |
+| giudice | ✅ coppie di controllo 21 su 21, quindi affidabile. Gruppo: 3 bocciate su 40 (7,5%, riferimento 5,3%, p = 0,36). Argomento: 6 su 30 (20%, riferimento 12%, p = 0,14) |
+| agente Inspector | ✅ 26 titoli di studio sospetti su 16.098 requisiti; letti tutti, sono errori veri |
+| agente Curator | ✅ 10 proposte, 10 approvate dal giudice; l'API ora risponde con il dizionario `0.3.1+a10` |
+| sito (`/v1/metrics`) | ✅ il run c'è, con i totali dei due agenti |
+
+**Risultato: rosso, e il motivo sono i dati, non un guasto.** I segnali della
+divisione sono tutti verdi (1,98 requisiti per riga, tipico 1,99). Sono rossi
+solo quelli di copertura del dizionario:
+
+| | lotto 1 | tipico |
+|---|---|---|
+| noti | 58,7% | 65,6% |
+| nel gruppo per somiglianza | 10,6% | 8,8% |
+| solo argomento | 12,8% | 11,1% |
+| nuovi | 16,9% | 13,1% |
+| titoli nuovi | 49,5% | 36,8% |
+
+Il calo **non viene solo dagli annunci fuori Europa**. Su quelli europei i
+requisiti noti sono 60,0% e i nuovi 15,7%. Fuori Europa i noti sono 57,2% e
+i nuovi 19,7%. Il riferimento era misurato su annunci dello stesso export del
+dizionario, quindi era ottimista: questa è la prima misura di copertura su
+annunci davvero nuovi.
+
+**Errori trovati dagli agenti, da correggere nelle regole (0.4.2):**
+
+* titolo di studio seguito da `preferred`, `strongly preferred`, `is a plus`
+  (`Ph.D. preferred`, `Master's preferred`): non viene letto come titolo e
+  non risulta facoltativo;
+* titolo `or equivalent / related experience`, che finisce dentro la materia
+  (`Bachelor in or relevant experience`);
+* anni dentro il titolo (`Master's degree 2–3 years of relevant experience`,
+  `Bachelor’s degree (5–7 years experience) or Master's degree (3–5 years)`,
+  `Bachelor’s with 10+ years`);
+* `associate’s degree`, `Undergraduate Degree`, `Bachelor's degree student
+  +4/5`;
+* anni in forma di intervallo senza trattino: `(5 years 10 years)` esce come
+  5–5, e il nome del requisito si rompe.
+
+**Unioni del Curator, lette una per una.** Sette sono giuste: GCP BigQuery,
+AWS Redshift, AWS GuardDuty, Apache Maven, IBM QRadar, IIoT platforms, Java
+services. Due sono discutibili, perché tolgono il fornitore a una cosa più
+specifica: SAP EAM → EAM e AWS MLOps engineering → MLOps engineering. **Una è
+sbagliata: IT platforms → IT**. La regola `generic_suffix` accetta come
+oggetto anche una sigla troppo generica, ed è lo stesso difetto di
+`Information Technology → Information`. Il giudice le ha approvate tutte e
+dieci: come già misurato, la precisione dipende dai rilevatori, non dal
+giudice.
+
+### Explore si aggiorna da solo (2026-11-15)
+
+Con l'accordo di Karimi, ogni run che passa il controllo aggiunge i suoi
+annunci alla pagina Explore. Prima Explore si costruiva una volta sola
+dall'export di agosto e si caricava a mano su GitHub. Il codice è in
+`karimi_normalise/explore.py`, e lo esegue il job di controllo
+(l'"editore"):
+
+* **un run entra** se il giudice è affidabile e nei limiti, e se i segnali
+  della divisione sono normali. I requisiti nuovi non lo bloccano: sono
+  proprio quello che porta;
+* **dentro il run si escludono** i requisiti facoltativi, le righe rotte,
+  quelli senza argomento, i titoli di studio segnalati dall'Inspector e le
+  parole generiche. La stessa regola vale per gli annunci dell'export;
+* **un annuncio mandato due volte conta una volta** (hash dell'id). Si
+  conservano solo hash e conteggi, nessun testo;
+* **il sito legge `/v1/explore`** dall'API; i file in
+  `public/data/explore` servono solo se l'API non risponde;
+* **lo sweep delle 6:00** decide i run controllati prima che il passo
+  esistesse e ricostruisce Explore.
+
+Ogni decisione, entrato o no e perché, è nella pagina Metrics alla voce "The
+publisher".
+
 ### Come si migliora dopo il rilascio
 
 Sì, split e normalizzazione restano migliorabili. Il percorso è fisso, così un

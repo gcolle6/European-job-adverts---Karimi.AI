@@ -121,6 +121,23 @@ Format: version · date · what changed · how it was measured.
   X`, which the translator wrote `Master's degree in X`, is command of X
   (`atomise.repair_translation`, called by both batch and library). Needs
   dictionary 0.3.1.
+  Then (2026-11-15, rules unchanged): the **publisher** (`explore.py`). The
+  site's explorer was built once from the August export and committed by
+  hand; now every run whose check passes adds its adverts, and the check job
+  rebuilds it, served open at `/v1/explore`. A run passes when its judge is
+  trusted and within its reference and no splitting signal is out of range;
+  coverage signals do not block (new adverts are what should come in).
+  Inside a run, optional requirements, broken splits, requirements with no
+  topic, degrees the inspector flags and generic words are left out, and the
+  export's adverts are counted by the same rule. An advert sent twice counts
+  once (a hash of its id). Stored: hashes and counts, no text. Measured on the
+  export alone against the published explorer: 15,655 adverts (was 15,656),
+  809 requirements shown (was 813): out are `Bachelor's degree` and
+  `Master's degree` with no field, read as no degree, and `Additional
+  languages are a plus`; `German` 1,335 -> 1,145 adverts, `French` 763 ->
+  600, since `German is a plus` is optional (the 2026-10-30 convention).
+  Leaving out every item kept whole was tried and dropped: it took
+  `Written and verbal communication skills` (359 adverts) and 62 more off.
 
 ## Dictionary
 

@@ -160,6 +160,16 @@ def _curator(store) -> dict | None:
         return None
 
 
+def _publisher(store) -> dict | None:
+    """The explorer's last build and which runs went into it, and why (`explore.py`)."""
+    from . import explore
+
+    try:
+        return explore.summary(store)
+    except Exception:   # noqa: BLE001 - the site shows the rest without it
+        return None
+
+
 def _pending(store, seen: set[str]) -> list[dict]:
     """Runs the check has not reached yet, so a call shows on the site when it ends.
 
@@ -234,6 +244,6 @@ def aggregate(store, quality: dict | None, dict_version: str, judge_reference: d
         "signals": lights,
         "judge": {k: {"runs": len(v), "mean_flagged_share": round(sum(v) / len(v), 4)} for k, v in judge.items()},
         "errors": _error_table(errors, of, with_errors, (quality or {}).get("split_errors")),
-        "agents": {"curator": _curator(store), "inspector": _inspector(runs)},
+        "agents": {"curator": _curator(store), "inspector": _inspector(runs), "publisher": _publisher(store)},
         "runs": _pending(store, {r.get("job") for r in runs}) + [_run(store, r) for r in runs[-LAST:]][::-1],
     }

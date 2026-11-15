@@ -14,7 +14,9 @@ Cloud Run. A job is a folder, `jobs/<id>/`:
 
 `history/runs.jsonl` is the check's memory across jobs: one line per job,
 counts and lights only, no text. It sits outside `jobs/` so the bucket's
-30-day deletion (`deploy/lifecycle.json`, prefix `jobs/`) leaves it.
+30-day deletion (`deploy/lifecycle.json`, prefix `jobs/`) leaves it. So does
+`explore/` (`explore.py`): what the site's explorer is built from, counts
+and hashes only.
 
 Nothing here logs text: the job files hold requirement text, the logs do not.
 """
@@ -63,6 +65,12 @@ class LocalStore:
         d = self.root / "jobs"
         return sorted(p.name for p in d.iterdir() if p.is_dir()) if d.exists() else []
 
+    def list(self, prefix: str) -> list[str]:
+        """Every file name under ``prefix`` (a folder, ending in `/`)."""
+        d = self.root / prefix
+        return sorted(f"{prefix}{p.name}" for p in d.iterdir() if p.is_file()
+                      and not p.name.endswith(".tmp")) if d.exists() else []
+
     def upload_url(self, name: str, base_url: str) -> dict:
         job = name.split("/")[1]
         return {"method": "PUT", "url": f"{base_url}/v1/jobs/{job}/input",
@@ -103,6 +111,10 @@ class GCSStore:
         it = self.client.list_blobs(self.bucket_name, prefix="jobs/", delimiter="/")
         list(it)                                  # the prefixes are filled while pages are read
         return sorted(p.split("/")[1] for p in it.prefixes)
+
+    def list(self, prefix: str) -> list[str]:
+        """Every file name directly under ``prefix`` (a folder, ending in `/`)."""
+        return sorted(b.name for b in self.client.list_blobs(self.bucket_name, prefix=prefix, delimiter="/"))
 
     def _signed(self, name: str, method: str, minutes: int, content_type: str | None = None) -> str:
         # On Cloud Run there is no key file: the service account signs through

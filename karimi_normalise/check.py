@@ -54,7 +54,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import curator, errors
+from . import curator, errors, explore
 from .store import jf, now, open_store, read_json, write_json
 
 STALE_MINUTES = 90          # a chunk of 500 postings takes 5-15 minutes; 90 is six chunks of silence
@@ -384,6 +384,10 @@ def check(job: str, store=None, judge_url: str | None = None, reference: dict | 
            "to_check": {k: len(v) for k, v in (report or {}).get("to_check", {}).items()},
            "thresholds": {"p_red": P_RED, "p_yellow": P_YELLOW, "min_pairs": MIN_PAIRS, "ref_min_pairs": REF_MIN_PAIRS,
                           "stale_minutes": STALE_MINUTES}}
+    # The explorer (`explore.py`): a run that passed adds its adverts, and the
+    # explorer is rebuilt. After the check is written, and never failing it.
+    if postings is not None:
+        out["explore"] = publish(store, job, out, judge_url if canaries and canaries["trusted"] else None)
     write_json(store, jf(job, "check.json"), out)
     _log({"red": "ERROR", "yellow": "WARNING"}.get(overall, "INFO"), event="karimi_check", job=job,
          overall=overall, findings=[f["code"] for f in findings])
@@ -395,8 +399,31 @@ def check(job: str, store=None, judge_url: str | None = None, reference: dict | 
     return out
 
 
+def publish(store, job: str, check_out: dict, judge_url: str | None) -> dict:
+    """The run's decision for the explorer, then the explorer rebuilt; a failure is logged, not raised."""
+    try:
+        decision = explore.contribute(store, job, check_out)
+    except Exception as e:  # noqa: BLE001 - the explorer never fails the check
+        _log("WARNING", event="karimi_explore_failed", job=job, step="contribute", error=type(e).__name__)
+        return {"contributed": False, "why": f"failed: {type(e).__name__}"}
+    if decision["contributed"]:
+        try:
+            decision["built"] = explore.rebuild(store, judge_url)
+        except Exception as e:  # noqa: BLE001
+            _log("WARNING", event="karimi_explore_failed", job=job, step="rebuild", error=type(e).__name__)
+            decision["built"] = None
+    _log("INFO", event="karimi_explore", job=job, contributed=decision["contributed"],
+         postings=decision.get("postings"), requirements=decision.get("requirements"))
+    return decision
+
+
 def sweep(store=None) -> list[str]:
-    """Every job still queued or running is asked whether it is alive; the dead are marked and reported."""
+    """Every job still queued or running is asked whether it is alive; the dead are marked and reported.
+
+    Then the explorer catches up: a checked run with no decision yet (checked
+    before the explorer existed, or whose step failed) is decided, and the
+    explorer is rebuilt if anything was added. No judge here, so a new
+    requirement's category is `Other` until the next check names it."""
     store = store or open_store()
     dead = []
     for job in store.jobs():
@@ -406,7 +433,15 @@ def sweep(store=None) -> list[str]:
             write_json(store, jf(job, "status.json"), {**s, **change, "updated": now()})
             check(job, store)
             dead.append(job)
-    _log("INFO", event="karimi_sweep", dead=len(dead))
+    added = 0
+    try:
+        for job in explore.pending(store):
+            added += explore.contribute(store, job)["contributed"]
+        if added:
+            explore.rebuild(store, None)
+    except Exception as e:  # noqa: BLE001 - the sweep's first job is the dead runs
+        _log("WARNING", event="karimi_explore_failed", step="sweep", error=type(e).__name__)
+    _log("INFO", event="karimi_sweep", dead=len(dead), explore_added=added)
     return dead
 
 # ---------------------------------------------------------------- reference
