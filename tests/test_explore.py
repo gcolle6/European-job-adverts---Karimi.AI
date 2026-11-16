@@ -18,9 +18,9 @@ sys.path.insert(0, str(ROOT))
 from karimi_normalise import check, explore  # noqa: E402
 from karimi_normalise.store import LocalStore, jf, read_json, write_json  # noqa: E402
 
-GOOD = {"canaries": {"trusted": True},
-        "findings": [{"level": "signals", "light": "red", "code": "signal:share_nuovo", "what": "share_nuovo = 0.17"},
-                     {"level": "signals", "light": "red", "code": "signal:share_titles_nuovo", "what": "0.49"}]}
+GOOD = {"canaries": {"trusted": True}, "findings": [],
+        "novelty": [{"code": "novelty:share_nuovo", "side": "high", "what": "share_nuovo = 0.17"}],
+        "error_estimate": {"share": 0.021, "light": "green"}}
 
 
 def test_the_gate_lets_new_adverts_in_and_keeps_bad_reads_out():
@@ -28,10 +28,16 @@ def test_the_gate_lets_new_adverts_in_and_keeps_bad_reads_out():
     assert not explore.gate(None)[0]
     assert not explore.gate({**GOOD, "canaries": {"trusted": False}})[0]
     assert not explore.gate({"canaries": None, "findings": []})[0]   # no judge ran: nothing verified
-    split = {"level": "signals", "light": "red", "code": "signal:share_items_damaged", "what": "x"}
-    assert not explore.gate({**GOOD, "findings": GOOD["findings"] + [split]})[0]
-    judged = {"level": "judge", "light": "red", "code": "judge:group", "what": "x"}
-    assert not explore.gate({**GOOD, "findings": [judged]})[0]
+    # an unusual split shape is a yellow to look at, not an error: it does not block (2026-11-16)
+    shape = {"level": "signals", "light": "yellow", "code": "signal:requirements_per_item", "what": "x"}
+    assert explore.gate({**GOOD, "findings": [shape]})[0]
+    wrong = {"level": "errors", "light": "red", "code": "errors:estimated", "what": "about 7%"}
+    assert not explore.gate({**GOOD, "findings": [wrong], "error_estimate": {"share": 0.07, "light": "red"}})[0]
+    # a run checked before the estimate existed keeps the rule it was checked under
+    old = {"canaries": {"trusted": True}, "findings": [
+        {"level": "signals", "light": "red", "code": "signal:share_items_damaged", "what": "x"}]}
+    assert not explore.gate(old)[0]
+    assert not explore.gate({**old, "findings": [{"level": "judge", "light": "red", "code": "judge:group"}]})[0]
 
 
 def _r(topic: str, **kw) -> dict:

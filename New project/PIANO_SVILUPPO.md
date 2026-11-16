@@ -345,6 +345,25 @@ Due agenti nuovi, perché la prossima volta li trovino loro:
   aperto, e il rilevatore lo scrivo e lo misuro io; uno scartato non viene più
   riproposto come nuovo.
 
+### Il colore segue gli errori, non la novità (2026-11-16)
+
+Il lotto 2 era rosso solo perché i suoi annunci erano nuovi per il dizionario,
+mentre il giudice era verde. Decisione: **il colore dice quanti errori fa un
+run**.
+
+* **Errori, decidono il colore**: quota stimata di requisiti sbagliati =
+  errori dell'Inspector + (decisioni per somiglianza bocciate dal giudice ×
+  quota di requisiti messi per somiglianza). Verde sotto il 3%, giallo 3–6%,
+  rosso sopra il 6%, soglie fissate prima di leggere un run.
+* **Forma dello split**: requisiti per riga, requisiti di una parola, righe
+  tenute intere. Al massimo giallo: una forma strana merita un'occhiata, non è
+  un errore misurato.
+* **Novità, senza colore**: copertura del dizionario, requisiti e titoli
+  nuovi, quota tradotta. In blu sul sito, con "più del solito" quando escono
+  dall'intervallo.
+* I run controllati prima vengono riletti con la stessa regola. Explore accetta
+  un run se gli errori non sono rossi.
+
 ### Come si migliora dopo il rilascio
 
 Sì, split e normalizzazione restano migliorabili. Il percorso è fisso, così un

@@ -127,7 +127,21 @@ def test_run_smaller_than_the_reference_is_not_read():
     out = run_report([posting], dictionary=SimpleNamespace(reference=ref, version="x"))
     assert out["signals"]["share_one_word"]["light"] == "grey" and out["overall"] == "green"
     out = run_report([posting] * 10, dictionary=SimpleNamespace(reference=ref, version="x"))
-    assert out["signals"]["share_one_word"]["light"] == "red" and out["overall"] == "red"
+    # far outside its band, and still yellow: a shape is not a measured error (2026-11-16)
+    s = out["signals"]["share_one_word"]
+    assert s["light"] == "yellow" and s["unusual"] and s["side"] == "high" and out["overall"] == "yellow"
+
+
+def test_novelty_carries_no_colour():
+    from types import SimpleNamespace
+
+    from karimi_normalise.metrics import run_report
+    pct = {"1": 0.0, "5": 0.0, "50": 0.0, "95": 0.0, "99": 0.0}
+    ref = {"sizes": [1], "signals": {"share_translated": {"by_size": {"1": pct}}}}
+    posting = split_posting(["Erfahrung mit Python"])
+    out = run_report([posting], dictionary=SimpleNamespace(reference=ref, version="x"))
+    s = out["signals"]["share_translated"]
+    assert s["light"] == "info" and s["family"] == "novelty" and s["unusual"] and out["overall"] == "green"
 
 
 def test_cache_key_matches_batch(tmp_path):

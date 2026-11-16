@@ -11,6 +11,15 @@ whether the quality card applies to them:
 * 🟢 inside the 5th-95th percentile, 🟡 inside 1st-99th, 🔴 outside. Only the
   side that means trouble counts: fewer `nuovo` than usual is no problem.
 
+Since 2026-11-16 (the user's call) a colour says how many ERRORS a run makes,
+and these signals measure none. So the NOVELTY signals (dictionary coverage,
+translation) carry no colour: `light` is `info`, and `unusual` says whether
+the run sits outside the normal range, with the side. Batch 2 of the new
+postings was red on coverage alone while its judge was green: new adverts are
+not wrong adverts. The SHAPE signals of the split go at most to yellow: an
+unusual shape is worth a look, not a measured error. The colour of a run comes
+from the check (`check.py`, its error estimate).
+
 And the items worth a look, so the user does not reread the whole run.
 
 The monitor (phase 4) stores the same `run_metrics` row for every batch.
@@ -36,6 +45,9 @@ SIGNALS = {
     "share_nuovo": ("requirements the dictionary does not know (cosine < 0.80)", "high"),
     "share_titles_nuovo": ("titles whose role the dictionary does not know", "high"),
 }
+NOVELTY = ("share_translated", "share_known", "share_group_nearest", "share_topic_only", "share_nuovo",
+           "share_titles_nuovo")
+SHAPE = tuple(k for k in SIGNALS if k not in NOVELTY)
 TOP = 20
 
 
@@ -117,8 +129,17 @@ def run_report(postings: list[list[Requirement]], titles: list[Title] | None = N
             if m.get(name) is None or name not in ref["signals"]:
                 continue
             pct = ref["signals"][name]["by_size"][size]
+            band = "grey" if too_small else _light(m[name], pct, side)
+            if name in NOVELTY:
+                light = "grey" if too_small else "info"
+            else:
+                light = "yellow" if band == "red" else band
             signals[name] = {"value": m[name], "typical": pct["50"], "normal_range": [pct["5"], pct["95"]],
-                             "light": "grey" if too_small else _light(m[name], pct, side), "meaning": meaning}
+                             "light": light, "family": "novelty" if name in NOVELTY else "shape",
+                             "unusual": band in ("yellow", "red"),
+                             "side": None if band not in ("yellow", "red") else
+                             ("high" if m[name] > pct["95"] else "low"),
+                             "meaning": meaning}
     lights = collections.Counter(s["light"] for s in signals.values())
     # A setup problem, not a property of the run, so it is a warning and no band.
     warnings = []
@@ -148,5 +169,6 @@ def run_report(postings: list[list[Requirement]], titles: list[Title] | None = N
                                         for (k, t), v in topic.most_common(TOP)],
         },
         "note": "Signals say whether this run resembles the measured data, not how much of it is "
-                "right. For that, see /quality for these versions.",
+                "right: novelty signals carry no colour, shape signals at most yellow. How many errors "
+                "the run made is the check's (check.json), and /quality says it per version.",
     }

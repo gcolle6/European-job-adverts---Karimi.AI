@@ -83,8 +83,11 @@ def test_judge_that_disagrees_makes_the_run_red(tmp_path, monkeypatch):
     _job(store, "aaaaaaaaaaaaaaaa")
     ref = {"rates": {"group": {"answered": 150, "share": 0.1}, "topic": {"answered": 100, "share": 0.1}}}
     out = check.check("aaaaaaaaaaaaaaaa", store, judge_url="http://judge", reference=ref)
+    # every decision by similarity wrong: the error estimate, not the judge alone, makes it red
     assert out["overall"] == "red"
-    assert {f["code"] for f in out["findings"]} >= {"judge:group", "judge:topic"}
+    assert {f["code"] for f in out["findings"]} == {"errors:estimated"}
+    assert out["error_estimate"]["share"] > 0.06 and out["error_estimate"]["complete"]
+    assert out["judge"]["group"]["light"] == "red"                  # the test against the reference, kept
     assert out["judge"]["group"]["flagged"] == out["judge"]["group"]["answered"] == 15
     assert json.loads(store.read_text(jf("aaaaaaaaaaaaaaaa", "check.json")))["overall"] == "red"
 
@@ -133,7 +136,9 @@ def test_each_run_carries_its_detail_and_no_text(tmp_path, monkeypatch):
     ref = {"rates": {"group": {"answered": 150, "share": 0.1}, "topic": {"answered": 100, "share": 0.1}}}
     check.check("aaaaaaaaaaaaaaaa", store, judge_url="http://judge", reference=ref)
     run = dashboard.aggregate(store, None, "0.1.0")["runs"][0]
-    assert run["signals"]["share_nuovo"] == {"value": 0.3, "normal_range": [0.1, 0.25], "light": "yellow"}
+    assert run["signals"]["share_nuovo"] == {"value": 0.3, "normal_range": [0.1, 0.25], "light": "yellow",
+                                             "family": "novelty", "unusual": True, "side": None}
+    assert run["error_estimate"]["light"] == "red" and run["novelty"][0]["code"] == "novelty:share_nuovo"
     assert run["judge_detail"]["group"]["flagged"] == 15 and run["canaries"]["missed"] == 0
     assert run["to_check"] == {"requirements_nuovo": 1}
     assert {r["error"] for r in run["errors"]["rows"]} <= {"wrong_group", "wrong_topic"}
@@ -164,8 +169,27 @@ def test_a_run_too_small_to_read_is_not_red_for_its_signals(tmp_path):
     small, judged, big = out["runs"][::-1]
     assert small["overall"] == "green" and small["signals"]["share_one_word"]["light"] == "grey"
     assert judged["overall"] == "yellow"                       # the judge still counts
-    assert big["overall"] == "red"                             # a run of size keeps its light
-    assert out["signals"]["share_one_word"] == {"green": 0, "yellow": 0, "red": 1}
+    # a run of size keeps its light, read by the colour rule of 2026-11-16: a shape is at most yellow
+    assert big["overall"] == "yellow" and big["colour_reread"]
+    assert out["signals"]["share_one_word"] == {"green": 0, "yellow": 1, "red": 0}
+
+
+def test_an_old_run_red_for_new_adverts_alone_is_read_again(tmp_path):
+    # batch 2 of 2026-11-16: red on dictionary coverage while its judge was green
+    from karimi_normalise import dashboard
+
+    store = LocalStore(tmp_path)
+    sig = {"value": 0.18, "normal_range": [0.12, 0.14], "light": "red"}
+    line = {"job": "d" * 16, "state": "done", "overall": "red", "postings": 1000,
+            "lights": {"share_nuovo": "red", "share_one_word": "green"},
+            "signals": {"share_nuovo": sig, "share_one_word": {**sig, "light": "green"}},
+            "findings": [{"level": "signals", "light": "red", "code": "signal:share_nuovo", "what": None}]}
+    store.write_text(check.HISTORY, json.dumps(line) + "\n")
+    out = dashboard.aggregate(store, None, "0.1.0")
+    run = out["runs"][0]
+    assert run["overall"] == "green" and run["findings"] == [] and run["lights"]["share_nuovo"] == "info"
+    assert out["novelty"]["share_nuovo"] == {"usual": 0, "high": 1, "low": 0}
+    assert "share_nuovo" not in out["signals"]
 
 
 @pytest.mark.parametrize("r, flag", [

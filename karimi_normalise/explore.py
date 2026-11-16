@@ -12,11 +12,15 @@ the site by hand.
 
 Two gates, both written down so a reader can see why a count is or is not there:
 
-* **the run** (`gate`): the check's judge passed its planted pairs and found
-  no more wrong decisions than on our own data, and no splitting signal is
-  out of range. The dictionary-coverage signals (`share_known`,
-  `share_nuovo`, ...) do NOT block: they measure how new the adverts are, not
-  whether they were read right, and new adverts are what should come in;
+* **the run** (`gate`): the check's judge passed its planted pairs and the
+  check's error estimate is not red (under 6% of requirements estimated
+  wrong). Until 2026-11-16 a splitting signal out of range blocked too; it
+  kept batch 2 out at 2.0264 requirements per item against a normal 2.0253,
+  an unusual shape and no measured error, and since the colour follows
+  errors (the user's call) a shape is at most a yellow that does not block.
+  The dictionary-coverage signals (`share_known`, `share_nuovo`, ...) never
+  blocked: they measure how new the adverts are, and new adverts are what
+  should come in;
 * **each requirement** (`keep`): counted (not optional), not from an item
   whose split came out broken, placed in the dictionary's space with a topic,
   not a degree the inspector flags (`errors.degree_flag`), not a generic word.
@@ -163,12 +167,17 @@ def gate(check_out: dict | None) -> tuple[bool, str]:
     if not (check_out.get("canaries") or {}).get("trusted"):
         return False, "no trusted judge on this run: nothing verified its decisions"
     for f in check_out.get("findings") or []:
-        if f.get("level") in ("health", "judge"):
+        if f.get("level") == "health" or (f.get("level") == "errors" and f.get("light") == "red"):
             return False, f"{f.get('code')}: {f.get('what')}"
-        code = (f.get("code") or "").split(":", 1)[-1]
-        if f.get("level") == "signals" and code in SPLIT_SIGNALS:
-            return False, f"splitting out of range: {f.get('what')}"
-    return True, "judge trusted and within its reference; splitting signals normal"
+    est = check_out.get("error_estimate")
+    if est is None:
+        # a run checked before 2026-11-16 has no estimate: the rule it was checked under
+        for f in check_out.get("findings") or []:
+            code = (f.get("code") or "").split(":", 1)[-1]
+            if f.get("level") == "judge" or (f.get("level") == "signals" and code in SPLIT_SIGNALS):
+                return False, f"{f.get('code')}: {f.get('what')}"
+        return True, "judge trusted and within its reference; splitting signals normal (checked before 2026-11-16)"
+    return True, f"judge trusted; about {est['share']:.1%} of requirements estimated wrong, under the red line"
 
 
 def run_rows(inputs: list[dict], results: list[dict], job: str) -> tuple[list[dict], Counter]:

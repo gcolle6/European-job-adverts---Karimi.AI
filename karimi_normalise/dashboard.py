@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 
 from .archivist import catalogue_with, latest_decisions
+from .check import ERROR_RED, ERROR_YELLOW
 from .archivist import public as archivist_public
 from .archivist import summary as archivist_summary
 from .explorer import public as explorer_public
@@ -77,7 +78,7 @@ def _error_table(counts: dict, of: dict, runs: int, split: dict | None) -> dict:
 _RUN = ("job", "checked", "source", "state", "overall", "postings", "requirements", "seconds", "lights", "judge",
         "canaries_missed", "rules_version", "dict_version")
 _DETAIL = ("signals", "findings", "judge_detail", "canaries", "split_suspects", "degree_suspects", "to_check",
-           "curator", "archivist", "explorer")
+           "curator", "archivist", "explorer", "error_estimate", "novelty")
 
 
 def _with_texts(rows: list[dict] | None) -> list[dict]:
@@ -105,13 +106,14 @@ def _run(store, r: dict) -> dict:
                                c.get("judge"), c.get("canaries"), c.get("split_suspects"),
                                c.get("degree_suspects")),
                   "curator": c.get("curator"), "archivist": archivist_public(c.get("archivist")),
-                  "explorer": explorer_public(c.get("explorer"))}
+                  "explorer": explorer_public(c.get("explorer")),
+                  "error_estimate": c.get("error_estimate"), "novelty": c.get("novelty")}
     e = r.get("errors")
     out.update(detail, errors={"of": e.get("of"), "rows": _with_texts(e.get("rows"))} if e else None)
     for k in ("split_suspects", "degree_suspects"):
         if out.get(k):
             out[k] = {**out[k], "rows": _with_texts(out[k].get("rows"))}
-    return _too_small(out)
+    return _colour_rule(_too_small(out))
 
 
 def _too_small(r: dict) -> dict:
@@ -132,6 +134,41 @@ def _too_small(r: dict) -> dict:
         if r.get("findings") is not None else r.get("overall")
     return {**r, "lights": {k: "grey" for k in r["lights"]}, "signals": signals, "findings": findings,
             "overall": overall}
+
+
+def _colour_rule(r: dict) -> dict:
+    """A run checked before 2026-11-16, read by the colour rule of that day: the
+    colour says how many errors a run made, not how new its adverts are.
+
+    Its novelty signals become `info` and leave its findings; a shape signal is
+    at most yellow; the judge's findings stay, the errors they were. There is no
+    error estimate to add: the line did not keep the counts it needs. Marked
+    `colour_reread` so the site can say so."""
+    from .check import _ORDER
+    from .metrics import NOVELTY
+
+    if r.get("error_estimate") is not None or not r.get("lights"):
+        return r
+
+    def light(k: str, v: str) -> str:
+        if v == "grey":
+            return v
+        return "info" if k in NOVELTY else ("yellow" if v == "red" else v)
+
+    lights = {k: light(k, v) for k, v in r["lights"].items()}
+    signals = {k: {**v, "light": light(k, v.get("light")), "family": "novelty" if k in NOVELTY else "shape",
+                   "unusual": v.get("light") in ("yellow", "red")}
+               for k, v in (r.get("signals") or {}).items()} or r.get("signals")
+    findings = r.get("findings")
+    if findings is not None:
+        findings = [{**f, "light": "yellow"} if f.get("level") == "signals" else f for f in findings
+                    if not ((f.get("level") in ("signals", "drift")) and (f.get("code") or "").split(":")[-1] in NOVELTY)]
+        overall = max((f["light"] for f in findings), key=_ORDER.get, default="green")
+    else:
+        overall = max((v for k, v in lights.items() if k not in NOVELTY), key=lambda x: _ORDER.get(x, 0),
+                      default="green")
+    return {**r, "lights": lights, "signals": signals, "findings": findings, "overall": overall,
+            "colour_reread": True}
 
 
 PENDING_HOURS = 24
@@ -213,15 +250,28 @@ def _pending(store, seen: set[str]) -> list[dict]:
 
 def aggregate(store, quality: dict | None, dict_version: str, judge_reference: dict | None = None) -> dict:
     text = store.read_text("history/runs.jsonl") or ""
-    runs = [_too_small(json.loads(x)) for x in text.splitlines() if x.strip()]
+    runs = [_colour_rule(_too_small(json.loads(x))) for x in text.splitlines() if x.strip()]
     done = [r for r in runs if r.get("state") == "done"]
-    lights = {}
+    # Shape signals by colour; novelty signals by whether the run was unusual,
+    # and on which side: they carry no colour (2026-11-16).
+    from .metrics import NOVELTY
+
+    lights, novelty = {}, {}
     for r in runs:
         for k, v in (r.get("lights") or {}).items():
             if v == "grey":
                 continue
+            if k in NOVELTY:
+                s = (r.get("signals") or {}).get(k) or {}
+                side = s.get("side") if s.get("unusual") else None
+                if s.get("unusual") and side is None:
+                    side = "low" if k == "share_known" else "high"      # old lines: the trouble side
+                c = novelty.setdefault(k, {"usual": 0, "high": 0, "low": 0})
+                c[side or "usual"] += 1
+                continue
             lights.setdefault(k, {"green": 0, "yellow": 0, "red": 0})
             lights[k][v] = lights[k].get(v, 0) + 1
+    estimates = [r["error_estimate"] for r in done if r.get("error_estimate")]
     errors, of, with_errors = {}, {}, 0
     for r in done:
         e = r.get("errors")
@@ -251,6 +301,13 @@ def aggregate(store, quality: dict | None, dict_version: str, judge_reference: d
             "overall": {c: sum(r.get("overall") == c for r in runs) for c in ("green", "yellow", "red")},
         },
         "signals": lights,
+        "novelty": novelty,
+        "error_estimate": {
+            "runs": len(estimates),
+            "mean_share": round(sum(e["share"] for e in estimates) / len(estimates), 4) if estimates else None,
+            "by_light": {c: sum(e["light"] == c for e in estimates) for c in ("green", "yellow", "red")},
+            "thresholds": {"yellow": ERROR_YELLOW, "red": ERROR_RED},
+        },
         "judge": {k: {"runs": len(v), "mean_flagged_share": round(sum(v) / len(v), 4)} for k, v in judge.items()},
         "errors": _error_table(errors, of, with_errors, (quality or {}).get("split_errors")),
         "agents": {"curator": _curator(store), "inspector": _inspector(runs), "publisher": _publisher(store),

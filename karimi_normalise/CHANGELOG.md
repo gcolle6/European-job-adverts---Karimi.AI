@@ -234,6 +234,19 @@ Format: version · date · what changed · how it was measured.
   measured (`archivist.catalogue_with`); a turned-down kind is offered back to
   the model as known, so it is named, not proposed again. Who decided never
   reaches the public page.
+  Then **the colour follows errors** (the user's call, after batch 2 came out
+  red on dictionary coverage alone while its judge was green). A run's colour
+  is the check's `error_estimate`: the inspector's flags plus, for the
+  decisions taken by similarity, the judge's share rejected times the share
+  placed that way, over the requirements; green under 3%, yellow to 6%, red
+  above, fixed before any run was read with them. The novelty signals
+  (coverage, translation) carry no colour (`info`, with `unusual` and its
+  side) and go to `novelty`; the split's shape signals are yellow at most;
+  the judge's test against its reference stays in the detail. Older history
+  lines are read again by the same rule (`dashboard._colour_rule`). The
+  publisher lets a run in unless its estimate is red (a shape no longer
+  blocks: batch 2 was kept out at 2.0264 requirements per item against
+  2.0253). Batch 2 under the new rule: about 4.4% estimated wrong, yellow.
 
 ## Dictionary
 

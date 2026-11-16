@@ -11,20 +11,27 @@ say what they found, and a person changes the rules, with a new version.
    writes nothing, so its status would say `running` for ever: the Cloud Run
    execution is asked, and a status silent for STALE_MINUTES is dead;
 2. **signals**  — the run report's lights (`metrics.run_report`): does the
-   run look like the data the quality card was measured on;
+   run look like the data the quality card was measured on. Since 2026-11-16
+   only the split's shape may colour, at most yellow; how new the adverts are
+   (`novelty`) is reported beside the colour, never in it;
 3. **judge**    — a sample of the decisions taken BY SIMILARITY (a group at
    cosine 0.90+, a topic at 0.80-0.90, a title found as a variant), each put
    to the calibrated judge (`tester.py`, prompt `v5`) next to the known core
    or role it was placed by. Its "different" share is read against the share
    the same judge gives on our own data (`reference`), with a one-sided
-   binomial test: a run is flagged when the judge disagrees with it MORE than
-   with ours, not when it disagrees at all;
+   binomial test, kept in the detail;
    With every check the judge also answers `CANARIES`, planted pairs whose
    answer is known: a judge that misses more than CANARY_MAX_MISSES is not
    read, its lights go grey and a yellow finding says why;
 4. **drift**    — one line per job in `history/runs.jsonl`, no text: a signal
-   off green in the last DRIFT_RUNS jobs in a row is a slow change no single
-   run shows.
+   yellow or red in the last DRIFT_RUNS jobs in a row is a slow change no
+   single run shows.
+
+The colour (the user's call, 2026-11-16) says how many ERRORS the run made:
+`error_estimate`, the inspector's flags plus the judge's share wrong on the
+decisions taken by similarity, as a share of the requirements; green under
+3%, yellow to 6%, red above. Batch 2 of the new postings was red on coverage
+alone while its judge was green.
 
 Thresholds fixed 2026-11-05, BEFORE any reference or run was judged:
 red at p < 0.01, yellow at p < 0.05; under MIN_PAIRS pairs of a kind, no
@@ -55,6 +62,7 @@ from pathlib import Path
 import pandas as pd
 
 from . import archivist, curator, errors, explore, explorer
+from .metrics import NOVELTY
 from .store import jf, now, open_store, read_json, write_json
 
 STALE_MINUTES = 90          # a chunk of 500 postings takes 5-15 minutes; 90 is six chunks of silence
@@ -236,6 +244,50 @@ def judge_light(rate: dict, ref: dict | None) -> tuple[str, float | None]:
     return ("red" if p < P_RED else "yellow" if p < P_YELLOW else "green"), round(p, 4)
 
 
+# ---------------------------------------------------------------- the colour: errors
+
+
+# The user's call of 2026-11-16: red means a run made errors, not that its
+# adverts are new. Thresholds fixed the same day, before any run was read with
+# them: green under ERROR_YELLOW of the requirements estimated wrong, yellow
+# under ERROR_RED, red above.
+ERROR_YELLOW, ERROR_RED = 0.03, 0.06
+
+
+def error_estimate(postings: list[dict], inspected: dict | None, judged: dict, trusted: bool) -> dict:
+    """The share of a run's requirements estimated wrong, from what can count:
+
+    * the inspector's flags, each a known kind of error read on the requirement
+      itself (`errors.inspect`; its detectors were read for precision on batch 1);
+    * the judge's sample of the decisions taken by similarity: its share called
+      wrong, times the share of requirements placed that way. New adverts raise
+      this part only if they are placed wrongly more often, which is the point.
+
+    Splitting has no reader that counts errors per run (`errors.py`); it enters
+    as the inspector learns its kinds. Without a trusted judge the estimate is
+    a lower bound, and says so."""
+    reqs = [r for p in postings for r in p.get("requirements") or []]
+    n = len(reqs)
+    found = sum(row["count"] for row in (inspected or {}).get("rows") or [])
+    parts: dict[str, float | None] = {"inspector": found / n if n else 0.0}
+    complete = True
+    for k in ("group", "topic"):
+        placed = sum(r.get("match") == k for r in reqs) / n if n else 0.0
+        rate = judged.get(k) or {}
+        if not placed:
+            parts[f"judge_{k}"] = 0.0
+        elif trusted and (rate.get("answered") or 0) >= MIN_PAIRS:
+            parts[f"judge_{k}"] = placed * rate["flagged"] / rate["answered"]
+        else:
+            parts[f"judge_{k}"] = None
+            complete = False
+    share = sum(v for v in parts.values() if v)
+    light = "red" if share > ERROR_RED else "yellow" if share >= ERROR_YELLOW else "green"
+    return {"requirements": n, "inspector_found": found, "share": round(share, 4), "light": light,
+            "complete": complete, "parts": {k: None if v is None else round(v, 4) for k, v in parts.items()},
+            "thresholds": {"yellow": ERROR_YELLOW, "red": ERROR_RED}}
+
+
 def _reference_file() -> Path | None:
     p = os.environ.get("KARIMI_JUDGE_REFERENCE") or (
         str(Path(os.environ["KARIMI_DICT"]) / "judge_reference.json") if os.environ.get("KARIMI_DICT") else None)
@@ -252,7 +304,8 @@ def _drift(store, line: dict) -> list[dict]:
         return []
     out = []
     for sig in line.get("lights", {}):
-        if all(x.get("lights", {}).get(sig, "green") != "green" for x in last):
+        # yellow or red only: a novelty signal is `info` and drifts nowhere
+        if all(x.get("lights", {}).get(sig, "green") in ("yellow", "red") for x in last):
             out.append({"level": "drift", "light": "yellow", "code": f"drift:{sig}",
                         "what": f"{sig} off green in the last {DRIFT_RUNS} jobs"})
     return out
@@ -274,7 +327,9 @@ def run_detail(report: dict | None, findings: list[dict], judged: dict | None, c
     `dashboard.py` can rebuild it from `check.json` and `report.json` for a run
     checked before these fields reached the history (2026-11-09)."""
     return {
-        "signals": {k: {"value": v.get("value"), "normal_range": v.get("normal_range"), "light": v.get("light")}
+        "signals": {k: {"value": v.get("value"), "normal_range": v.get("normal_range"), "light": v.get("light"),
+                        "family": "novelty" if k in NOVELTY else "shape",
+                        "unusual": v.get("unusual", v.get("light") in ("yellow", "red")), "side": v.get("side")}
                     for k, v in ((report or {}).get("signals") or {}).items()},
         # `what` is built from a signal name and numbers; a health finding's can
         # carry an exception message, which may quote the input, so it is dropped
@@ -301,13 +356,19 @@ def check(job: str, store=None, judge_url: str | None = None, reference: dict | 
                          "what": s.get("error", f"the run is {s.get('state')}")})
     report = read_json(store, jf(job, "report.json")) if s.get("state") == "done" else None
 
-    # 2. signals
-    lights = {}
+    # 2. signals. Only the split's shape may colour, and at most yellow; how new
+    # the adverts are is reported beside the colour, never in it (2026-11-16).
+    lights, novelty = {}, []
     for k, v in (report or {}).get("signals", {}).items():
         lights[k] = v["light"]
+        what = f"{k} = {v['value']}, normal {v['normal_range'][0]}-{v['normal_range'][1]}"
+        if k in NOVELTY:
+            if v.get("unusual", v["light"] in ("red", "yellow")):
+                novelty.append({"code": f"novelty:{k}", "side": v.get("side"), "what": what})
+            continue
         if v["light"] in ("red", "yellow"):
-            findings.append({"level": "signals", "light": v["light"], "code": f"signal:{k}",
-                             "what": f"{k} = {v['value']}, normal {v['normal_range'][0]}-{v['normal_range'][1]}"})
+            findings.append({"level": "signals", "light": "yellow", "code": f"signal:{k}",
+                             "what": f"unusual shape, not a measured error: {what}"})
 
     # 3. judge
     judged, canaries, postings, j = {}, None, None, None
@@ -332,10 +393,8 @@ def check(job: str, store=None, judge_url: str | None = None, reference: dict | 
                          "p": p, "light": light,
                          "flagged_pairs": j[(j["sample"] == k) & (j.judge_same == False)]  # noqa: E712
                          [["a", "b", "context", "text"]].head(10).to_dict("records")}
-            if light in ("red", "yellow"):
-                findings.append({"level": "judge", "light": light, "code": f"judge:{k}",
-                                 "what": f"the judge calls {rate['flagged']} of {rate['answered']} {k} "
-                                         f"decisions wrong, against {judged[k]['reference_share']} on our data"})
+            # Its test against the reference stays in the detail; what it found
+            # colours the run through the error estimate below, once.
 
     # The run's errors: normalisation, on the judge's sample, and only from a
     # judge that passed its planted pairs. Splitting errors are measured per
@@ -355,6 +414,17 @@ def check(job: str, store=None, judge_url: str | None = None, reference: dict | 
         # the archivist agent: what each kind found means, against its catalogue
         arch = archivist.review(degrees, s.get("rules_version"), job)
         findings += arch["findings"]
+
+    # The run's colour: how many of its requirements are estimated wrong.
+    est = None
+    if postings is not None:
+        est = error_estimate(postings, degrees, judged, bool(canaries and canaries["trusted"]))
+        if est["light"] in ("yellow", "red"):
+            findings.append({"level": "errors", "light": est["light"], "code": "errors:estimated",
+                             "what": f"about {est['share']:.1%} of {est['requirements']} requirements estimated "
+                                     f"wrong (green under {ERROR_YELLOW:.0%}, red over {ERROR_RED:.0%})"
+                                     + ("" if est["complete"] else "; a lower bound, the judge did not read "
+                                        "the normalisation")})
 
     # The explorer agent: Gemini reads a sample the inspector found nothing in
     # and groups what it sees into kinds; new kinds are candidates for a person.
@@ -390,12 +460,14 @@ def check(job: str, store=None, judge_url: str | None = None, reference: dict | 
                                "errors": err,
                                **run_detail(report, findings, judged, canaries, suspects, degrees),
                                "curator": cur, "archivist": archivist.public(arch),
+                               "error_estimate": est, "novelty": novelty,
                                "explorer": explorer.public(expl),
                                "rules_version": s.get("rules_version"), "dict_version": s.get("dict_version")})
 
     overall = max((f["light"] for f in findings), key=_ORDER.get, default="green")
     out = {"job": job, "checked": now(), "overall": overall, "findings": findings, "judge": judged,
            "canaries": canaries, "errors": err, "error_examples": err_examples,
+           "error_estimate": est, "novelty": novelty,
            "split_suspects": suspects, "degree_suspects": degrees, "curator": cur, "archivist": arch,
            "explorer": expl,
            "judge_model": JUDGE_NAME if judge_url else None, "judge_prompt": JUDGE_PROMPT if judge_url else None,
