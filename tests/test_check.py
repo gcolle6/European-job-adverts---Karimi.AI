@@ -59,7 +59,7 @@ def _job(store, job: str, light: str = "green") -> None:
                                for i, r in enumerate(reqs)) + "\n")
     write_json(store, jf(job, "report.json"), {
         "signals": {"share_nuovo": {"value": 0.3, "light": light, "normal_range": [0.1, 0.25]}},
-        "to_check": {"requirements_nuovo": [{"requirement": "x", "n": 1}]}})
+        "to_check": {"requirements_nuovo": [{"requirement": "QQZTEXT", "n": 1}]}})
 
 
 def _judge(reply: str):
@@ -238,8 +238,8 @@ def test_failed_run_is_red_and_drift_needs_three_in_a_row(tmp_path):
         _job(store, job, light="yellow")
         codes.append({f["code"] for f in check.check(job, store)["findings"]})
     assert "drift:share_nuovo" not in codes[1] and "drift:share_nuovo" in codes[2]
-    assert all("x" not in line for line in store.read_text(check.HISTORY).splitlines()
-               if "requirement" in line)  # the history holds no requirement text
+    # the history holds no requirement text (a sentinel: `x` matched the key `explorer`)
+    assert all("QQZTEXT" not in line and "areaa" not in line for line in store.read_text(check.HISTORY).splitlines())
 
 
 def test_sweep_marks_the_silent_run_dead(tmp_path):

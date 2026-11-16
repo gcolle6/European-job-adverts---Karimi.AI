@@ -116,11 +116,66 @@ def review(inspected: dict | None, rules_version: str | None, job: str | None = 
             "proposals": proposals}
 
 
+# A person's decisions on the explorer's new kinds (2026-11-16), taken on the
+# Metrics page behind a Google sign-in the API checks (`api.py`, /v1/admin).
+# Append-only: a later line for the same kind replaces an earlier one.
+DECISIONS = "archivist/decisions.jsonl"
+_STAGE = {"split": "splitting", "normalisation": "normalisation", "translation": "translation"}
+
+
+def decisions(store) -> list[dict]:
+    text = store.read_text(DECISIONS) or ""
+    return [json.loads(x) for x in text.splitlines() if x.strip()]
+
+
+def latest_decisions(store) -> dict[str, dict]:
+    """Kind id -> its latest decision."""
+    out: dict[str, dict] = {}
+    for d in decisions(store):
+        out[d["kind"]] = d
+    return out
+
+
+def decide(store, job: str, kind: str, decision: str, by: str, note: str = "") -> dict:
+    """Write a person's decision. The kind is read from the run's own check, never
+    taken from the request, so a title cannot be written in from outside."""
+    from .store import jf, now, read_json
+
+    if decision not in ("confirm", "reject"):
+        raise ValueError("decision is confirm or reject")
+    kinds = ((read_json(store, jf(job, "check.json")) or {}).get("explorer") or {}).get("kinds") or []
+    kd = next((k for k in kinds if k.get("id") == kind), None)
+    if kd is None:
+        raise KeyError(f"no kind {kind!r} in the explorer's reading of {job}")
+    d = {"job": job, "kind": kind, "decision": decision, "by": by, "at": now(), "note": note[:500],
+         "title": kd.get("title"), "shape": kd.get("shape"), "stage": kd.get("stage"),
+         "quotes": bool(kd.get("quotes"))}
+    store.write_text(DECISIONS, (store.read_text(DECISIONS) or "") + json.dumps(d, ensure_ascii=False) + "\n")
+    return d
+
+
+def catalogue_with(store, path: Path = CATALOGUE) -> list[dict]:
+    """The catalogue, plus the kinds a person confirmed and that no one has written
+    into the file yet: open, with no detector until one is written and measured."""
+    entries = catalogue(path)
+    ids = {e["id"] for e in entries}
+    for kind, d in latest_decisions(store).items() if store is not None else []:
+        if d["decision"] != "confirm" or kind in ids:
+            continue
+        entries.append({"id": kind, "title": None if d.get("quotes") else d.get("title"),
+                        "stage": _STAGE.get(d.get("stage"), d.get("stage")), "found": d["at"][:10],
+                        "found_by": "explorer", "cause": None if d.get("quotes") else d.get("shape"),
+                        "status": "open", "resolved_in": None, "detector": None, "guard": None,
+                        "rule_files": [], "confirmed": True, "job": d["job"]})
+    return entries
+
+
 def public(rv: dict | None) -> dict | None:
     """What leaves the job's files: counts, verdicts and codes, no text."""
     if not rv:
         return None
-    return {"agent": rv["agent"], "of": rv["of"], "found": rv["found"],
+    return {"agent": rv["agent"], "of": rv["of"],
+            "found": [{k: f[k] for k in ("id", "count", "verdict")} for f in rv["found"]],
             "proposals": [p["id"] for p in rv.get("proposals") or []]}
 
 
@@ -133,7 +188,8 @@ def summary(runs: list[dict], entries: list[dict] | None = None) -> dict:
             s = seen.setdefault(f["id"], {"runs": 0, "requirements": 0})
             s.update(runs=s["runs"] + 1, requirements=s["requirements"] + f["count"], last_job=r.get("job"),
                      last_checked=r.get("checked"), last_verdict=f["verdict"], last_count=f["count"])
-    keep = ("id", "title", "stage", "found", "found_by", "cause", "status", "resolved_in", "detector", "guard")
+    keep = ("id", "title", "stage", "found", "found_by", "cause", "status", "resolved_in", "detector", "guard",
+            "confirmed")
     return {"agent": AGENT, "recur": {"min": RECUR_MIN, "factor": RECUR_FACTOR},
             "entries": [{**{k: e.get(k) for k in keep}, "seen": seen.get(e["id"])} for e in entries],
             "open": sum(e["status"] != "resolved" for e in entries)}

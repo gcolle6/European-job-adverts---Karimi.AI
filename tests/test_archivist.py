@@ -53,6 +53,34 @@ def test_a_requirement_left_in_another_language(r, flag):
     assert errors.translation_flag(r) == flag
 
 
+# the kinds the explorer found on batch 1 (Gemini, 2026-11-16), with controls
+@pytest.mark.parametrize("r, flag", [
+    (_r(atom="5+ years of experience building web services in Go also welcome",
+        core="building web services in Go also welcome"), "optional_marker_unknown"),
+    (_r(atom="Additional training in safety is an added advantage",
+        core="Additional training in safety is an added advantage"), "optional_marker_unknown"),
+    (_r(atom="CISSP or CISM certification required", core="CISSP or CISM certification required"), "required_left"),
+    (_r(atom="CV in English is a must", core="CV in English is a must"), "required_left"),
+    (_r(atom="3+ years as a Data Engineer or similar role", core="Data Engineer or similar role"), "or_similar_left"),
+    (_r(atom="LangChain Intermediate", core="LangChain Intermediate"), "level_left"),
+    (_r(atom="Python Advanced", core="Python Advanced"), "level_left"),
+    # controls
+    (_r(atom="Willingness to travel up to 50% when required", core="travel up to 50% when required"), None),
+    (_r(atom="Familiarity with C Sharp and Visual Basic", core="C Sharp and Visual Basic"), None),
+    (_r(atom="Customer Journey Expert", core="Customer Journey Expert"), None),
+    (_r(atom="Advanced analytics", core="Advanced analytics"), None),
+    (_r(atom="Experience with Go is a plus", core="Go is a plus"), None),          # optional_tail's, not this
+])
+def test_a_word_that_adds_nothing_left_in_the_requirement(r, flag):
+    assert errors.word_kept_flag(r) == flag
+
+
+def test_higher_education_is_a_degree_the_rules_miss():
+    r = _r(atom="Higher Education (Electric Engineering, Automation Engineering)", core="Higher Education")
+    assert errors.inspector_flag(r) == "degree_higher_education"
+    assert errors.inspector_flag({**r, "space": "education"}) is None
+
+
 def test_every_detector_has_its_catalogue_entry():
     known = archivist.by_detector()
     assert set(errors.INSPECTOR_DETECTORS) <= set(known)

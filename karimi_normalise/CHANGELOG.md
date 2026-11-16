@@ -207,6 +207,33 @@ Format: version · date · what changed · how it was measured.
   which it drafts the failing test; a person approves. Batch 1: under 0.4.1
   232 untranslated, 111 tails, 69 degrees, 13 failed translations; under 0.4.2
   12, 0, 8 and 2, recorded as the residuals.
+  Then the **explorer** (`explorer.py`), the user's call after measuring two
+  models (`New project/score_explorer.py`, prompt x1): on batch 1 Gemini 3.5
+  Flash and Qwen3-14B both found 40 of 40 known errors (named with the
+  catalogue's id 97.5% and 90%); against the hand counts both were right on
+  33% of their split flags, under the 60% bar, so the blind half was not run
+  and the explorer never counts. Gemini's flags on items no detector flagged
+  read about two in three real. With `KARIMI_EXPLORER=vertex` the check sends
+  30 items the inspector found nothing in to Gemini on Vertex AI's EU
+  multi-region (the only place this project reaches a Gemini model), groups
+  the problems into kinds, and reports known ones by catalogue id and new ones
+  as candidates; a kind's title is withheld from the site when it repeats
+  three words of an item. Never a light. From its first readings, five kinds
+  entered the catalogue as open with a detector (`optional_marker_unknown`,
+  `required_left`, `or_similar_left`, `level_left`,
+  `degree_higher_education`) and two without (`broken_fragment`,
+  `list_not_split`). Prompt x2 adds one line (judge the key, not the
+  employer's words), after x1 flagged `is a plus` kept in an atom whose key
+  was clean.
+  Then the explorer's new kinds are **decided on the Metrics page** by the
+  project lead (the user's call): a Google sign-in, which the API checks
+  (`/v1/admin`: Google's signature, our OAuth client, a verified email in
+  `KARIMI_ADMIN_EMAILS`); only there are the cases, the adverts' text, shown.
+  A decision goes to `archivist/decisions.jsonl` (append-only): a confirmed
+  kind joins the catalogue as open with no detector until one is written and
+  measured (`archivist.catalogue_with`); a turned-down kind is offered back to
+  the model as known, so it is named, not proposed again. Who decided never
+  reaches the public page.
 
 ## Dictionary
 

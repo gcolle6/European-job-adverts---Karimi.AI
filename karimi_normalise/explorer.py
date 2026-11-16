@@ -7,29 +7,39 @@ guide and the archivist's catalogue, and answers per item: fine, or each
 problem with the catalogue's id when it is a known kind and ``new`` when it is
 not, plus a short general pattern a person can turn into a detector.
 
-Asked 2026-11-16. NOT TRUSTED YET: a model reading splits was tried on
-2026-11-07 (the local judge counting items: 28% and 21% of its flags right,
-against 60% fixed before) and failed. So the explorer runs only in
-`New project/score_explorer.py` until a model passes the same bar on the blind
-half of the hand counts; which model is the user's call on the numbers
-(Gemini on Vertex AI in the EU, or an open model we run).
+Measured 2026-11-16 (`New project/score_explorer.py`, prompt x1): Gemini 3.5
+Flash and Qwen3-14B both found 40 of 40 known errors in batch 1, Gemini naming
+97.5% with the catalogue's id; on items no detector flagged, about two of
+Gemini's flags in three read as real, several of kinds nobody had named. But
+against the hand counts both were right on 33% of their split flags, under
+the 60% bar: a model's verdict is NOT an error count. So, the user's call of
+the same day: Gemini reads a SAMPLE of each run (`explore`), groups what it
+finds into kinds (`group`), and reports them; a kind not in the catalogue is a
+candidate a person confirms before it gets a detector. It never colours a run.
 
-Any OpenAI-compatible chat endpoint: llama-server, or Vertex AI's
-`.../locations/europe-west1/endpoints/openapi` (a regional endpoint, so the
-text is processed in the EU; never the global one).
+Any OpenAI-compatible chat endpoint: llama-server, or Vertex AI's on the EU
+multi-region (`aiplatform.eu.rep.googleapis.com`, location `eu`), the only
+place this project reaches a Gemini model; never the global endpoint.
 """
 
 from __future__ import annotations
 
 import json
+import os
+import random
 import re
 import time
+from collections import defaultdict
 
 import requests
 
 from . import archivist
 
-PROMPT_VERSION = "x1"
+AGENT = "explorer"
+PROMPT_VERSION = "x2"
+SAMPLE = 30
+MODEL = "google/gemini-3.5-flash"
+EU_HOST, EU_LOCATION = "aiplatform.eu.rep.googleapis.com", "eu"
 
 _RULES = """\
 You check an automatic pipeline that turns one line of a job advert (an "item")
@@ -61,6 +71,8 @@ requirement; a key that lost the object or names another thing; a frame or
 marker word kept as the requirement ("Desirable", "is a plus"); a degree not read
 as a degree; text left in another language or translated into nonsense.
 Not wrong: wording you would have chosen differently when the object is right.
+Judge the KEY: the requirement's own text is the employer's words, and may keep
+"is a plus" or "required" when its key does not.
 """
 
 _ANSWER = """\
@@ -146,3 +158,184 @@ def read(client: Client, items: list[dict], entries: list[dict] | None = None) -
         except requests.RequestException:
             out.append(None)
     return out
+
+
+def vertex_client(project: str | None = None, model: str = MODEL, token=None) -> Client:
+    """Gemini on the EU multi-region. ``token`` defaults to the environment's
+    Google credentials (the Cloud Run job's service account)."""
+    project = project or os.environ.get("KARIMI_PROJECT") or os.environ.get("GOOGLE_CLOUD_PROJECT")
+    if token is None:
+        import google.auth
+        import google.auth.transport.requests
+
+        creds, found = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+        project = project or found
+
+        def token() -> str:
+            if not creds.valid:
+                creds.refresh(google.auth.transport.requests.Request())
+            return creds.token
+
+    url = f"https://{EU_HOST}/v1/projects/{project}/locations/{EU_LOCATION}/endpoints/openapi"
+    return Client(url, model, token=token)
+
+
+def sample(postings: list[dict], job: str, n: int = SAMPLE) -> list[dict]:
+    """Up to ``n`` items of a run the inspector found nothing in: the known kinds
+    are counted already, so the model's reading goes where no detector looks.
+    Seeded by the job, so the same run draws the same items."""
+    from .errors import inspector_flag
+
+    items = []
+    for p in postings:
+        by_item: dict[int, list[dict]] = defaultdict(list)
+        for r in p.get("requirements") or []:
+            by_item[r.get("item_idx", 0)].append(r)
+        for rs in by_item.values():
+            if rs and not any(inspector_flag(r) for r in rs):
+                items.append({"item": rs[0].get("item", ""),
+                              "english": rs[0].get("item_split") if rs[0].get("translated") else None,
+                              "requirements": rs})
+    rnd = random.Random(job)
+    return rnd.sample(items, min(n, len(items)))
+
+
+_GROUP = """\
+Below are problems a reviewer found in requirements extracted from job adverts.
+Group them into KINDS of mistake: problems with the same cause go together.
+For each kind give a short snake_case id, a title of a few words and one
+sentence saying the general shape of the mistake. Never quote the adverts:
+describe the shape ("a closing 'required' kept in the key"), not the case.
+If a kind is one of these known ones, give its id as "catalogue": {known}.
+Answer with JSON only:
+{{"kinds": [{{"id": "...", "title": "...", "shape": "...", "stage": "split" | "normalisation" | "translation",
+  "catalogue": "<known id or null>", "members": [<problem numbers>]}}]}}
+"""
+
+
+def group(client: Client, problems: list[dict], entries: list[dict] | None = None,
+          rejected: list[str] = ()) -> list[dict]:
+    """The problems of one run, grouped into kinds by the model; [] when unreadable.
+    ``rejected``: kinds a person turned down, offered as known so the model
+    names them again instead of proposing them as new."""
+    if not problems:
+        return []
+    known = [e["id"] for e in (entries if entries is not None else archivist.catalogue())] + list(rejected)
+    lines = [f"{k}. [{p.get('stage', '')}] {p.get('what', '')} | pattern: {p.get('pattern', '')}"
+             for k, p in enumerate(problems)]
+    try:
+        text = client.ask(_GROUP.format(known=", ".join(known)), "\n".join(lines))
+    except requests.RequestException:
+        return []
+    text = re.sub(r"<think>.*?</think>", "", text or "", flags=re.S)
+    m = re.search(r"\{.*\}", text, re.S)
+    try:
+        kinds = json.loads(m.group(0)).get("kinds") if m else None
+    except json.JSONDecodeError:
+        kinds = None
+    out = []
+    for k in kinds or []:
+        if not isinstance(k, dict) or not k.get("id"):
+            continue
+        members = [i for i in k.get("members") or [] if isinstance(i, int) and 0 <= i < len(problems)]
+        cat = k.get("catalogue") if k.get("catalogue") in known else None
+        out.append({"id": re.sub(r"\W+", "_", str(k["id"]).lower())[:40], "title": str(k.get("title", ""))[:80],
+                    "shape": str(k.get("shape", ""))[:200], "stage": k.get("stage"), "catalogue": cat,
+                    "members": members})
+    return out
+
+
+def _quotes(text: str, items: list[str]) -> bool:
+    """Whether ``text`` repeats three words in a row of any item: then it is not
+    a shape but a case, and does not leave the job's private files."""
+    words = re.findall(r"\w+", text.lower())
+    grams = {" ".join(words[i:i + 3]) for i in range(len(words) - 2)}
+    for it in items:
+        w = re.findall(r"\w+", it.lower())
+        if any(" ".join(w[i:i + 3]) in grams for i in range(len(w) - 2)):
+            return True
+    return False
+
+
+def explore(postings: list[dict], job: str, client: Client, entries: list[dict] | None = None,
+            n: int = SAMPLE, rejected: list[str] = ()) -> dict:
+    """One run: a sample read, the problems grouped into kinds. Private (with cases).
+    ``entries``: the catalogue with the kinds a person confirmed
+    (`archivist.catalogue_with`); ``rejected``: the kinds a person turned down."""
+    items = sample(postings, job, n)
+    answers = read(client, items, entries)
+    problems, owner = [], []
+    for k, a in enumerate(answers):
+        for p in (a or {}).get("problems") or []:
+            problems.append(p)
+            owner.append(k)
+    kinds = group(client, problems, entries, rejected)
+    texts = [it["item"] for it in items] + [r.get("atom", "") for it in items for r in it["requirements"]]
+    for kd in kinds:
+        kd["count"] = len({owner[i] for i in kd["members"]})
+        kd["rejected_before"] = kd["catalogue"] in rejected
+        kd["new"] = kd["catalogue"] is None
+        kd["quotes"] = _quotes(f"{kd['title']} {kd['shape']}", texts)
+        kd["cases"] = [{"item": items[owner[i]]["item"], "what": problems[i].get("what"),
+                        "made": [(r.get("atom"), r.get("key")) for r in items[owner[i]]["requirements"]]}
+                       for i in kd["members"][:5]]
+    return {"agent": AGENT, "model": client.model, "prompt": PROMPT_VERSION, "sampled": len(items),
+            "answered": sum(a is not None for a in answers), "flagged": sum(bool(a and not a["ok"]) for a in answers),
+            "kinds": kinds}
+
+
+def public(ex: dict | None) -> dict | None:
+    """What leaves the job's files: counts, and a kind's title and shape only when
+    they quote no item. No cases."""
+    if not ex:
+        return None
+    keep = ("id", "stage", "catalogue", "new", "count", "rejected_before")
+    return {k: ex.get(k) for k in ("agent", "model", "prompt", "sampled", "answered", "flagged")} | {
+        "kinds": [{**{k: kd.get(k) for k in keep},
+                   "title": None if kd.get("quotes") else kd.get("title"),
+                   "shape": None if kd.get("quotes") else kd.get("shape")} for kd in ex.get("kinds") or []]}
+
+
+def summary(runs: list[dict], last: int = 20, decided: dict[str, dict] | None = None) -> dict:
+    """What the site shows: per run, what the explorer read and the kinds it found;
+    the new ones are candidates a person confirms into the catalogue. ``decided``:
+    kind id -> its latest decision (`archivist.latest_decisions`), so a candidate
+    already decided shows its decision, never who took it."""
+    decided = decided or {}
+    entries = []
+    for r in runs:
+        ex = r.get("explorer")
+        if ex:
+            kinds = [{**kd, "decision": (decided.get(kd["id"]) or {}).get("decision")
+                      if (decided.get(kd["id"]) or {}).get("job") == r.get("job") else None}
+                     for kd in ex.get("kinds") or []]
+            entries.append({"job": r.get("job"), "checked": r.get("checked"), **ex, "kinds": kinds})
+    new = sum(bool(kd.get("new")) and not kd.get("decision") for e in entries for kd in e.get("kinds") or [])
+    return {"agent": AGENT, "model": MODEL, "sample": SAMPLE, "runs": len(entries), "candidates": new,
+            "entries": entries[-last:][::-1]}
+
+
+def enabled() -> bool:
+    return os.environ.get("KARIMI_EXPLORER", "").lower() == "vertex"
+
+
+def main(argv: list[str] | None = None) -> None:
+    import argparse
+
+    from .store import jf, open_store, read_json
+
+    p = argparse.ArgumentParser(description="The explorer's kinds for one run, with their cases: what a person confirms.")
+    p.add_argument("--job", required=True)
+    a = p.parse_args(argv)
+    ex = (read_json(open_store(), jf(a.job, "check.json")) or {}).get("explorer") or {}
+    for kd in ex.get("kinds") or []:
+        tag = "NEW" if kd.get("new") else f"= {kd.get('catalogue')}"
+        print(f"{tag:28} {kd['id']} ({kd.get('count')}): {kd.get('title')} — {kd.get('shape')}")
+        for c in kd.get("cases") or []:
+            print(f"      {c['item'][:90]}\n        {c['what']}  | made: {c['made']}")
+    if not ex:
+        print("no explorer reading for this job")
+
+
+if __name__ == "__main__":
+    main()

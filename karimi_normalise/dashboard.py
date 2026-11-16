@@ -12,8 +12,11 @@ from __future__ import annotations
 
 import json
 
+from .archivist import catalogue_with, latest_decisions
 from .archivist import public as archivist_public
 from .archivist import summary as archivist_summary
+from .explorer import public as explorer_public
+from .explorer import summary as explorer_summary
 from .store import now
 from .versions import RULES_VERSION
 
@@ -74,7 +77,7 @@ def _error_table(counts: dict, of: dict, runs: int, split: dict | None) -> dict:
 _RUN = ("job", "checked", "source", "state", "overall", "postings", "requirements", "seconds", "lights", "judge",
         "canaries_missed", "rules_version", "dict_version")
 _DETAIL = ("signals", "findings", "judge_detail", "canaries", "split_suspects", "degree_suspects", "to_check",
-           "curator", "archivist")
+           "curator", "archivist", "explorer")
 
 
 def _with_texts(rows: list[dict] | None) -> list[dict]:
@@ -101,7 +104,8 @@ def _run(store, r: dict) -> dict:
         detail = {**run_detail(read_json(store, jf(r["job"], "report.json")), c.get("findings") or [],
                                c.get("judge"), c.get("canaries"), c.get("split_suspects"),
                                c.get("degree_suspects")),
-                  "curator": c.get("curator"), "archivist": archivist_public(c.get("archivist"))}
+                  "curator": c.get("curator"), "archivist": archivist_public(c.get("archivist")),
+                  "explorer": explorer_public(c.get("explorer"))}
     e = r.get("errors")
     out.update(detail, errors={"of": e.get("of"), "rows": _with_texts(e.get("rows"))} if e else None)
     for k in ("split_suspects", "degree_suspects"):
@@ -250,6 +254,7 @@ def aggregate(store, quality: dict | None, dict_version: str, judge_reference: d
         "judge": {k: {"runs": len(v), "mean_flagged_share": round(sum(v) / len(v), 4)} for k, v in judge.items()},
         "errors": _error_table(errors, of, with_errors, (quality or {}).get("split_errors")),
         "agents": {"curator": _curator(store), "inspector": _inspector(runs), "publisher": _publisher(store),
-                   "archivist": archivist_summary(runs)},
+                   "archivist": archivist_summary(runs, catalogue_with(store)),
+                   "explorer": explorer_summary(runs, decided=latest_decisions(store))},
         "runs": _pending(store, {r.get("job") for r in runs}) + [_run(store, r) for r in runs[-LAST:]][::-1],
     }

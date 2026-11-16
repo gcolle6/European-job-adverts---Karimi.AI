@@ -318,6 +318,33 @@ casi si prendono solo dal lotto 1; il lotto 2, mai letto, serve a misurare.
   fornitore deve essere un nome intero. Le tre unioni si annullano con
   `curator --reject`.
 
+### Archivista ed Esploratore (2026-11-16)
+
+Sul lotto 1 gli agenti avevano visto solo i titoli di studio e il calo di
+copertura; "is a plus" e le righe non tradotte li avevo trovati io leggendo.
+Due agenti nuovi, perché la prossima volta li trovino loro:
+
+* **Archivista** (`archivist.py`, `error_catalogue.json`): il catalogo di ogni
+  tipo di errore trovato, con causa, versione che l'ha risolto, test che lo
+  protegge e residuo misurato. Su ogni run dice di ogni tipo: risolto in una
+  versione più nuova, residuo atteso, tornato (sopra 3 volte il residuo:
+  giallo) o aperto. Per un tipo aperto scrive la bozza del test e i file da
+  cambiare; **una persona approva**, nessuna regola cambia da sola.
+* **Esploratore** (`explorer.py`): Gemini 3.5 Flash su Vertex AI, endpoint
+  multiregione UE, legge 30 righe di ogni run che l'Inspector non segnala e
+  raggruppa ciò che non va in tipi. I tipi noti li collega al catalogo, quelli
+  nuovi sono candidati che una persona conferma. Misurato prima: trova tutti
+  gli errori noti, ma sui conteggi umani ha ragione solo nel 33% dei casi;
+  quindi **segnala e non conta**, e non colora mai un run. Il modello locale
+  Qwen3-14B è stato provato e scartato: stessi numeri, nomi dei tipi sbagliati,
+  tre volte più lento.
+* **Decidere dalla pagina Metrics**: i tipi nuovi si confermano o si scartano
+  lì, solo dal responsabile del progetto, con il login Google. Il controllo lo
+  fa l'API (`/v1/admin`), non il sito; solo dopo il login si vedono gli esempi
+  con il testo degli annunci. Un tipo confermato entra nel catalogo come
+  aperto, e il rilevatore lo scrivo e lo misuro io; uno scartato non viene più
+  riproposto come nuovo.
+
 ### Come si migliora dopo il rilascio
 
 Sì, split e normalizzazione restano migliorabili. Il percorso è fisso, così un

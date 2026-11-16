@@ -36,7 +36,9 @@ Settings, all by environment:
 * `KARIMI_STORE`      a local folder or `gs://<bucket>` (`store.py`);
 * `KARIMI_RUN_JOB`    `projects/<p>/locations/<region>/jobs/<name>`; unset = a subprocess;
 * `KARIMI_RUN_CHECK`  the check job the same way; unset = a subprocess;
-* `KARIMI_API_KEY`    the key; unset = open.
+* `KARIMI_API_KEY`    the key; unset = open;
+* `KARIMI_OAUTH_CLIENT_ID`, `KARIMI_ADMIN_EMAILS`  who may decide on the
+  explorer's kinds (`/v1/admin`); unset = nobody.
 
 One worker per container: the rules keep module-level state, so scaling is by
 containers, not threads (Cloud Run `--concurrency=1`). Every request leaves
@@ -68,13 +70,15 @@ from .versions import RULES_VERSION
 MAX_SYNC = 200                 # postings per /v1/process call; more goes to a job
 MAX_UPLOAD_MB = 30             # Cloud Run caps a request body at 32 MiB
 FILES = ("results.jsonl", "report.json", "status.json", "check.json", "requirements.csv", "postings.csv")
-OPEN = ("/health", "/docs", "/openapi.json", "/redoc", "/v1/metrics", "/v1/explore", "/try_api.py", "/API.md")
+# `/v1/admin` skips the API key and checks a Google sign-in itself (`_admin`)
+OPEN = ("/health", "/docs", "/openapi.json", "/redoc", "/v1/metrics", "/v1/explore", "/try_api.py", "/API.md",
+        "/v1/admin")
 EXPLORE_EVERY = 60             # seconds: a rebuilt explorer reaches the site within a minute
 _JOB_ID = re.compile(r"^[0-9a-f]{16}$")
 
 app = FastAPI(title="karimi-normalise", version=RULES_VERSION,
               description="Split job-ad must_have lists into single requirements; normalise requirements and titles.")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"])
 _dict = Dictionary(os.environ["KARIMI_DICT"]) if os.environ.get("KARIMI_DICT") else None
 _quality = (json.loads(Path(os.environ["KARIMI_QUALITY"]).read_text(encoding="utf-8"))
             if os.environ.get("KARIMI_QUALITY") and Path(os.environ["KARIMI_QUALITY"]).exists() else None)
@@ -186,6 +190,83 @@ def _explorer() -> dict:
             _explore.update(index=index, requirements=read_json(_store, explore.REQUIREMENTS) or {})
         _explore["read"] = time.time()
     return _explore
+
+
+# ---------------------------------------------------------------- the person who decides
+# Asked 2026-11-16: the explorer's new kinds are confirmed or turned down on the
+# Metrics page, by the project lead only. The page signs in with Google and
+# sends the ID token; the check is here, not in the browser: the token must be
+# Google's, for our OAuth client, with a verified email in KARIMI_ADMIN_EMAILS.
+# Here alone the explorer's cases (text of adverts) leave the job's files.
+
+
+class Decision(BaseModel):
+    job: str
+    kind: str
+    decision: str = Field(..., pattern="^(confirm|reject)$")
+    note: str = ""
+
+
+def _admin(request: Request) -> str:
+    client_id = os.environ.get("KARIMI_OAUTH_CLIENT_ID")
+    admins = {e.strip().lower() for e in os.environ.get("KARIMI_ADMIN_EMAILS", "").split(",") if e.strip()}
+    if not client_id or not admins:
+        raise HTTPException(503, "sign-in is not configured")
+    auth = request.headers.get("authorization", "")
+    if not auth.lower().startswith("bearer "):
+        raise HTTPException(401, "sign in with Google")
+    from google.auth.transport import requests as google_requests
+    from google.oauth2 import id_token
+
+    try:
+        info = id_token.verify_oauth2_token(auth[7:], google_requests.Request(), client_id)
+    except ValueError:
+        raise HTTPException(401, "the sign-in is not valid or has expired") from None
+    email = (info.get("email") or "").lower()
+    if not info.get("email_verified") or email not in admins:
+        raise HTTPException(403, "this account may not decide")
+    return email
+
+
+@app.get("/v1/admin/me")
+def admin_me(request: Request) -> dict:
+    return {"email": _admin(request)}
+
+
+@app.get("/v1/admin/explorer")
+def admin_explorer(request: Request, last: int = 20) -> dict:
+    """The explorer's kinds of the latest runs, with their cases, and what was decided."""
+    _admin(request)
+    from . import archivist
+
+    decided = archivist.latest_decisions(_store)
+    lines = [json.loads(x) for x in (_store.read_text(check.HISTORY) or "").splitlines() if x.strip()]
+    runs = []
+    for r in [x for x in lines if x.get("explorer")][-last:][::-1]:
+        ex = (read_json(_store, jf(r["job"], "check.json")) or {}).get("explorer") or {}
+        kinds = [{k: kd.get(k) for k in ("id", "title", "shape", "stage", "catalogue", "new", "count",
+                                         "rejected_before", "cases")}
+                 | {"decision": decided.get(kd["id"]) if (decided.get(kd["id"]) or {}).get("job") == r["job"] else None}
+                 for kd in ex.get("kinds") or []]
+        runs.append({"job": r["job"], "checked": r.get("checked"), "sampled": ex.get("sampled"), "kinds": kinds})
+    return {"runs": runs}
+
+
+@app.post("/v1/admin/explorer/decide")
+def admin_decide(d: Decision, request: Request) -> dict:
+    """Confirm or turn down one of the explorer's kinds; written to the archivist's log."""
+    email = _admin(request)
+    from . import archivist
+
+    if not _JOB_ID.match(d.job):
+        raise HTTPException(400, "not a job id")
+    try:
+        out = archivist.decide(_store, d.job, d.kind, d.decision, email, d.note)
+    except KeyError as e:
+        raise HTTPException(404, str(e)) from None
+    print(json.dumps({"severity": "INFO", "event": "karimi_admin_decision", "job": d.job, "kind": d.kind,
+                      "decision": d.decision}), flush=True)
+    return {k: out[k] for k in ("job", "kind", "decision", "at")}
 
 
 @app.get("/v1/explore")

@@ -53,6 +53,7 @@ ERRORS = {
         "wrong_topic": "placed under a topic it does not belong to",
         "wrong_degree": "a degree read wrong",
         "optional_kept": "how much it is wanted left in the requirement",
+        "word_kept": "a word that adds nothing left in the requirement",
     },
     ("translation", "requirement"): {
         "not_translated": "a requirement left in another language",
@@ -86,6 +87,11 @@ CAUSES = {
     "optional_tail": "it still closes on 'is a plus', 'preferred' or the like",
     "untranslated": "not English, and kept as written",
     "translation_failed": "translated, and still not English",
+    "degree_higher_education": "'Higher education' with its fields, not read as a degree",
+    "optional_marker_unknown": "it closes on 'as a plus', 'an added advantage' or another phrase the rules do not know",
+    "required_left": "'required', 'mandatory' or 'a must' left in the requirement",
+    "or_similar_left": "'or similar role', 'or equivalent' left in the requirement",
+    "level_left": "a level ('Advanced', 'Intermediate') left in the requirement",
     "other": "no rule names it",
 }
 
@@ -241,6 +247,45 @@ def optional_flag(r: dict) -> str | None:
     return None
 
 
+# Found by the explorer on batch 1 (Gemini, 2026-11-16): words that add
+# nothing left in the requirement, which no rule takes off. Its own marker
+# list, wider than `strip_optional`'s: a detector built on the fix would be
+# blind exactly where the fix is. Each read on batch 1 under rules 0.4.2.
+_WANT = (r"(?:(?:is|are|as|will\s+be|would\s+be|being|considered|seen\s+as|also|of)\s+)*(?:an?\s+)?"
+         r"(?:(?:big|huge|strong|added|great|real|definite|clear|additional|distinct|significant)\s+)?"
+         r"(?:plus|advantage|bonus|asset)|preferred|preferable|desirable|advantageous|beneficial|"
+         r"nice[\s-]to[\s-]have|welcome|appreciated|valued")
+_WANT_TAIL_RE = re.compile(rf"[\s,;:(–—-]+(?:{_WANT})\s*\)?\s*[.!]?$", re.I)
+# `if required`, `when required` are a condition, not a marker
+_REQUIRED_TAIL_RE = re.compile(r"(?<!\bif)(?<!\bwhen)(?<!\bas)(?<!\bwhere)[\s,;:(–—-]+(?:is\s+|are\s+)?"
+                               r"(?:required|mandatory|a\s+must|must)\s*\)?\s*[.!]?$", re.I)
+_SIMILAR_TAIL_RE = re.compile(r"\s+or\s+(?:an?\s+|any\s+)?(?:other\s+)?(?:similar|equivalent|comparable|related|"
+                              r"relevant)(?:\s+\w+)?\s*$", re.I)
+# not `expert` (`domain expert` is a role) and not `Visual Basic`
+_LEVEL_TAIL_RE = re.compile(r"(?<=\w)(?<!\bvisual)[\s,(–-]+(?:beginner|basic|intermediate|advanced|proficient|"
+                            r"elementary|upper[\s-]intermediate)\s*\)?$", re.I)
+_HIGHER_EDUCATION_RE = re.compile(r"^(?:completed\s+)?(?:higher|tertiary|university)\s+education\b", re.I)
+
+
+def word_kept_flag(r: dict) -> str | None:
+    """A word that adds nothing left at the end of the core: how much it is
+    wanted in words the rules do not know, `required`, `or similar role`, a level."""
+    from karimi import normalise_req
+
+    core = (r.get("core") or "").strip()
+    if not core:
+        return None
+    if _WANT_TAIL_RE.search(core) and normalise_req.strip_optional(core) == core:
+        return "optional_marker_unknown"
+    if _REQUIRED_TAIL_RE.search(core):
+        return "required_left"
+    if r.get("space") != "language" and _SIMILAR_TAIL_RE.search(core):
+        return "or_similar_left"
+    if r.get("space") != "language" and _LEVEL_TAIL_RE.search(core):
+        return "level_left"
+    return None
+
+
 def _foreign(text: str) -> bool:
     """Not English, read off the text itself: a non-Latin letter, the word lists
     deciding another language, or two words with letters outside ASCII. Not the
@@ -277,12 +322,21 @@ INSPECTOR_DETECTORS = {
     "optional_tail": ("normalisation", "optional_kept"),
     "untranslated": ("translation", "not_translated"),
     "translation_failed": ("translation", "not_translated"),
+    "degree_higher_education": ("normalisation", "wrong_degree"),
+    "optional_marker_unknown": ("normalisation", "optional_kept"),
+    "required_left": ("normalisation", "word_kept"),
+    "or_similar_left": ("normalisation", "word_kept"),
+    "level_left": ("normalisation", "word_kept"),
 }
 
 
 def inspector_flag(r: dict) -> str | None:
     """The first of the inspector's tests that fires on one requirement, or None."""
-    return translation_flag(r) or degree_flag(r) or optional_flag(r)
+    if r.get("space") != "education" and _HIGHER_EDUCATION_RE.match(r.get("atom") or ""):
+        hit = "degree_higher_education"
+    else:
+        hit = None
+    return translation_flag(r) or degree_flag(r) or hit or optional_flag(r) or word_kept_flag(r)
 
 
 def inspect(postings: list[dict], examples: int = 3) -> dict:

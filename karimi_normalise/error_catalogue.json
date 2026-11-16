@@ -180,6 +180,127 @@
       "rule_files": [
         "karimi/normalise_req.py"
       ]
+    },
+    {
+      "stage": "normalisation",
+      "found": "2026-11-16",
+      "found_by": "explorer",
+      "status": "open",
+      "resolved_in": null,
+      "guard": null,
+      "rule_files": [
+        "karimi/normalise_req.py",
+        "karimi/atomise.py"
+      ],
+      "id": "optional_marker_unknown",
+      "title": "'as a plus', 'an added advantage' left in the requirement",
+      "detector": "optional_marker_unknown",
+      "cause": "The rules take off the closing words that say how much it is wanted only from a fixed list; 'as a plus', 'is an added advantage', 'also welcome', 'of advantage' are not on it.",
+      "example": "Financial services industry knowledge as a plus -> key keeps 'as a plus'",
+      "fix_hint": "Widen _MARK in normalise_req.strip_optional (and atomise._MARK_BARE) to the inspector's errors._WANT list."
+    },
+    {
+      "stage": "normalisation",
+      "found": "2026-11-16",
+      "found_by": "explorer",
+      "status": "open",
+      "resolved_in": null,
+      "guard": null,
+      "rule_files": [
+        "karimi/normalise_req.py"
+      ],
+      "id": "required_left",
+      "title": "'required' or 'a must' left in the requirement",
+      "detector": "required_left",
+      "cause": "A closing 'required', 'mandatory', 'is a must' says how it is asked, like 'is a plus', and no rule takes it off.",
+      "example": "CISSP or CISM certification required -> key keeps 'required'",
+      "fix_hint": "Take a closing required/mandatory/a must off in normalise_req.strip_optional, without marking the atom optional; keep 'if required', 'when required'."
+    },
+    {
+      "stage": "normalisation",
+      "found": "2026-11-16",
+      "found_by": "explorer",
+      "status": "open",
+      "resolved_in": null,
+      "guard": null,
+      "rule_files": [
+        "karimi/normalise_req.py"
+      ],
+      "id": "or_similar_left",
+      "title": "'or similar role' left in the requirement",
+      "detector": "or_similar_left",
+      "cause": "'or similar', 'or equivalent', 'or related' add nothing (the counting guide) and are taken off after degrees only.",
+      "example": "3+ years as a Data Engineer or similar role -> key 'Data Engineer or similar role'",
+      "fix_hint": "Drop a closing 'or similar/equivalent/related <noun>' in normalise_req.decompose for every space, as _education already does for fields."
+    },
+    {
+      "stage": "normalisation",
+      "found": "2026-11-16",
+      "found_by": "explorer",
+      "status": "open",
+      "resolved_in": null,
+      "guard": null,
+      "rule_files": [
+        "karimi/normalise_req.py"
+      ],
+      "id": "level_left",
+      "title": "A level ('Advanced', 'Intermediate') left in the requirement",
+      "detector": "level_left",
+      "cause": "Skill grids put the level after the name ('<skill> Advanced'); the level rules read it only in front.",
+      "example": "LangChain Intermediate -> key 'LangChain Intermediate'",
+      "fix_hint": "Move a closing level word into the level column in normalise_req.decompose; not 'Visual Basic', not 'domain expert'."
+    },
+    {
+      "stage": "normalisation",
+      "found": "2026-11-16",
+      "found_by": "explorer",
+      "status": "open",
+      "resolved_in": null,
+      "guard": null,
+      "rule_files": [
+        "karimi/normalise_req.py",
+        "karimi/atomise.py"
+      ],
+      "id": "degree_higher_education",
+      "title": "'Higher education' not read as a degree",
+      "detector": "degree_higher_education",
+      "cause": "'Higher education' / 'University education' with fields in a bracket is not among the degree names.",
+      "example": "Higher Education (Electric Engineering, Automation Engineering) -> key 'Higher Education'",
+      "fix_hint": "Add higher/tertiary/university education to normalise_req.DEGREES as a degree with no level, and to atomise._DEG_WORD so the bracket fields cross with it."
+    },
+    {
+      "stage": "splitting",
+      "found": "2026-11-16",
+      "found_by": "explorer",
+      "status": "open",
+      "resolved_in": null,
+      "guard": null,
+      "rule_files": [
+        "karimi/atomise.py"
+      ],
+      "id": "broken_fragment",
+      "title": "A split that leaves a piece with no sense",
+      "detector": null,
+      "cause": "A head distributed to the wrong part, or a cut inside a phrase: the piece no longer names anything.",
+      "example": "Ability to proactively learn new concepts and technology -> 'Ability to technology'",
+      "fix_hint": "No reliable detector: the shape rules were right on at most 22% (2026-11-07). Watched by the explorer."
+    },
+    {
+      "stage": "splitting",
+      "found": "2026-11-16",
+      "found_by": "explorer",
+      "status": "open",
+      "resolved_in": null,
+      "guard": null,
+      "rule_files": [
+        "karimi/atomise.py"
+      ],
+      "id": "list_not_split",
+      "title": "A list left in one requirement",
+      "detector": null,
+      "cause": "A list before 'and services like ...' or with a category in it is kept whole.",
+      "example": "Experience with Docker, Kubernetes, and services like Kafka -> 'Docker, Kubernetes, and services'",
+      "fix_hint": "No reliable detector (list_not_separated in split_flags was imprecise). Watched by the explorer."
     }
   ]
 }

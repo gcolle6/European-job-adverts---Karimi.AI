@@ -54,7 +54,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import archivist, curator, errors, explore
+from . import archivist, curator, errors, explore, explorer
 from .store import jf, now, open_store, read_json, write_json
 
 STALE_MINUTES = 90          # a chunk of 500 postings takes 5-15 minutes; 90 is six chunks of silence
@@ -356,6 +356,18 @@ def check(job: str, store=None, judge_url: str | None = None, reference: dict | 
         arch = archivist.review(degrees, s.get("rules_version"), job)
         findings += arch["findings"]
 
+    # The explorer agent: Gemini reads a sample the inspector found nothing in
+    # and groups what it sees into kinds; new kinds are candidates for a person.
+    # Reported, never a light (`explorer.py` says why).
+    expl = None
+    if postings is not None and explorer.enabled():
+        try:
+            rejected = [k for k, d in archivist.latest_decisions(store).items() if d["decision"] == "reject"]
+            expl = explorer.explore(postings, job, explorer.vertex_client(), archivist.catalogue_with(store),
+                                    rejected=rejected)
+        except Exception as e:  # noqa: BLE001 - the agent never fails the check
+            _log("WARNING", event="karimi_explorer_failed", job=job, error=type(e).__name__)
+
     # The curator agent's proposals for this run (`curator.py`), put to the
     # judge only if it passed its planted pairs: otherwise they wait, detected.
     cur = None
@@ -378,12 +390,14 @@ def check(job: str, store=None, judge_url: str | None = None, reference: dict | 
                                "errors": err,
                                **run_detail(report, findings, judged, canaries, suspects, degrees),
                                "curator": cur, "archivist": archivist.public(arch),
+                               "explorer": explorer.public(expl),
                                "rules_version": s.get("rules_version"), "dict_version": s.get("dict_version")})
 
     overall = max((f["light"] for f in findings), key=_ORDER.get, default="green")
     out = {"job": job, "checked": now(), "overall": overall, "findings": findings, "judge": judged,
            "canaries": canaries, "errors": err, "error_examples": err_examples,
            "split_suspects": suspects, "degree_suspects": degrees, "curator": cur, "archivist": arch,
+           "explorer": expl,
            "judge_model": JUDGE_NAME if judge_url else None, "judge_prompt": JUDGE_PROMPT if judge_url else None,
            "to_check": {k: len(v) for k, v in (report or {}).get("to_check", {}).items()},
            "thresholds": {"p_red": P_RED, "p_yellow": P_YELLOW, "min_pairs": MIN_PAIRS, "ref_min_pairs": REF_MIN_PAIRS,
