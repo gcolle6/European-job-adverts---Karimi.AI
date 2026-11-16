@@ -136,7 +136,9 @@ _YEARS_RE = re.compile(
     r"(?:\b(?:at\s+least|minimum(?:\s+of)?|min\.?|more\s+than|over|up\s+to)\s+)?"
     r"\b(?P<a>\d{1,2})\s*(?P<plus>\+)?\s*(?:(?:-|–|to)\s*(?P<b>\d{1,2})\s*\+?\s*)?"
     r"(?:years?|yrs?)(?:['’]s?)?(?:\s+of)?(?!\w)|"
-    r"\b(?P<vague>several|many|a\s+few|multiple|some|a\s+couple\s+of|first)\s+years?(?:\s+of)?\b|"
+    # `equivalent years of experience` (rules 0.4.2): no number, and not the core
+    r"\b(?P<vague>several|many|a\s+few|multiple|some|a\s+couple\s+of|first|equivalent|relevant|comparable)"
+    r"\s+years?(?:\s+of)?\b|"
     # `Multi-year experience`, from German `Mehrjährige Erfahrung` (rules 0.3.0):
     # it was the core, `experience: Multi-year`, and the object went to `extra`.
     r"\b(?P<multi>multi-?years?|multiple-years?)\b",
@@ -205,16 +207,29 @@ def display(space_: str, core: str) -> str:
 # Physics`, with the level also in the `degree` column. Spellings of one degree
 # are that degree (`DEGREES`).
 DEGREES = [
-    (r"bachelor(?:'s|’s|s)?|b\.?\s?sc\.?|b\.?\s?a\.?|b\.?\s?eng\.?|undergraduate|licen[cs]e|laurea triennale", "bachelor"),
-    (r"master(?:'s|’s|s)?|m\.?\s?sc\.?|m\.?\s?a\.?|m\.?\s?eng\.?|postgraduate|diplom|laurea magistrale",
-     "master"),
+    # `BS`, `B.E.`, `B.Tech` and the Dutch `HBO` (university of applied
+    # sciences) are bachelors (rules 0.4.2, from the first batch of new
+    # postings: `BA/BS Degree in STEM` and `HBO or WO degree` were read as no
+    # degree at all). `B.E.` only with its dots: `Be in the office` is a verb.
+    # `BS` and `MS` only in capitals: `MS Office` (`atomise._DEG_WORD`).
+    (r"bachelor(?:'s|’s|s)?|b\.?\s?sc\.?|b\.?\s?a\.?|(?-i:B\.?S\.?)|b\.\s?e\.|b\.?\s?tech\.?|bba|b\.?\s?eng\.?|"
+     r"undergraduate|licen[cs]e|laurea triennale|hbo", "bachelor"),
+    (r"master(?:'s|’s|s)?|m\.?\s?sc\.?|m\.?\s?a\.?|(?-i:M\.?S\.?)|m\.?\s?tech\.?|mca|m\.?\s?eng\.?|postgraduate|"
+     r"diplom|laurea magistrale", "master"),
     (r"ph\.?\s?d\.?|doctorate|doctoral|doktor(?:at)?", "phd"),
     (r"mba", "mba"),
     # The French level, years after the baccalauréat (rules 0.4.1): Bac+3 is
     # the licence, Bac+4/5 the master, Bac+8 the doctorate. A range (`Bac+3 à
     # Bac+5`) is read at its lowest step, the minimum the employer accepts.
-    # `Bachelor's degree+5` is the translator's `Bac+5`.
-    (r"(?:bac|bachelor(?:'s|’s)?\s+degree)\s*\+\s*\d(?:\s*(?:/|-|to|à|a|or|ou)\s*(?:bac\s*)?\+?\s*\d)?", "bac"),
+    # `Bachelor's degree+5` is the translator's `Bac+5`, and `Bachelor's
+    # degree student +4/5` its `Étudiant Bac+4/5` (rules 0.4.2).
+    (r"(?:bac|bachelor(?:'s|’s)?\s+degree)(?:\s+student)?\s*\+\s*\d"
+     r"(?:\s*(?:/|-|to|à|a|or|ou)\s*(?:bac\s*)?\+?\s*\d)?", "bac"),
+    # `Associate's degree` and the Dutch `WO` (research university) name no
+    # level the columns hold: a degree. `WO` only where it cannot be a word
+    # (rules 0.4.2).
+    (r"associate(?:'s|’s)?(?=\s+degree)|(?-i:WO)(?=[\s-]+(?:degree|diploma|level|niveau|in|bachelor|master)\b|$)",
+     "degree"),
     (r"(?:university\s+|academic\s+|engineering\s+|technical\s+|college\s+|higher\s+)?(?:degree|diploma|"
      r"studies|study|education|qualification|graduate)", "degree"),
 ]
@@ -225,15 +240,24 @@ _DEG_SUFFIX = (r"(?:\s+(?:degree|diploma|studies|programme|program|training|qual
                r"speciali[sz]ed|higher\s+education))*")
 _EDU_RE = re.compile(
     rf"^(?P<pre>(?:[\w'’-]+\s+){{0,3}}?)(?P<deg>(?:{_DEGREE_ALT}){_DEG_SUFFIX})"
-    r"(?:\s*\([^)]*\))?(?:\s+(?:degree|diploma))?\s+(?:in|of|on)\s+(?:the\s+)?(?:field\s+of\s+)?(?P<field>.+)$",
+    r"(?:\s*\([^)]*\))?(?:\s+(?:degree|diploma))?"
+    # `Bachelor's degree required in X`, `A bachelor's degree, or equivalent
+    # in X`, `Master's degree, preferably in X` (rules 0.4.2)
+    r"(?:\s*,?\s+(?:required|preferred|mandatory|preferably|ideally|or\s+equivalent))?\s+"
+    # `with specialisation in` (rules 0.4.2): the guard on `_EDU_NOPREP_RE`
+    # works now, and it had been the only path to these
+    r"(?:in|of|on|with\s+(?:an?\s+)?(?:speciali[sz]ation|focus|major|concentration|emphasis)\s+(?:in|on))\s+"
+    r"(?:the\s+)?(?:field\s+of\s+)?(?P<field>.+)$",
     re.I)
 _EDU_BARE_RE = re.compile(rf"^(?P<pre>(?:[\w'’-]+\s+){{0,3}}?)(?P<deg>(?:{_DEGREE_ALT}){_DEG_SUFFIX})"
                           r"(?:\s+(?:minimum|obtained|completed|required))?$", re.I)
 # `Master's degree Signal Processing`: the field with no `in`, only after the
 # word `degree`, and not opening on a word that starts something else. 0.4.1.
+# The guard closed on a backspace, not `\b`, until rules 0.4.2, so it never
+# stopped anything: `Master's degree and 4 years` had the field `and 4 years`.
 _EDU_NOPREP_RE = re.compile(
     rf"^(?P<pre>(?:[\w'’-]+\s+){{0,3}}?)(?P<deg>(?:{_DEGREE_ALT})\s+degree)\s+"
-    r"(?!(?:with|or|and|from|at|for|to|by|as|obtained|completed|required|holder|preferably|ideally|is|are))"
+    r"(?!(?:with|or|and|from|at|for|to|by|as|obtained|completed|required|holder|preferably|ideally|is|are)\b)"
     r"(?P<field>[^\W\d_][^,;+]*)$", re.I)
 _STUDENT_RE = re.compile(r"\b(?:ongoing|current|currently|enrolled|pursuing|final[- ]year)\b", re.I)
 _BAC_STEP = {2: "degree", 3: "bachelor", 4: "master", 5: "master", 6: "master", 7: "master", 8: "phd"}
@@ -246,11 +270,15 @@ _DEGREE_START_RE = re.compile(rf"^(?:{_DEGREE_ALT})\b", re.I)
 def _degree(words: str, pre: str) -> str:
     if _STUDENT_RE.search(pre):
         return "student"
-    w = words.strip().lower()
-    if re.search(r"student$", w):
+    # Case kept: `BS` and `MS` are degrees only in capitals (rules 0.4.2)
+    w = words.strip()
+    # `\b`, not a backspace: the 0.4.1 patch wrote it through a shell heredoc,
+    # so `Master's student` was never read as a student (rules 0.4.2)
+    if re.search(r"\bstudent\b", w, re.I):
         return "student"
-    w = re.sub(r"(?:\s+(?:training|qualification|level|holder|speciali[sz]ed|higher\s+education))+$", "", w)
-    bac = re.match(r"(?:bac|bachelor(?:'s|’s)?\s+degree)\s*\+\s*(\d)", w)
+    w = re.sub(r"(?:\s+(?:training|qualification|level|holder|speciali[sz]ed|higher\s+education))+$", "", w,
+               flags=re.I)
+    bac = re.match(r"(?:bac|bachelor(?:'s|’s)?\s+degree)\s*\+\s*(\d)", w, re.I)
     if bac:
         return _BAC_STEP.get(int(bac.group(1)), "degree")
     for p, level in DEGREES:
@@ -259,8 +287,16 @@ def _degree(words: str, pre: str) -> str:
     return "degree"
 
 
+_SLASH_DEGREES_RE = re.compile(rf"^(?P<a>(?:{_DEGREE_ALT}))\s*/\s*(?P<b>(?:{_DEGREE_ALT}))(?=\s|$)", re.I)
+
+
 def _education(text: str) -> dict | None:
     """`Completed studies in Computer Science` -> education / degree / `Computer Science`."""
+    s = _SLASH_DEGREES_RE.match(text)
+    if s and _degree(s.group("a"), "") == _degree(s.group("b"), ""):
+        # `BA/BS degree`: one degree written two ways. Two levels stay unread,
+        # for the splitter and the inspector (rules 0.4.2).
+        text = s.group("a") + text[s.end():]
     m = _EDU_RE.match(text) or _EDU_BARE_RE.match(text) or _EDU_NOPREP_RE.match(text)
     if not m:
         return None
@@ -271,9 +307,15 @@ def _education(text: str) -> dict | None:
     field = m.groupdict().get("field") or ""
     field = re.sub(r"^(?:a|an|the)\s+", "", field.strip(" ,.:-"), flags=re.I)
     field = re.sub(r"^(?:subject|discipline|field|area)s?\s+(?:of|in)\s+", "", field, flags=re.I)
+    # `Data Science or a related field`: filler, as the splitter drops it (rules 0.4.2)
+    field = re.sub(r"\s*,?\s+or\s+(?:an?\s+|any\s+)?(?:other\s+)?(?:related|similar|equivalent|comparable|relevant)"
+                   r"(?:\s+\w+)?\s+(?:fields?|disciplines?|areas?|subjects?|studies)$", "", field, flags=re.I)
     # `(economic) computer science`, `Computer Science (or equivalent)`: the field is outside the brackets
     field = re.sub(r"\s{2,}", " ", re.sub(r"\s*\([^()]*\)\s*", " ", field)).strip()
     field = _DEGREE_NAME_RE.sub("", field)
+    if re.fullmatch(atom._SCHOOL, field, re.I):
+        # `Bac+4/5 in Business School` says where, not what (rules 0.4.2)
+        field = ""
     degree = _degree(m.group("deg"), pre)
     # A degree named inside the field (`Degree of Master of Science`, `Graduate
     # in Bachelor's`): the inner one is the requirement. Under a named outer
@@ -344,6 +386,32 @@ def _years(text: str) -> tuple[str, int | None, int | None, str]:
     return rest, lo, hi, raw
 
 
+# How much the employer wants it, closing the requirement: `PhD is a plus`,
+# `Master's preferred`, `Python (preferred)`. Whether it counts is decided on
+# the atom (`atomise.nice_to_have`); the requirement is what comes before.
+# Left in, it was part of the core (`Python is a plus`, `Master's preferred`
+# read as no degree): 100 atoms of the 16,098 in the first batch of new
+# postings, 2026-11-15. Rules 0.4.2. `asset`, `plus` and `benefit` only after
+# a verb or an article: `digital asset` is a requirement.
+_ADJ = r"(?:big|strong|real|huge|definite|great|significant|distinct|nice|clear|additional|major|key)"
+_BE = r"(?:(?:(?:this|that|it|which)\s+)?(?:is|are|would\s+be|will\s+be|being))"
+_MARK = (rf"(?:(?:{_BE}|(?:is\s+|are\s+)?(?:also\s+)?considered(?:\s+as)?|seen\s+as)\s+)"
+         rf"(?:an?\s+)?(?:{_ADJ}\s+)?(?:plus|advantage|asset|bonus|benefit)|"
+         rf"an?\s+(?:{_ADJ}\s+)?(?:plus|advantage|bonus)|"
+         rf"(?:{_BE}\s+)?(?:(?:very|highly|strongly|much)\s+)?(?:preferred|desirable|advantageous)|"
+         rf"{_BE}\s+(?:(?:very|highly|much)\s+)?(?:beneficial|appreciated|welcome|valued|desired)|"
+         rf"(?:{_BE}\s+)?nice[- ]to[- ]have")
+# The marker alone in a bracket, or bare at a word's start: `(AWS preferred)`
+# names AWS and stays for the bracket rule, and `software preferred` is not
+# `softw` + `are preferred`.
+_OPTIONAL_TAIL_RE = re.compile(rf"\s*[,;:–—-]?\s*(?:\(\s*(?:{_MARK})\s*\)|\b(?:{_MARK}))\s*[.!]?$", re.I)
+
+
+def strip_optional(text: str) -> str:
+    """The requirement without the words saying it is optional (`_OPTIONAL_TAIL_RE`)."""
+    return _OPTIONAL_TAIL_RE.sub("", text).strip()
+
+
 def _named(text: str) -> bool:
     """A capital or a digit anywhere, the first letter included: `Python` alone is a name here,
     where `names` reads a first capital as the start of a sentence."""
@@ -359,7 +427,12 @@ def decompose(text: str) -> dict:
     that is not there stays empty, and an atom with no frame noun keeps all of
     itself as the core (`Python`, `Team player`).
     """
-    rest, lo, hi, years_raw = _years(text)
+    rest, lo, hi, years_raw = _years(strip_optional(text))
+    if years_raw:
+        # `Bachelor's degree (5–7 years experience)`: the years are out, the
+        # bracket that held them says nothing more (rules 0.4.2)
+        rest = re.sub(r"\s*\(\s*(?:of\s+)?(?:(?:relevant|professional|work|related)\s+)*(?:experience)?\s*\)", "",
+                      rest).strip()
     out = {"years_min": lo, "years_max": hi, "years_raw": years_raw, "level": "",
            "level_words": "", "head": "", "head_group": "", "degree": "", "core": rest, "extra": ""}
     edu = _education(rest)

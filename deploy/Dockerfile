@@ -20,7 +20,7 @@ RUN pip install --no-cache-dir --timeout 120 --retries 10 \
 
 # Pinned models: spaCy comes with the package (pyproject), opus-mt as in
 # translate.py, the embedding as in the dictionary's manifest.
-RUN python -c "from karimi_normalise import translate as t; [t._model(m) for m in set(t.MODEL_FOR.values())]" \
+RUN python -c "from karimi_normalise import translate as t; [t._model(m) for m in {*t.MODEL_FOR.values(), *t.EXTRA_MODEL_FOR.values()}]" \
  && python -c "from karimi import embed; embed.load_model()"
 ENV HF_HUB_OFFLINE=1
 

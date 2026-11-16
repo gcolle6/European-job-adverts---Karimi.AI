@@ -356,6 +356,15 @@ NICE_TO_HAVE_RE = re.compile(
     r"great|significant|distinct|nice|clear)\s+)?(?:plus|advantage|asset|bonus|benefit)\b|"
     r"\bnice[- ]to[- ]have\b|\b(?:is|are|would be)\s+(?:highly\s+)?(?:desirable|preferred|"
     r"beneficial|welcome|appreciated|valued)\b", re.I)
+# Closing the atom with no verb (rules 0.4.2): `Master's preferred`, `PhD a
+# plus`, `Python (preferred)`. The degree in `Bachelor's degree in X, Master's
+# preferred` was counted as required. Read outside brackets, unless the
+# bracket holds the marker alone: `cloud infrastructure (AWS preferred)` is
+# required, AWS is what is preferred.
+_MARK_BARE = (r"(?:(?:very|highly|strongly|much)\s+)?(?:preferred|desirable|advantageous)|"
+              r"an?\s+(?:(?:big|strong|real|huge|great|nice)\s+)?(?:plus|advantage|bonus)")
+_BARE_OPTIONAL_RE = re.compile(rf"(?:^|[\s,])(?:\(\s*)?(?:{_MARK_BARE})(?:\s*\))?\W*$", re.I)
+_MARK_ONLY_BRACKET_RE = re.compile(rf"\(\s*(?:{_MARK_BARE})\s*\)", re.I)
 
 
 def nice_to_have(atom: str) -> bool:
@@ -372,7 +381,11 @@ def nice_to_have(atom: str) -> bool:
     m = NICE_TO_HAVE_RE.search(atom)
     if m and m.start() == 0 and re.fullmatch(rf"(?:{_OPTIONAL_WORDS})\s+(?:{_LANGS})", atom.strip(), re.I):
         return False
-    return bool(m)
+    if m:
+        return True
+    outside = re.sub(r"\([^()]*\)", lambda b: b.group(0) if _MARK_ONLY_BRACKET_RE.fullmatch(b.group(0)) else " ",
+                     atom)
+    return bool(_BARE_OPTIONAL_RE.search(outside))
 
 
 def counted(atoms: list[str]) -> list[bool]:
@@ -1000,13 +1013,23 @@ _FRAME_PAIR_PRE = {"a", "an", "the", "solid", "strong", "good", "excellent", "de
                    "demonstrated", "previous", "prior", "relevant", "first", "some"}
 
 
+# `BS`, `MS` and `WO` only in capitals: `ms` and `wo` are words, and `MS
+# Office` is not a degree because nothing degree-shaped follows it. Rules 0.4.2,
+# with the same names in `normalise_req.DEGREES`.
 _DEG_WORD = (r"(?:bachelor(?:'s|’s|s)?|master(?:'s|’s|s)?|b\.?\s?sc\.?|m\.?\s?sc\.?|b\.?\s?a\.?|m\.?\s?a\.?|"
+             r"(?-i:B\.?S\.?|M\.?S\.?|WO)|b\.\s?e\.|[bm]\.?\s?tech\.?|bba|mca|associate(?:'s|’s)?|hbo|"
+             r"undergraduate|postgraduate|"
              r"b\.?\s?eng\.?|m\.?\s?eng\.?|ph\.?\s?d\.?|doctorate|mba|diploma|licen[cs]e)")
 # Between two degrees: `,`, `, or`, `/`, `or`, `and/or`, and the Dutch `of`
 # (`Bachelor of Master in Informatica`), which cannot mean the English `of`
 # between two degree words. Rules 0.4.1.
 _DEG_SEP = r"\s*,\s*(?:(?:or|and/or)\s+)?|\s*/\s*|\s+(?:or|and/or|of)\s+"
-_DEG_PART_RE = re.compile(rf"^(?:(?:a|an|the)\s+)?(?P<deg>{_DEG_WORD})(?P<noun>\s+(?:degree|diploma)s?)?$", re.I)
+# Words before a list of degrees that leave it a list of degrees: `Relevant
+# bachelor's or master's degree in X` (rules 0.4.2; only an article was
+# allowed, and the split wrote `Relevant bachelor's Machine Learning`).
+_DEG_LEAD = (r"(?:(?:a|an|the|relevant|related|completed|finished|university|academic|technical|recognised|"
+             r"recognized|accredited|formal|appropriate|suitable|advanced|higher)\s+)*")
+_DEG_PART_RE = re.compile(rf"^{_DEG_LEAD}(?P<deg>{_DEG_WORD})(?P<noun>\s+(?:degree|diploma)s?)?$", re.I)
 
 
 def _degree_parts(core: str) -> list[str] | None:
@@ -1032,7 +1055,7 @@ def _degree_parts(core: str) -> list[str] | None:
 
 _DEG_UNIT = rf"{_DEG_WORD}(?:\s+degree)?"
 _DEG_ALT_RE = re.compile(
-    rf"^(?:(?:a|an|the)\s+)?(?P<degs>{_DEG_UNIT}(?:(?:{_DEG_SEP}){_DEG_UNIT})+)"
+    rf"^{_DEG_LEAD}(?P<degs>{_DEG_UNIT}(?:(?:{_DEG_SEP}){_DEG_UNIT})+)"
     # a bracket reaches here masked (`@@0##`, `_atomise_once`)
     r"(?P<tail>(?:\s+(?:degree|diploma|programme|program))?(?:\s*(?:\([^()]*\)|@@\d+##))?\s+(?:in|of)\s+"
     r"(?P<field>.+))$", re.I)
@@ -1059,10 +1082,15 @@ def repair_translation(item: str, english: str) -> str:
     return english
 
 
+# The years an experience is asked in, opening it: `2–3 years of`, `10+ years`.
+_YEARS_LEAD = r"\d{1,2}\s*\+?\s*(?:(?:-|–|to)\s*\d{1,2}\s*\+?\s*)?(?:years?|yrs?)\b"
 _DEG_WITH_EXP_RE = re.compile(
     rf"^(?P<deg>(?:(?:a|an|the|university|academic|completed)\s+)?(?:{_DEG_WORD}|degree)(?!\w).*?)"
-    r"(?:\s*,?\s+(?:combined\s+|together\s+)?with|\s+(?:\+|plus))\s+"
-    r"(?P<exp>(?:(?!\bwith\b).)*?\bexperiences?\b.*?)"
+    # `with`, `+`, and since rules 0.4.2 `and` and nothing at all before years
+    # (`Master's degree and 4 years of ...`, `Master's degree 2–3 years of
+    # ...`): the experience was read as the degree's field.
+    rf"(?:\s*,?\s+(?:combined\s+|together\s+)?with\s+|\s+(?:\+|plus|and)\s+|\s+(?={_YEARS_LEAD}))"
+    rf"(?P<exp>(?:(?!\bwith\b).)*?\bexperiences?\b.*?|{_YEARS_LEAD}(?:(?!\bwith\b).)*?)"
     r"(?:\s+(?:is\s+)?required)?$", re.I)
 
 
@@ -1088,9 +1116,103 @@ def _degree_alternatives(s: str) -> list[str] | None:
     # `Bachelor's or Master's degree`: the noun written once is every degree's
     noun = next((n.group(0) for n in (re.search(r"\s+degree$", d, re.I) for d in reversed(degs)) if n), "")
     degs = [d if re.search(r"\s+degree$", d, re.I) else f"{d}{noun}" for d in degs]
+    degs = _one_per_level(degs)
+    if len(degs) < 2:
+        return [clean(f"{degs[0]}{m.group('tail')}")] if not SPLIT_RE.search(m.group("field")) \
+            else _split_list(clean(f"{degs[0]}{m.group('tail')}"))
     if SPLIT_RE.search(m.group("field")):
         return [a for d in degs for a in _split_list(clean(f"{d}{m.group('tail')}"))]
     return [clean(f"{d}{m.group('tail')}") for d in degs]
+
+
+# Four ways a degree item closes that the rules read as part of the degree.
+# All found in the first batch of new postings (2026-11-15) and fixed in rules
+# 0.4.2; `_degree_routes` applies them.
+_PREF = (r"(?:(?:is|are)\s+)?(?:(?:strongly|highly)\s+)?(?:preferred|desirable|advantageous)|"
+         r"(?:is\s+)?an?\s+(?:(?:big|strong)\s+)?(?:plus|advantage|asset)")
+# `Bachelor's degree or relevant experience`: a second route into the job, as
+# `or equivalent experience` already was (`_ALT_TAIL_RE`). It was glued into
+# the degree: `Bachelor in or relevant experience`.
+_DEG_OR_EXP_RE = re.compile(
+    r"\s*,?\s+(?:or|and/or)\s+(?P<alt>(?:an?\s+)?(?:(?:relevant|related|practical|professional|industry|work|"
+    r"hands-on)\s+)*(?:years\s+of\s+)?(?:work\s+)?experiences?\b[^,;()]*)[.]?$", re.I)
+# `MBA or other relevant advanced degree preferred`: any other degree would do,
+# so the alternatives count once (convention of 2026-10-30), as `or equivalent
+# qualification` (`_EQUIV_DEGREE_RE`). Its own atom was `other relevant
+# advanced degree preferred`.
+_OTHER_DEGREE_RE = re.compile(
+    rf"\s*,?\s+(?:or|and/or)\s+(?:an?\s+|any\s+)?other\s+(?:[\w-]+\s+){{0,3}}?"
+    rf"(?:degrees?|qualifications?|diplomas?)(?P<mark>\s+(?:{_PREF}))?\s*[.]?$", re.I)
+# `Bachelor's degree or equivalent experience, Master's Degree Preferred`: the
+# preferred degree is an atom of its own, and the rest is split as usual.
+_PREF_DEGREE_TAIL_RE = re.compile(
+    rf",\s*(?P<pref>{_DEG_LEAD}{_DEG_UNIT}(?:\s+(?:in|of)\s+[^,;()]+?)?\s+(?:{_PREF}))\s*[.]?$", re.I)
+# `Bachelor's degree preferred (Engineering, Computer Science, Analytics)`:
+# the bracket holds the fields, crossed with the degree as `in X, Y` is.
+_DEG_BRACKET_RE = re.compile(
+    rf"^(?P<deg>{_DEG_LEAD}{_DEG_UNIT}(?:(?:{_DEG_SEP}){_DEG_LEAD}{_DEG_UNIT})*)"
+    rf"(?P<mark>\s+(?:{_PREF}))?\s*\((?P<fields>[^()]+)\)(?P<mark2>\s*(?:{_PREF}))?\s*[.]?$", re.I)
+
+
+# `BS / BA degree`, `HBO/WO`: degrees with no field, one atom each.
+_DEG_BARE_LIST_RE = re.compile(
+    rf"^{_DEG_LEAD}{_DEG_UNIT}(?:(?:{_DEG_SEP}){_DEG_LEAD}{_DEG_UNIT})+(?:\s+(?:degree|diploma)s?)?"
+    rf"(?P<mark>\s+(?:{_PREF}))?\s*[.]?$", re.I)
+
+
+def _one_per_level(degs: list[str]) -> list[str]:
+    """One degree per level: `Bachelor's / Undergraduate Degree` and `BS / BA` are one each.
+
+    Read with `normalise_req`, so two spellings the columns cannot tell apart
+    are not two requirements. Rules 0.4.2."""
+    from . import normalise_req     # it imports this module
+    seen: set[str] = set()
+    out = []
+    for d in degs:
+        level = normalise_req._degree(re.sub(rf"^{_DEG_LEAD}", "", d.strip(), flags=re.I), "")
+        if level not in seen:
+            seen.add(level)
+            out.append(d)
+    return out
+
+
+def _degree_routes(segment: str) -> list[str] | None:
+    """The closings of `_DEG_OR_EXP_RE` to `_DEG_BARE_LIST_RE`, or None."""
+    if not _DEG_ANY_RE.search(segment):
+        return None
+    m = _DEG_BARE_LIST_RE.match(segment)
+    if m:
+        core = segment[: m.start("mark")] if m.group("mark") else segment
+        parts = _degree_parts(clean(core))
+        if parts:
+            return [f"{p}{m.group('mark') or ''}" for p in _one_per_level(parts)]
+    m = _DEG_OR_EXP_RE.search(segment)
+    if m and _DEG_ANY_RE.search(segment[: m.start()]):
+        main = clean(segment[: m.start()])
+        return (_atomise_once(main) or [main]) + [clean(m.group("alt"))]
+    m = _OTHER_DEGREE_RE.search(segment)
+    if m and _DEG_ANY_RE.search(segment[: m.start()]):
+        main = clean(f"{segment[: m.start()]}{m.group('mark') or ''}")
+        return _atomise_once(main) or [main]
+    m = _PREF_DEGREE_TAIL_RE.search(segment)
+    if m and _DEG_ANY_RE.search(segment[: m.start()]):
+        main = clean(segment[: m.start()])
+        return (_atomise_once(main) or [main]) + [clean(m.group("pref"))]
+    m = _DEG_BRACKET_RE.match(segment)
+    if m:
+        inner = _PAREN_LEAD_RE_V2.sub("", m.group("fields")).strip()
+        fields = [f for f in _cut(inner) if not _FILLER_LEAD_RE.match(f) and not STOP_RE.match(f)]
+        if len(fields) < 2 or any(re.search(r"\d", f) or len(f.split()) > config.MAX_ITEM_WORDS for f in fields):
+            return None
+        mark = clean(m.group("mark") or m.group("mark2") or "")
+        mark = f" {mark}" if mark else ""
+        deg = clean(m.group("deg"))
+        out = []
+        for f in fields:
+            one = f"{deg} in {f}"
+            out.extend(f"{d}{mark}" for d in (_degree_alternatives(one) or [one]))
+        return out
+    return None
 
 
 def _split_list(s: str) -> list[str]:
@@ -1946,6 +2068,9 @@ def _atomise_once(segment: str) -> list[str]:
         # Qualifikation`) while splitting the rest. Detached before splitting,
         # so it is neither distributed over (`Studium in vergleichbare
         # Qualifikation`) nor dropped by STOP_RE.
+        degree = _degree_routes(segment)
+        if degree:
+            return degree
         m = _ALT_TAIL_RE.search(segment)
         alt = m and (m.group("alt") or m.group("alt_nl"))
         main = clean(segment[: m.start()]) if m else ""
@@ -2076,14 +2201,21 @@ def _use_pos() -> bool:
 # into `Bac+5 degree in University`. Dropped. Rules 0.4.1.
 _SCHOOL = (r"(?:(?:an?|the|une?)\s+)?(?:universit(?:y|ies|[eé]s?|[aä]t)|(?:engineering|business|technical)\s+schools?|"
            r"schools?\s+of\s+engineer(?:ing|s)?|[eé]coles?\s+(?:d['’]\s*)?(?:ing[eé]nieurs?|de\s+commerce)|"
-           r"grandes?\s+[eé]coles?|colleges?|(?:fach)?hochschulen?|polytechnics?)")
+           r"grandes?\s+[eé]coles?|colleges?|(?:fach)?hochschulen?|polytechnics?|iae)")
 _SCHOOL_BRACKET_RE = re.compile(rf"\s*\(\s*{_SCHOOL}(?:\s*(?:,|/|\bor\b|\bou\b|\band\b|\bet\b|\boder\b)\s*{_SCHOOL})*"
                                 r"\s*\)", re.I)
+
+
+# `HBO werk- en denkniveau`, translated `HBO work and thinking level`: a level
+# of education, one requirement, not `HBO work` + `thinking level`. Rules 0.4.2.
+_DUTCH_LEVEL_RE = re.compile(r"\b(?P<deg>HBO|WO|MBO\+?)\s+(?:work(?:ing)?|thinking)"
+                             r"(?:\s*(?:and|&)(?:/or)?\s*(?:work(?:ing)?|thinking))?\s+level\b", re.I)
 
 
 def _atomise(segment: str) -> list[str]:
     if config.SPLIT_REPAIRS:
         segment = _SCHOOL_BRACKET_RE.sub("", segment)
+        segment = _DUTCH_LEVEL_RE.sub(lambda m: f"{m.group('deg')} level", segment)
     out = _atomise_once(segment)
     for _ in range(max(0, config.ATOMISE_MAX_PASSES - 1)):
         nxt: list[str] = []

@@ -34,6 +34,7 @@ job's private `check.json` and never to the history or the site.
 from __future__ import annotations
 
 import re
+import unicodedata
 from collections import Counter, defaultdict
 
 from karimi import config
@@ -51,6 +52,10 @@ ERRORS = {
         "wrong_group": "placed in a group that is not the same requirement",
         "wrong_topic": "placed under a topic it does not belong to",
         "wrong_degree": "a degree read wrong",
+        "optional_kept": "how much it is wanted left in the requirement",
+    },
+    ("translation", "requirement"): {
+        "not_translated": "a requirement left in another language",
     },
     ("normalisation", "role"): {
         "wrong_role": "matched to a different role",
@@ -77,6 +82,10 @@ CAUSES = {
     "different_job_word": "a different job word",
     "degree_not_read": "it names a degree, and the rules did not read it as one",
     "degree_field_odd": "the degree's field holds another degree, an experience or a language",
+    "optional_head": "it opens on 'desirable' or 'preferably', and only that word was kept",
+    "optional_tail": "it still closes on 'is a plus', 'preferred' or the like",
+    "untranslated": "not English, and kept as written",
+    "translation_failed": "translated, and still not English",
     "other": "no rule names it",
 }
 
@@ -169,16 +178,24 @@ def split_suspects(postings: list[dict], examples: int = 3) -> dict:
 # same kinds. Unlike the shape rules above they test a property, not a
 # guess: an atom that opens on a degree and is not education was not read,
 # and a field that is itself a degree, an experience or a language is not a
-# field. Detected only — a fix is a rules version (`RESOLVED_IN`).
+# field. Detected only — a fix is a rules version (the archivist's catalogue).
 INSPECTOR = "inspector"
 DEGREE_DETECTORS = ["degree_not_read", "degree_field_odd"]
-RESOLVED_IN = {"degree_not_read": "0.4.1", "degree_field_odd": "0.4.1"}
+# Since rules 0.4.2 also the degree names and the words in front that the
+# first batch of new postings showed unread (`BA/BS Degree in STEM`, `HBO or
+# WO degree`, `B.E. in X`, `Relevant bachelor's or master's degree ...`): the
+# detector named only the spellings the rules knew, so it could not see what
+# they missed.
 _DEGREE_OPENS_RE = re.compile(
-    r"^(?:(?:a|an|the)\s+)?(?:(?:bachelor|master)(?:'s|’s|s)?(?=\s+(?:degree|in|of)\b|$)|"
+    r"^(?:(?:a|an|the|relevant|related|completed|finished|university|academic|technical|recognised|recognized|"
+    r"accredited|formal|appropriate|suitable|advanced|higher)\s+)*"
+    r"(?:(?:bachelor|master)(?:'s|’s|s)?(?=\s+(?:degree|in|of)\b|$)|"
     r"(?:bachelor|master)(?:'s|’s)(?!\w)|m\.?\s?sc\.?(?!\w)|b\.?\s?sc\.?(?!\w)|ph\.?\s?d\.?(?!\w)|mba(?!\w)|"
-    r"doctorate(?!\w)|bac\s*\+\s*\d)", re.I)
-_DEGREE_IN_FIELD_RE = re.compile(r"^(?:bachelor|master|m\.?\s?sc|b\.?\s?sc|ph\.?\s?d|mba|degree|diploma)(?!\w)",
-                                 re.I)
+    r"doctorate(?!\w)|bac\s*\+\s*\d|(?-i:B\.?[AS]\.?|M\.?[AS]\.?)(?=\s*(?:/|degree\b|in\b|or\b|$))|"
+    r"b\.\s?e\.|[bm]\.?\s?tech\b|bba(?!\w)|mca(?!\w)|hbo(?!\w)|(?-i:WO)(?=[\s/-]+(?:degree|level|niveau)\b)|"
+    r"associate(?:'s|’s)?\s+degree|(?:under|post)graduate\s+degree)", re.I)
+_DEGREE_IN_FIELD_RE = re.compile(r"^(?:bachelor|master|m\.?\s?sc|b\.?\s?sc|ph\.?\s?d|mba|degree|diploma)(?!\w)|"
+                                 r"^(?:or|and|with)\b", re.I)
 
 
 def degree_flag(r: dict) -> str | None:
@@ -197,20 +214,93 @@ def degree_flag(r: dict) -> str | None:
     return None
 
 
-def degree_suspects(postings: list[dict], examples: int = 3) -> dict:
-    """Every requirement of a run, read by `degree_flag`: what the inspector agent detected."""
+# Since 2026-11-16 the inspector also watches the kinds batch 1 showed and no
+# agent caught, found by hand: how much it is wanted left in the requirement
+# (`Python is a plus`; `Desirable experience in design` read as `Desirable`)
+# and items left in another language. Each detector has its entry in the
+# archivist's catalogue (`error_catalogue.json`), which says what it is, why,
+# and whether a rules version fixed it.
+_MARK = (r"desirable|advantageous|preferred|preferable|preferably|optional|optionally|beneficial|"
+         r"nice[\s-]to[\s-]have|a\s+(?:big\s+|huge\s+)?plus|plus|bonus|ideally|an?\s+advantage")
+_MARK_ONLY_RE = re.compile(rf"^(?:{_MARK})(?:\s+to\s+have)?\s*(?::.*)?$", re.I)
+_MARK_OPENS_RE = re.compile(rf"^(?:{_MARK})\b", re.I)
+
+
+def optional_flag(r: dict) -> str | None:
+    """`optional_head`: the atom opens on how much it is wanted and the core kept
+    only that; `optional_tail`: the core still closes on it."""
+    from karimi import normalise_req
+
+    core = (r.get("core") or "").strip()
+    if not core:
+        return None
+    if _MARK_OPENS_RE.match(r.get("atom") or "") and _MARK_ONLY_RE.match(core):
+        return "optional_head"
+    if normalise_req.strip_optional(core) != core:
+        return "optional_tail"
+    return None
+
+
+def _foreign(text: str) -> bool:
+    """Not English, read off the text itself: a non-Latin letter, the word lists
+    deciding another language, or two words with letters outside ASCII. Not the
+    translator's own test (`translate.item_code`): a detector sharing it would
+    be blind exactly where the translator is."""
+    from karimi import language
+
+    if any(ch.isalpha() and "LATIN" not in unicodedata.name(ch, "") for ch in text):
+        return True
+    lang = language.detect(text)[0]
+    if lang and lang != "English":
+        return True
+    return sum(any(ord(c) > 127 for c in w) for w in re.findall(r"[^\W\d_]+", text)) >= 2
+
+
+def translation_flag(r: dict) -> str | None:
+    """`untranslated`: kept as written although not English; `translation_failed`:
+    translated, and what came out is still not English."""
+    from . import translate
+
+    atom = r.get("atom") or ""
+    if r.get("translated"):
+        return "translation_failed" if _foreign(atom) else None
+    if _foreign(atom) or translate.item_code(r.get("item") or "") is not None:
+        return "untranslated"
+    return None
+
+
+INSPECTOR_DETECTORS = {
+    # detector -> (stage, error kind), in the order the first that fires is taken
+    "degree_not_read": ("normalisation", "wrong_degree"),
+    "degree_field_odd": ("normalisation", "wrong_degree"),
+    "optional_head": ("normalisation", "optional_kept"),
+    "optional_tail": ("normalisation", "optional_kept"),
+    "untranslated": ("translation", "not_translated"),
+    "translation_failed": ("translation", "not_translated"),
+}
+
+
+def inspector_flag(r: dict) -> str | None:
+    """The first of the inspector's tests that fires on one requirement, or None."""
+    return translation_flag(r) or degree_flag(r) or optional_flag(r)
+
+
+def inspect(postings: list[dict], examples: int = 3) -> dict:
+    """Every requirement of a run, read by `inspector_flag`: what the inspector agent detected."""
     count, ex = Counter(), defaultdict(list)
     reqs = 0
     for p in postings:
         for r in p.get("requirements") or []:
             reqs += 1
-            f = degree_flag(r)
+            f = inspector_flag(r)
             if f is None:
                 continue
-            key = ("normalisation", "requirement", "wrong_degree", f)
+            stage, error = INSPECTOR_DETECTORS[f]
+            key = (stage, "requirement", error, f)
             count[key] += 1
             if len(ex[key]) < examples:
-                ex[key].append({"item": r.get("item", ""), "atom": r.get("atom", ""), "core": r.get("core", "")})
+                ex[key].append({"item": r.get("item", ""), "atom": r.get("atom", ""), "core": r.get("core", ""),
+                                "key": r.get("key", "")})
     return {"of": {"requirements": reqs}, "counts": count, "examples": ex}
 
 

@@ -35,17 +35,19 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from karimi import language  # noqa: E402
+from karimi_normalise import translate  # noqa: E402
 
 EXPORT = ROOT / "wetransfer_karimi-jobs_2026-08-25_1346" / "software_data_europe.json"
 OUT_DIR = Path(__file__).resolve().parent / "output"
 CACHE = OUT_DIR / "translate_cache.jsonl"
 OUT = OUT_DIR / "items_en.parquet"
 
-CODE = {"Deutsch": "de", "Français": "fr", "Nederlands": "nl", "Italiano": "it",
-        "Español": "es", "Português": "pt", "Svenska": "sv"}
-MODEL_FOR = {"de": "opus-mt-de-en", "fr": "opus-mt-fr-en", "nl": "opus-mt-nl-en",
-             "sv": "opus-mt-sv-en", "it": "opus-mt-ROMANCE-en", "es": "opus-mt-ROMANCE-en",
-             "pt": "opus-mt-ROMANCE-en"}
+# One copy of which language and which model, the library's. Until 2026-11-15
+# this script kept its own: when rules 0.4.2 taught the library to read other
+# scripts and letters, the batch went on keeping 761 Hungarian, Polish, ...
+# items as written and translating 105 Polish ones with the Romance model,
+# and the dictionary drifted from what the API makes (parity 99.4% -> 98.9%).
+CODE = translate.CODE
 BATCH = 16
 NUM_BEAMS = 4
 
@@ -61,8 +63,12 @@ def item_languages(rows: list[dict]) -> pd.DataFrame:
     otherwise. Items are short, so the detector abstains often — `Python`,
     `Teamfähigkeit` — and the posting is the better guess than nothing. Where
     neither decides, the item is left as written and marked.
+
+    The code to translate from is the library's (`translate.item_code`), taken
+    in the first posting the item appears in; `language` and
+    `language_source` only describe how the word lists read it.
     """
-    seen: dict[str, tuple[str | None, str]] = {}
+    seen: dict[str, tuple[str | None, str, str | None]] = {}
     for r in rows:
         if not r["must_have"]:
             continue
@@ -70,17 +76,18 @@ def item_languages(rows: list[dict]) -> pd.DataFrame:
         for it in r["must_have"]:
             if it in seen:
                 continue
+            code = translate.item_code(it, r["must_have"])
             own = language.detect(it)[0]
             if own:
-                seen[it] = (own, "item")
+                seen[it] = (own, "item", code)
+            elif code in translate.EXTRA_MODEL_FOR:
+                seen[it] = (None, "letters", code)
             elif posting_lang:
-                seen[it] = (posting_lang, "posting")
+                seen[it] = (posting_lang, "posting", code)
             else:
-                seen[it] = (None, "undecided")
-    d = pd.DataFrame([(k, v[0], v[1]) for k, v in seen.items()],
-                     columns=["item", "language", "language_source"])
-    d["code"] = d.language.map(CODE)
-    return d
+                seen[it] = (None, "undecided", code)
+    return pd.DataFrame([(k, *v) for k, v in seen.items()],
+                        columns=["item", "language", "language_source", "code"])
 
 
 def load_cache() -> dict[str, str]:
@@ -105,7 +112,7 @@ def translate_all(items: pd.DataFrame) -> dict[str, str]:
     by_model = collections.defaultdict(list)
     for it, code in zip(todo.item, todo.code):
         if _key(code, it) not in cache:
-            by_model[MODEL_FOR[code]].append((code, it))
+            by_model[translate.model_for(code)].append((code, it))
     left = sum(len(v) for v in by_model.values())
     print(f"to translate: {left:,} (cached: {len(todo) - left:,})", flush=True)
 

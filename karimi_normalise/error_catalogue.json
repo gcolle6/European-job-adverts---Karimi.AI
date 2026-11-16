@@ -1,0 +1,185 @@
+{
+  "about": "The archivist's catalogue: every kind of error found so far, why it happened, what fixed it and what guards it. Edited by a person; the archivist reads it on every run (archivist.py). No requirement text from Karimi's postings except the short examples a person chose.",
+  "updated": "2026-11-16",
+  "entries": [
+    {
+      "id": "degree_not_read",
+      "title": "A degree the rules did not read as one",
+      "stage": "normalisation",
+      "found": "2026-11-13",
+      "found_by": "hand",
+      "cause": "Degree names and the words in front of them the rules did not know (BS, BA/BS, B.E., HBO, WO, 'Relevant bachelor's or master's'), so the atom was read as a skill.",
+      "example": "BA/BS Degree in STEM -> 'BA/BS Degree in STEM' instead of Bachelor in STEM",
+      "status": "resolved",
+      "resolved_in": "0.4.2",
+      "detector": "degree_not_read",
+      "guard": "tests/test_rules_042.py::test_degrees_from_the_first_batch",
+      "rule_files": [
+        "karimi/normalise_req.py",
+        "karimi/atomise.py"
+      ],
+      "residual": {
+        "count": 8,
+        "of": 16336,
+        "rate": 0.00049,
+        "measured_on": "batch 1 of the new postings, rules 0.4.2, library re-run 2026-11-16"
+      }
+    },
+    {
+      "id": "degree_field_odd",
+      "title": "A degree's field that is not a field",
+      "stage": "normalisation",
+      "found": "2026-11-13",
+      "found_by": "hand",
+      "cause": "An alternative after the degree glued into its field: 'or relevant experience', a second degree, a language.",
+      "example": "Bachelor's degree or relevant experience -> 'Bachelor in or relevant experience'",
+      "status": "resolved",
+      "resolved_in": "0.4.2",
+      "detector": "degree_field_odd",
+      "guard": "tests/test_rules_042.py::test_degrees_from_the_first_batch",
+      "rule_files": [
+        "karimi/normalise_req.py",
+        "karimi/atomise.py"
+      ],
+      "residual": {
+        "count": 0,
+        "of": 16336,
+        "rate": 0.0,
+        "measured_on": "batch 1 of the new postings, rules 0.4.2, library re-run 2026-11-16"
+      }
+    },
+    {
+      "id": "optional_tail",
+      "title": "'is a plus' or 'preferred' left at the end of a requirement",
+      "stage": "normalisation",
+      "found": "2026-11-15",
+      "found_by": "hand",
+      "cause": "Only words in front were taken as how much it is wanted; a closing 'is a plus' stayed in the requirement and made a new one.",
+      "example": "Experience with Go is a plus -> 'Go is a plus' instead of Go, optional",
+      "status": "resolved",
+      "resolved_in": "0.4.2",
+      "detector": "optional_tail",
+      "guard": "tests/test_rules_042.py::test_how_much_it_is_wanted_is_not_the_requirement",
+      "rule_files": [
+        "karimi/normalise_req.py",
+        "karimi/atomise.py"
+      ],
+      "residual": {
+        "count": 0,
+        "of": 16336,
+        "rate": 0.0,
+        "measured_on": "batch 1 of the new postings, rules 0.4.2, library re-run 2026-11-16"
+      }
+    },
+    {
+      "id": "optional_head",
+      "title": "A requirement read as 'Desirable' alone",
+      "stage": "normalisation",
+      "found": "2026-11-16",
+      "found_by": "hand",
+      "cause": "An atom opening on how much it is wanted ('Desirable', 'Advantageous', 'Preferred', 'Optional') is read as if that word were the requirement: the object after it is lost and the atom still counts.",
+      "example": "Desirable experience in design -> 'Desirable', counted",
+      "status": "open",
+      "resolved_in": null,
+      "detector": "optional_head",
+      "guard": null,
+      "rule_files": [
+        "karimi/normalise_req.py",
+        "karimi/atomise.py"
+      ],
+      "fix_hint": "Take a leading marker off in normalise_req.strip_optional as the closing one is, and let atomise.nice_to_have see it, so the atom is optional and keeps its object."
+    },
+    {
+      "id": "untranslated",
+      "title": "A requirement left in another language",
+      "stage": "translation",
+      "found": "2026-11-15",
+      "found_by": "hand",
+      "cause": "The translator knew seven languages; Chinese, Japanese, Polish, Lithuanian, Hungarian and others were kept as written and nearly all came out 'nuovo'.",
+      "example": "Laisvas anglų kalbos mokėjimas -> kept as written",
+      "status": "resolved",
+      "resolved_in": "0.4.2",
+      "detector": "untranslated",
+      "guard": "tests/test_library.py::test_languages_the_batch_never_met_are_read_by_their_letters",
+      "rule_files": [
+        "karimi_normalise/translate.py"
+      ],
+      "residual": {
+        "count": 12,
+        "of": 16336,
+        "rate": 0.000735,
+        "measured_on": "batch 1 of the new postings, rules 0.4.2, library re-run 2026-11-16"
+      }
+    },
+    {
+      "id": "translation_failed",
+      "title": "Translated, and still not English",
+      "stage": "translation",
+      "found": "2026-11-16",
+      "found_by": "inspector",
+      "cause": "A language sent to the wrong model (Polish through the Romance one, until 0.4.2), or a model that cannot read it.",
+      "example": "Wykształcenie wyższe w zakresie takim jak Informatyka -> unchanged after 'translation'",
+      "status": "resolved",
+      "resolved_in": "0.4.2",
+      "detector": "translation_failed",
+      "guard": "tests/test_library.py::test_languages_the_batch_never_met_are_read_by_their_letters",
+      "rule_files": [
+        "karimi_normalise/translate.py"
+      ],
+      "residual": {
+        "count": 2,
+        "of": 16336,
+        "rate": 0.000122,
+        "measured_on": "batch 1 of the new postings, rules 0.4.2, library re-run 2026-11-16"
+      }
+    },
+    {
+      "id": "curator_category_join",
+      "title": "The curator joined a category to a broader one",
+      "stage": "normalisation",
+      "found": "2026-11-15",
+      "found_by": "hand",
+      "cause": "Taking a vendor or a generic word off in front of a category ('SAP EAM' -> 'EAM', 'IT platforms' -> 'IT'), and the judge passed it.",
+      "example": "IT platforms -> IT",
+      "status": "resolved",
+      "resolved_in": "curator 2026-11-15",
+      "detector": null,
+      "guard": "tests/test_curator.py::test_variants_propose_little_and_well",
+      "rule_files": [
+        "karimi_normalise/curator.py"
+      ]
+    },
+    {
+      "id": "batch_language_copy",
+      "title": "The batch chose the language differently from the API",
+      "stage": "translation",
+      "found": "2026-11-15",
+      "found_by": "parity",
+      "cause": "translate_must_have.py kept its own copy of which language and which model, so the dictionary missed what the library had learnt (0.9% of items).",
+      "example": "Polish items translated with the Romance model in the dictionary only",
+      "status": "resolved",
+      "resolved_in": "dictionary 0.3.2",
+      "detector": null,
+      "guard": "tests/test_library.py::test_batch_decides_the_language_as_the_library_does",
+      "rule_files": [
+        "New project/translate_must_have.py"
+      ]
+    },
+    {
+      "id": "control_character_in_rules",
+      "title": "A rule silently dead: a backspace where \\b was meant",
+      "stage": "rules",
+      "found": "2026-11-15",
+      "found_by": "hand",
+      "cause": "Patches written through a shell heredoc turned \\b into a backspace character in two 0.4.1 patterns.",
+      "example": "Master's student never read as a student",
+      "status": "resolved",
+      "resolved_in": "0.4.2",
+      "detector": null,
+      "guard": "tests/test_rules_042.py::test_no_rule_source_holds_a_control_character",
+      "rule_files": [
+        "karimi/normalise_req.py"
+      ]
+    }
+  ]
+}

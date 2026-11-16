@@ -56,7 +56,10 @@ _BRACKET = re.compile(r"^(?P<out>.+?)\s*\((?P<in>[^()]+)\)$")
 _CATEGORY = {"erp", "crm", "sql", "bi", "ai", "ml", "api", "apis", "it", "ui", "ux", "soc", "iso", "qa", "hr",
              "seo", "etl", "os", "db", "iot", "nlp", "analytics", "project", "sheets", "workspace", "office",
              "cloud", "security", "data", "services", "tools", "platform", "paas", "saas", "iaas", "pm",
-             "management", "development", "implementation", "administration", "rdbms", "dbms", "erp"}
+             "management", "development", "implementation", "administration", "rdbms", "dbms", "erp",
+             # kinds of enterprise software, not products (`SAP EAM` is not `EAM`; 2026-11-15)
+             "eam", "hcm", "scm", "plm", "mes", "wms", "dms", "cms", "ecm", "grc", "itsm", "iam", "hris", "cpq",
+             "edi", "mdm", "pim", "ehs", "tms", "lims", "cad", "cae", "bpm", "rpa", "devops", "mlops", "finops"}
 
 
 def _is_name(form: str, casing: dict[str, str]) -> bool:
@@ -81,8 +84,11 @@ def _variants(core: str, casing: dict[str, str] | None = None) -> list[tuple[str
     v = _VENDOR.sub("", core)
     # what is left must start with a product, not a category: not `Oracle PaaS`
     # -> `PaaS`, `Salesforce CRM management` -> `CRM management`
+    # Since 2026-11-15 every word left must be a name: `AWS MLOps engineering`
+    # was joined to `MLOps engineering`, an activity, because only the first
+    # word was tested.
     if v != core and v.split()[0].lower() not in _CATEGORY and re.search(r"[^\W\d_]", v.split()[0]) \
-            and _is_name(v.split()[0], casing):
+            and all(_is_name(w, casing) for w in v.split()):
         out.append(("vendor_prefix", v))
     m = _VERSION.search(core)
     if m:
@@ -96,7 +102,9 @@ def _variants(core: str, casing: dict[str, str] | None = None) -> list[tuple[str
         # the generic word in lower case is not part of the name: `SQL language`
         # yes, `Spring Framework`, `Power Platform`, `Burp Suite` no
         v = core[: m.start()]
-        if " " not in v and _is_name(v, casing):
+        # A category before the generic word is not a product either (2026-11-15:
+        # `IT platforms` was joined to `IT`); only `SQL language` is SQL.
+        if " " not in v and _is_name(v, casing) and (v.lower() not in _CATEGORY or m.group(0).strip() == "language"):
             out.append(("generic_suffix", v))
     m = _BRACKET.match(core)
     if m:

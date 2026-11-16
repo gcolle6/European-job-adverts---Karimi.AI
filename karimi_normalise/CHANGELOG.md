@@ -138,6 +138,75 @@ Format: version · date · what changed · how it was measured.
   600, since `German is a plus` is optional (the 2026-10-30 convention).
   Leaving out every item kept whole was tried and dropped: it took
   `Written and verbal communication skills` (359 adverts) and 62 more off.
+- **0.4.2** · 2026-11-15 · from the first batch of new postings (1,000
+  adverts sent through the API as an outside caller, 2026-11-15). Cases taken
+  from batch 1 only; batch 2, unseen, measures. *Degrees*: names the rules did
+  not know (`BS`, `MS`, `BA/BS`, `B.E.`, `B.Tech`, `M.Tech`, `MCA`, `BBA`,
+  `associate's degree`, the Dutch `HBO` and `WO`; `BS`, `MS`, `WO` in
+  capitals only, so `MS Office` stays a product); words in front of degrees in
+  alternative (`Relevant bachelor's or master's degree in X` was `Relevant
+  bachelor's X`); `or relevant/related experience` and `or experience` after a
+  degree are a second route, as `or equivalent experience` was (it was glued
+  into the field: `Bachelor in or relevant experience`); `or other relevant
+  advanced degree` counts once; `, Master's preferred` closing a degree item
+  is its own atom; a degree with its fields in a bracket (`Bachelor's degree
+  preferred (Engineering, CS)`) is crossed with them; a degree `and` or right
+  before years of experience is two (`Master's degree 2–3 years of ...`);
+  `Bachelor's degree required in X`, `, or equivalent in X`, `, preferably in
+  X`, `with specialisation in X`; `HBO work and thinking level`, the
+  translator's `HBO werk- en denkniveau`, is one degree; `Bac+4/5` student;
+  two spellings of one degree are one (`Bachelor's / Undergraduate`).
+  *How much it is wanted* is not the requirement: `is a plus`, `preferred`,
+  `desirable`, `would be an advantage` closing an atom are taken off before it
+  is read (`normalise_req.strip_optional`); 100 cores in batch 1 still carried
+  them (`Python is a plus`, `German is strongly preferred` not read as German).
+  An atom closing on a bare `preferred` or `a plus` is optional
+  (`atomise.nice_to_have`), except inside a bracket that names something
+  (`cloud infrastructure (AWS preferred)` stays required).
+  *Two dead patterns*: the 0.4.1 patches went through a shell heredoc, which
+  turned `\b` into a backspace in two places, so `Master's student` was never
+  a student and the guard on `Master's degree X` never stopped anything
+  (`Master in and relevant experience`). `tests/test_rules_042.py` now fails on
+  any control character in a rule source.
+  *Languages the batch never met*: Chinese goes to opus-mt-zh-en, Japanese and
+  Polish, Czech, Lithuanian, Romanian, Hungarian, Slovene, Croatian and the
+  rest to opus-mt-mul-en, chosen by their letters (`translate.script_code`)
+  and, for an item with none, by its posting's. Batch 1 left 134 Chinese and
+  Japanese and ~60 such items untranslated, nearly all `nuovo`. Read on those
+  193 items: zh-en clearly better than mul-en on Chinese; ja-en invents
+  sentences, so Japanese goes to mul-en; mul-en right on about three in four of
+  the others, with errors a reader catches (`niezawodność`, reliability, as
+  `inefficiency`). Not measured against labels.
+  Measured on batch 1, split and decomposition only: inspector flags 69 -> 8
+  (the detector itself extended to the new names, `errors._DEGREE_OPENS_RE`),
+  optional words left in a core 100 -> 6, 2.0% of items change; every change
+  read. Pattern cases 138/138.
+  *The curator* (not a rule source, same day): it joined `IT platforms` ->
+  `IT`, `SAP EAM` -> `EAM` and `AWS MLOps engineering` -> `MLOps
+  engineering`, by taking a vendor or a generic word off in front of a
+  category. Now a closed list of categories (`EAM`, `MLOps`, `CRM`, ...) is
+  never shortened and a vendor must be a whole name; of the 10 joins made so
+  far only those 3 are no longer proposed. They are annulled with `curator
+  --reject`.
+  *The batch's own language choice* (found by parity, same day):
+  `translate_must_have.py` kept a copy of which language and which model, so
+  when the library learnt the letters above the batch did not — 866 of 93,068
+  items (0.9%) the API translates were kept as written, 105 Polish ones went
+  through the Romance model, and parity fell 99.4% -> 98.9%. The batch now
+  calls `translate.item_code` and `translate.model_for`; a test compares the
+  decision, not only the tables (`test_batch_decides_the_language_as_the_library_does`).
+  Then (2026-11-16, rules unchanged): the **archivist** (`archivist.py`) and a
+  wider **inspector**. Batch 1's optional tails and untranslated items were
+  found by hand: no agent looked for them. The inspector now also flags
+  `optional_tail`, `optional_head` (`Desirable experience in design` read as
+  `Desirable`, still open), `untranslated` and `translation_failed`, read off
+  the output so it does not share the translator's blind spots. The archivist
+  keeps every kind found so far in `error_catalogue.json` (cause, fix, guard,
+  the residual a fix left) and reads each run's counts against it: fixed in a
+  later version, residual, back above 3x the residual (yellow), or open, for
+  which it drafts the failing test; a person approves. Batch 1: under 0.4.1
+  232 untranslated, 111 tails, 69 degrees, 13 failed translations; under 0.4.2
+  12, 0, 8 and 2, recorded as the residuals.
 
 ## Dictionary
 
@@ -186,3 +255,20 @@ Format: version · date · what changed · how it was measured.
   decisions called wrong (5.3%, was 7.3%), topics 12% (was 9%; 150 pairs,
   within noise). Explore: Bachelor in Computer Science 873 adverts (was
   747), Master in Computer Science 811 (was 622).
+- **0.3.2** · 2026-11-15 · batch regenerated with rules 0.4.2, the 866 items
+  in other languages translated first. 96,966 cores, 73,274 groups, 48,821
+  topics. Parity with the batch 99.4% of 1,533 items (the same 9 Swedish
+  differences as 0.3.1); lookup agrees with the batch group 99.6% when known,
+  72.5% when placed by similarity; blind count 79.7% exact on the blind half
+  (was 78.0%), 80.9% on all. Judge's reference: 14 of 150 group decisions
+  called wrong (9.3%, was 5.3%; p ~ 0.2, not significant), topics 11% (was
+  12%). Read: all 14 are narrower/broader or a frame over one object
+  (`leading AI adoption` ~ `AI adoption`, `application lifecycle` ~
+  `application lifecycle management`), none a different thing; 0.3.1's 8
+  held two (`Living` ~ `Vivado`, `database access management` ~ `Access
+  database`). Explore: 815 requirements
+  (was 813); `HBO work` and `Completed HBO` are Bachelor; Bachelor (any
+  field) 365 adverts (was 256), Bachelor in Computer Science 903 (873),
+  Master in Computer Science 830 (811); Lithuanian enters. A first 0.3.2 was
+  built the same day without the 866 translations, never published, and
+  discarded.

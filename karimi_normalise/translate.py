@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 
 from karimi import language
@@ -24,6 +25,40 @@ MODEL_FOR = {"de": "opus-mt-de-en", "fr": "opus-mt-fr-en", "nl": "opus-mt-nl-en"
              "pt": "opus-mt-ROMANCE-en"}
 BATCH = 16
 NUM_BEAMS = 4
+
+# Languages the batch never met, found by their script or letters (rules
+# 0.4.2). The first batch of new postings, 2026-11-15, left 134 Chinese and
+# Japanese items and ~60 Polish, Lithuanian, Romanian, Hungarian, Slovene and
+# Croatian ones as written, and nearly all were `nuovo`. Read on that batch:
+# opus-mt-zh-en translates Chinese clearly better than the multilingual
+# model; opus-mt-ja-en invents sentences (`I'm going to give you a little bit
+# of an example`), so Japanese goes to the multilingual one. The multilingual
+# model is right on about three items in four of the others, with errors a
+# reader would catch (`niezawodność`, reliability, as `inefficiency`): better
+# than no reading, and every such requirement says `translated_by`.
+EXTRA_MODEL_FOR = {"zh": "opus-mt-zh-en", "mul": "opus-mt-mul-en"}
+_KANA_RE = re.compile(r"[぀-ヿ]")
+_HAN_RE = re.compile(r"[一-鿿]")
+_OTHER_SCRIPT_RE = re.compile(r"[가-힯Ѐ-ӿͰ-Ͽ]")    # Hangul, Cyrillic, Greek
+# Letters none of the seven languages above writes: Polish, Czech, Slovak,
+# Romanian, Baltic, Hungarian, Croatian, Turkish.
+_OTHER_LATIN_RE = re.compile("[ąęłńśźżěščřžůďťňľĺŕășțşţėįųūőűğıćđĄĘŁŃŚŹŻĚŠČŘŽŮĎŤŇĽĹŔĂȘȚŞŢĖĮŲŪŐŰĞİĆĐ]")
+
+
+def script_code(text: str) -> str | None:
+    """`zh`, `mul` or None, from the letters alone: no word list covers these languages."""
+    if _KANA_RE.search(text):
+        return "mul"
+    if _HAN_RE.search(text):
+        return "zh"
+    if _OTHER_SCRIPT_RE.search(text) or _OTHER_LATIN_RE.search(text):
+        return "mul"
+    return None
+
+
+def model_for(code: str) -> str:
+    return MODEL_FOR.get(code) or EXTRA_MODEL_FOR[code]
+
 
 _models: dict[str, tuple] = {}
 
@@ -39,12 +74,27 @@ def item_code(item: str, posting_items: list[str] | None = None, hint: str | Non
 
     The batch decides an item once, from the first posting it appears in; here
     it is decided in the posting at hand, so a shared item can differ.
+
+    Since rules 0.4.2 an item the word lists leave undecided is read by its
+    letters (`script_code`), and so is its posting when most of its items are
+    in such a language: `Poznavanje rada u Git-u` has no letter to show it is
+    Croatian, its neighbours do.
     """
     own = language.detect(item)[0]
-    if not own and posting_items:
+    if own:                     # English too: `Work on site in Łódź` stays as written
+        return CODE.get(own)
+    by_script = script_code(item)
+    if by_script:
+        return by_script
+    if posting_items:
         own = language.detect(" | ".join(posting_items))[0]
-    own = own or hint
-    return CODE.get(own) if own else None
+        if own:
+            return CODE.get(own)
+        codes = [script_code(i) for i in posting_items]
+        found = [c for c in codes if c]
+        if found and len(found) * 2 >= len(codes):
+            return max(set(found), key=found.count)
+    return CODE.get(hint) if hint else None
 
 
 def _model(name: str):
@@ -110,7 +160,7 @@ def translate(pairs: list[tuple[str, str]], cache: TranslationCache | None = Non
         if hit is not None:
             out[(code, text)] = hit
         else:
-            by_model.setdefault(MODEL_FOR[code], []).append((code, text))
+            by_model.setdefault(model_for(code), []).append((code, text))
     if not by_model:
         return out
     import torch

@@ -55,7 +55,33 @@ def test_fingerprint_matches_version():
 
 def test_translation_settings_match_batch():
     tm = _load("translate_must_have")
-    assert (tr.CODE, tr.MODEL_FOR, tr.NUM_BEAMS, tr.BATCH) == (tm.CODE, tm.MODEL_FOR, tm.NUM_BEAMS, tm.BATCH)
+    assert (tr.CODE, tr.NUM_BEAMS, tr.BATCH) == (tm.CODE, tm.NUM_BEAMS, tm.BATCH)
+
+
+def test_batch_decides_the_language_as_the_library_does():
+    """Comparing the tables was not enough: on 2026-11-15 the batch kept its own
+    decision and missed the languages the library had learnt to read (0.9% of items)."""
+    tm = _load("translate_must_have")
+    posting = ["Dobro poznaješ C# i OOP", "Poznavanje rada u Git-u", "Strong knowledge of SQL",
+               "znasz rozwiązanie Azure DevOps", "Abgeschlossenes Studium der Informatik",
+               "精通 C++/Python，熟悉 Linux", "Minimum 1 év mérnöki tapasztalat"]
+    got = [c if isinstance(c, str) else None for c in tm.item_languages([{"must_have": posting}]).code]
+    assert got == [tr.item_code(it, posting) for it in posting]
+    assert got[3] == "mul"
+
+
+@pytest.mark.parametrize("item, posting, code", [
+    ("精通 C++/Python，熟悉 Linux", None, "zh"),
+    ("高い自主性および主体性", None, "mul"),                       # kana: ja-en invents sentences
+    ("Laisvas anglų kalbos mokėjimas", None, "mul"),
+    ("Poznavanje rada u Git-u", ["Dobro poznaješ C# i OOP", "Poznaješ SQL i relacijske baze podataka",
+                                 "Poznavanje rada u Git-u"], "mul"),     # its neighbours show the language
+    ("Strong knowledge of SQL", ["Strong knowledge of SQL", "Mieszkasz w Garwolinie lub okolicach",
+                                 "Experience with Python", "Team player"], None),
+    ("Abgeschlossenes Studium der Informatik", None, "de"),
+])
+def test_languages_the_batch_never_met_are_read_by_their_letters(item, posting, code):
+    assert tr.item_code(item, posting) == code
 
 
 def test_split_carries_versions():

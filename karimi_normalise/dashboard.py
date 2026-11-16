@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import json
 
+from .archivist import public as archivist_public
+from .archivist import summary as archivist_summary
 from .store import now
 from .versions import RULES_VERSION
 
@@ -72,7 +74,7 @@ def _error_table(counts: dict, of: dict, runs: int, split: dict | None) -> dict:
 _RUN = ("job", "checked", "source", "state", "overall", "postings", "requirements", "seconds", "lights", "judge",
         "canaries_missed", "rules_version", "dict_version")
 _DETAIL = ("signals", "findings", "judge_detail", "canaries", "split_suspects", "degree_suspects", "to_check",
-           "curator")
+           "curator", "archivist")
 
 
 def _with_texts(rows: list[dict] | None) -> list[dict]:
@@ -99,7 +101,7 @@ def _run(store, r: dict) -> dict:
         detail = {**run_detail(read_json(store, jf(r["job"], "report.json")), c.get("findings") or [],
                                c.get("judge"), c.get("canaries"), c.get("split_suspects"),
                                c.get("degree_suspects")),
-                  "curator": c.get("curator")}
+                  "curator": c.get("curator"), "archivist": archivist_public(c.get("archivist"))}
     e = r.get("errors")
     out.update(detail, errors={"of": e.get("of"), "rows": _with_texts(e.get("rows"))} if e else None)
     for k in ("split_suspects", "degree_suspects"):
@@ -132,11 +134,14 @@ PENDING_HOURS = 24
 
 
 def _inspector(runs: list[dict]) -> dict:
-    """The inspector agent's log: per run, the degrees it found read wrong, and the
-    rules version each kind was fixed in. Counts and codes only."""
-    from .errors import CAUSES, DEGREE_DETECTORS, INSPECTOR, RESOLVED_IN
+    """The inspector agent's log: per run, what each of its detectors found, and
+    the rules version each kind was fixed in (the archivist's catalogue). Counts
+    and codes only."""
+    from .archivist import by_detector
+    from .errors import CAUSES, INSPECTOR, INSPECTOR_DETECTORS
 
-    entries, totals = [], {k: 0 for k in DEGREE_DETECTORS}
+    resolved = {k: e.get("resolved_in") if e["status"] == "resolved" else None for k, e in by_detector().items()}
+    entries, totals = [], {k: 0 for k in INSPECTOR_DETECTORS}
     for r in runs:
         d = r.get("degree_suspects")
         if not d:
@@ -147,7 +152,7 @@ def _inspector(runs: list[dict]) -> dict:
         entries.append({"job": r.get("job"), "checked": r.get("checked"), "rules_version": r.get("rules_version"),
                         "requirements": (d.get("of") or {}).get("requirements"), "found": found})
     return {"agent": INSPECTOR, "runs": len(entries), "totals": totals,
-            "detectors": [{"key": k, "text": CAUSES[k], "resolved_in": RESOLVED_IN.get(k)} for k in DEGREE_DETECTORS],
+            "detectors": [{"key": k, "text": CAUSES[k], "resolved_in": resolved.get(k)} for k in INSPECTOR_DETECTORS],
             "entries": entries[-20:][::-1]}
 
 
@@ -244,6 +249,7 @@ def aggregate(store, quality: dict | None, dict_version: str, judge_reference: d
         "signals": lights,
         "judge": {k: {"runs": len(v), "mean_flagged_share": round(sum(v) / len(v), 4)} for k, v in judge.items()},
         "errors": _error_table(errors, of, with_errors, (quality or {}).get("split_errors")),
-        "agents": {"curator": _curator(store), "inspector": _inspector(runs), "publisher": _publisher(store)},
+        "agents": {"curator": _curator(store), "inspector": _inspector(runs), "publisher": _publisher(store),
+                   "archivist": archivist_summary(runs)},
         "runs": _pending(store, {r.get("job") for r in runs}) + [_run(store, r) for r in runs[-LAST:]][::-1],
     }

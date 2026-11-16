@@ -54,7 +54,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import curator, errors, explore
+from . import archivist, curator, errors, explore
 from .store import jf, now, open_store, read_json, write_json
 
 STALE_MINUTES = 90          # a chunk of 500 postings takes 5-15 minutes; 90 is six chunks of silence
@@ -341,16 +341,20 @@ def check(job: str, store=None, judge_url: str | None = None, reference: dict | 
     # judge that passed its planted pairs. Splitting errors are measured per
     # version on hand counts (`errors.py` says why); per run the shape rules
     # only mark suspects, kept here and never counted.
-    err = err_examples = suspects = degrees = None
+    err = err_examples = suspects = degrees = arch = None
     if postings is not None:
         norm = errors.normalise_errors(j) if j is not None and len(j) and canaries["trusted"] else None
         err, err_examples = errors.table(norm), errors.examples(norm)
         sp = errors.split_suspects(postings)
         suspects = {"of": sp["of"], "rows": errors.table(sp)["rows"], "examples": errors.examples(sp)}
-        # the inspector agent: degrees read wrong (`errors.degree_flag`), detected only
-        dg = errors.degree_suspects(postings)
+        # the inspector agent (`errors.inspect`), detected only; kept under its
+        # first name, `degree_suspects`, which older history lines carry
+        dg = errors.inspect(postings)
         degrees = {"agent": errors.INSPECTOR, "of": dg["of"], "rows": errors.table(dg)["rows"],
                    "examples": errors.examples(dg)}
+        # the archivist agent: what each kind found means, against its catalogue
+        arch = archivist.review(degrees, s.get("rules_version"), job)
+        findings += arch["findings"]
 
     # The curator agent's proposals for this run (`curator.py`), put to the
     # judge only if it passed its planted pairs: otherwise they wait, detected.
@@ -373,13 +377,13 @@ def check(job: str, store=None, judge_url: str | None = None, reference: dict | 
                                "canaries_missed": canaries["missed"] if canaries else None,
                                "errors": err,
                                **run_detail(report, findings, judged, canaries, suspects, degrees),
-                               "curator": cur,
+                               "curator": cur, "archivist": archivist.public(arch),
                                "rules_version": s.get("rules_version"), "dict_version": s.get("dict_version")})
 
     overall = max((f["light"] for f in findings), key=_ORDER.get, default="green")
     out = {"job": job, "checked": now(), "overall": overall, "findings": findings, "judge": judged,
            "canaries": canaries, "errors": err, "error_examples": err_examples,
-           "split_suspects": suspects, "degree_suspects": degrees, "curator": cur,
+           "split_suspects": suspects, "degree_suspects": degrees, "curator": cur, "archivist": arch,
            "judge_model": JUDGE_NAME if judge_url else None, "judge_prompt": JUDGE_PROMPT if judge_url else None,
            "to_check": {k: len(v) for k, v in (report or {}).get("to_check", {}).items()},
            "thresholds": {"p_red": P_RED, "p_yellow": P_YELLOW, "min_pairs": MIN_PAIRS, "ref_min_pairs": REF_MIN_PAIRS,

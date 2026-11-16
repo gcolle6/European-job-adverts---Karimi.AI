@@ -280,6 +280,44 @@ dall'export di agosto e si caricava a mano su GitHub. Il codice è in
 Ogni decisione, entrato o no e perché, è nella pagina Metrics alla voce "The
 publisher".
 
+### Regole 0.4.2 (2026-11-15)
+
+Dal primo lotto di annunci nuovi (1.000, mandati all'API come un esterno). I
+casi si prendono solo dal lotto 1; il lotto 2, mai letto, serve a misurare.
+
+* **Titoli di studio.** Causa: nomi che le regole non conoscevano (`BS`, `MS`,
+  `BA/BS`, `B.E.`, `B.Tech`, `MCA`, `HBO`, `WO`, `associate's`), parole davanti
+  a più titoli (`Relevant bachelor's or master's`), `or relevant experience`
+  incollato al campo. Soluzione: nomi nuovi (`BS`, `MS`, `WO` solo maiuscoli,
+  così `MS Office` resta un prodotto), l'esperienza come seconda via, il campo
+  tra parentesi incrociato con il titolo. Lotto 1: segnalazioni
+  dell'Inspector 69 → 8.
+* **"is a plus", "preferred" dentro il requisito.** Causa: la coda che dice
+  quanto è voluto restava nel nucleo (`Python is a plus`). Soluzione: si toglie
+  prima di normalizzare (`normalise_req.strip_optional`) e rende il requisito
+  facoltativo. Lotto 1: 100 → 6.
+* **Due regole morte da due giorni.** Causa: le patch 0.4.1 erano passate da un
+  heredoc della shell, che ha trasformato `\b` in un carattere di backspace.
+  Soluzione: si scrive codice solo con l'editor; un test fallisce se un file di
+  regole contiene caratteri di controllo.
+* **Lingue fuori dalle 7.** Causa: cinese, giapponese, polacco, lituano,
+  ungherese... restavano non tradotti e quasi tutti `nuovo`. Soluzione: il
+  cinese va a `opus-mt-zh-en`; il giapponese e le altre lingue, riconosciute
+  dalle lettere, vanno a `opus-mt-mul-en` (il modello giapponese inventava
+  frasi). Il multilingue sbaglia circa una voce su quattro; ogni requisito
+  tradotto lo dice in `translated_by`.
+* **Il batch decideva la lingua per conto suo.** Causa: lo script del batch
+  aveva una copia sua della logica delle lingue. Così il dizionario lasciava
+  non tradotte 866 voci (0,9%) che l'API traduce, e ne traduceva 105 polacche
+  con il modello delle lingue romanze. Soluzione: una copia sola, quella della
+  libreria; un test confronta la scelta, non solo le tabelle.
+* **Curator.** Causa: tre unioni sbagliate (`IT platforms` → `IT`, `SAP EAM`
+  → `EAM`, `AWS MLOps engineering` → `MLOps engineering`), perché toglieva un
+  fornitore o una parola generica anche davanti a una categoria. Soluzione:
+  una lista di categorie (EAM, MLOps, CRM...) che non si accorciano mai, e il
+  fornitore deve essere un nome intero. Le tre unioni si annullano con
+  `curator --reject`.
+
 ### Come si migliora dopo il rilascio
 
 Sì, split e normalizzazione restano migliorabili. Il percorso è fisso, così un

@@ -101,7 +101,9 @@ def test_variants_propose_little_and_well():
     assert curator._variants("SQL language", casing) == [("generic_suffix", "SQL")]
     # measured as wrong on the dictionary's own cores, 2026-11-11
     for core in ("ISO 27001", "Microsoft 365", "SOC 2", "Information Technology", "SAP ERP", "Oracle PaaS",
-                 "Salesforce CRM management", "versions 8", "Java frameworks", "Power Platform"):
+                 "Salesforce CRM management", "versions 8", "Java frameworks", "Power Platform",
+                 # joined by the judge in the first batch of new postings, overruled 2026-11-15
+                 "IT platforms", "SAP EAM", "AWS MLOps engineering"):
         assert curator._variants(core, casing) == [], core
 
 

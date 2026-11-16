@@ -178,6 +178,15 @@ def test_a_run_too_small_to_read_is_not_red_for_its_signals(tmp_path):
     ({"atom": "Master data management", "space": "", "core": "Master data management"}, None),
     ({"atom": "Master’s degree in Physics", "space": "education", "core": "Master in Physics"}, None),
     ({"atom": "Degree in Education", "space": "education", "core": "Degree in Education"}, None),
+    # what rules 0.4.1 did with the first batch of new postings (2026-11-15)
+    ({"atom": "BA/BS Degree in STEM", "space": "", "core": "BA/BS Degree in STEM"}, "degree_not_read"),
+    ({"atom": "B.E. in Mechatronics", "space": "", "core": "B.E. in Mechatronics"}, "degree_not_read"),
+    ({"atom": "HBO", "space": "", "core": "HBO"}, "degree_not_read"),
+    ({"atom": "Relevant bachelor's Machine Learning", "space": "", "core": "bachelor's Machine Learning"},
+     "degree_not_read"),
+    ({"atom": "x", "space": "education", "core": "Bachelor in or relevant experience"}, "degree_field_odd"),
+    ({"atom": "MS Office", "space": "", "core": "Microsoft Office"}, None),
+    ({"atom": "Experience with BS 7799", "space": "", "core": "BS 7799"}, None),
 ])
 def test_the_inspector_finds_degrees_read_wrong(r, flag):
     assert errors.degree_flag(r) == flag
@@ -194,7 +203,8 @@ def test_the_inspector_reaches_the_run_and_the_log(tmp_path):
     assert run["degree_suspects"]["of"]["requirements"] >= 1
     log = out["agents"]["inspector"]
     assert log["runs"] == 1 and log["entries"][0]["job"] == "dddddddddddddddd"
-    assert {d["key"] for d in log["detectors"]} == set(errors.DEGREE_DETECTORS)
+    assert {d["key"] for d in log["detectors"]} == set(errors.INSPECTOR_DETECTORS)
+    assert out["agents"]["archivist"]["entries"]
 
 
 def test_a_run_shows_before_its_check(tmp_path):
