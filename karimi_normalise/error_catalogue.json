@@ -301,6 +301,23 @@
       "cause": "A list before 'and services like ...' or with a category in it is kept whole.",
       "example": "Experience with Docker, Kubernetes, and services like Kafka -> 'Docker, Kubernetes, and services'",
       "fix_hint": "No reliable detector (list_not_separated in split_flags was imprecise). Watched by the explorer."
+    },
+    {
+      "id": "acronym_read_as_plural",
+      "title": "An acronym ending in S read as a plural",
+      "stage": "normalisation",
+      "found": "2026-11-16",
+      "found_by": "hand",
+      "cause": "The fold that joins a plural to its singular (normalise_req.canon) takes the S off an acronym, so IDMS and IDM, HRIS and HRI become one key.",
+      "example": "SAP IDM joined by the curator to IDMS",
+      "status": "open",
+      "resolved_in": null,
+      "detector": null,
+      "guard": "tests/test_curator.py::test_an_acronym_ending_in_s_is_not_a_plural",
+      "rule_files": [
+        "karimi/normalise_req.py"
+      ],
+      "fix_hint": "In canon, leave the last word alone when it is written in capitals; the curator already refuses such joins (curator._same_name)."
     }
   ]
 }

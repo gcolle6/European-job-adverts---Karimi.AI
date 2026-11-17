@@ -247,6 +247,21 @@ Format: version · date · what changed · how it was measured.
   publisher lets a run in unless its estimate is red (a shape no longer
   blocks: batch 2 was kept out at 2.0264 requirements per item against
   2.0253). Batch 2 under the new rule: about 4.4% estimated wrong, yellow.
+  Then **a person's review** (`review.py`, 2026-11-17): the error estimate
+  leaves out splitting errors and unnamed kinds, so no run could say "X
+  errors". The project lead, signed in, reads 100 items drawn at random from a
+  run (seeded by the job, kept), without the agents' verdicts, and marks each
+  correct or incorrect with a note; from 50 on it can be sent, and sent again
+  with more. The site shows the share wrong with its Wilson interval, whether
+  the items were taken in order, and the inspector against it (precision,
+  recall) beside the check's estimate. Items and notes stay in the store.
+  And **the curator never takes a vendor off** (the user's call, 2026-11-16):
+  `vendor_prefix` is gone after `Google Studio` -> `Studio` and `AWS
+  GuardDuty` -> `GuardDuty`, both passed by the judge; `curator --reject-detector
+  vendor_prefix` overrules every join it made. A join also needs the known core
+  to be the form itself or its plural, and an acronym has none: `SAP IDM` had
+  reached `IDMS` through the lookup's plural fold (the fold itself, in
+  `canon`, is an open rule for 0.4.3).
 
 ## Dictionary
 

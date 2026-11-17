@@ -364,6 +364,20 @@ run**.
 * I run controllati prima vengono riletti con la stessa regola. Explore accetta
   un run se gli errori non sono rossi.
 
+### Revisione umana e Curator (2026-11-17)
+
+* **Revisione di una persona**: l'unico numero che conta tutti gli errori,
+  split compreso. Il responsabile, con il login, legge 100 righe estratte a
+  caso da un run, senza vedere cosa hanno detto gli agenti, e segna corretta o
+  incorretta con una nota; si invia da 50 in su. Sul sito: quota sbagliata con
+  il margine al 95%, e l'Inspector misurato contro questa etichetta (precisione
+  e richiamo). Righe e note restano private.
+* **Il Curator non toglie mai il fornitore**: `Google Studio` non è `Studio`,
+  e `AWS GuardDuty` chiede AWS. Le unioni di questo tipo si annullano tutte;
+  quelle con parola generica o versione dopo restano (`EDA tools` → `EDA`).
+  Una sigla che finisce in S non è un plurale (`SAP IDM` era finito su
+  `IDMS`): corretto nel Curator, e da correggere nelle regole con la 0.4.3.
+
 ### Come si migliora dopo il rilascio
 
 Sì, split e normalizzazione restano migliorabili. Il percorso è fisso, così un

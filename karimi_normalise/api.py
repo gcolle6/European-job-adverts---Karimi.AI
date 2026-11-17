@@ -269,6 +269,71 @@ def admin_decide(d: Decision, request: Request) -> dict:
     return {k: out[k] for k in ("job", "kind", "decision", "at")}
 
 
+# A person's review of a run (`review.py`): the human label the agents are measured against.
+
+
+class Label(BaseModel):
+    n: int
+    verdict: str = Field(..., pattern="^(correct|incorrect)$")
+    note: str = ""
+
+
+class Review(BaseModel):
+    labels: list[Label]
+
+
+@app.get("/v1/admin/review")
+def admin_review_runs(request: Request, last: int = 20) -> dict:
+    """Runs that can be reviewed (done, with requirements), newest first, and how far each review got."""
+    _admin(request)
+    from . import review
+
+    lines = [json.loads(x) for x in (_store.read_text(check.HISTORY) or "").splitlines() if x.strip()]
+    seen, runs = set(), []
+    for r in lines[::-1]:
+        if r.get("state") != "done" or not r.get("requirements") or r["job"] in seen:
+            continue
+        seen.add(r["job"])
+        s = review.score(_store, r["job"])
+        runs.append({"job": r["job"], "checked": r.get("checked"), "source": r.get("source"),
+                     "postings": r.get("postings"), "requirements": r.get("requirements"),
+                     "labelled": s["labelled"] if s else 0, "at": s["at"] if s else None})
+        if len(runs) >= last:
+            break
+    return {"size": review.SIZE, "min_labels": review.MIN_LABELS, "runs": runs}
+
+
+@app.get("/v1/admin/review/{job}")
+def admin_review_sample(job: str, request: Request) -> dict:
+    """The run's sample as the reviewer sees it, and the labels already sent, to go on from."""
+    _admin(request)
+    from . import review
+
+    if not _JOB_ID.match(job) or not _store.exists(jf(job, "results.jsonl")):
+        raise HTTPException(404, "no such run")
+    subs = review.submissions(_store, job)
+    return {"job": job, "min_labels": review.MIN_LABELS,
+            "items": review.for_reviewer(review.sample(_store, job)),
+            "labels": subs[-1]["labels"] if subs else []}
+
+
+@app.post("/v1/admin/review/{job}")
+def admin_review_submit(job: str, body: Review, request: Request) -> dict:
+    """Keep the labels (at least MIN_LABELS) and answer the run's measure: counts only."""
+    email = _admin(request)
+    from . import review
+
+    if not _JOB_ID.match(job) or not _store.exists(jf(job, "results.jsonl")):
+        raise HTTPException(404, "no such run")
+    try:
+        out = review.submit(_store, job, [lab.model_dump() for lab in body.labels], email)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from None
+    print(json.dumps({"severity": "INFO", "event": "karimi_review", "job": job, "labelled": out["labelled"],
+                      "incorrect": out["incorrect"]}), flush=True)
+    return out
+
+
 @app.get("/v1/explore")
 def explore_index() -> dict:
     """The explorer's index: every requirement shown, with its count of adverts. No text of an advert."""

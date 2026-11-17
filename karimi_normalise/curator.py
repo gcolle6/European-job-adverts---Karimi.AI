@@ -81,15 +81,11 @@ def _variants(core: str, casing: dict[str, str] | None = None) -> list[tuple[str
     27001` -> `ISO`, `Microsoft 365` -> `Microsoft`, `SAP ERP` -> `ERP`."""
     casing = casing or {}
     out = []
-    v = _VENDOR.sub("", core)
-    # what is left must start with a product, not a category: not `Oracle PaaS`
-    # -> `PaaS`, `Salesforce CRM management` -> `CRM management`
-    # Since 2026-11-15 every word left must be a name: `AWS MLOps engineering`
-    # was joined to `MLOps engineering`, an activity, because only the first
-    # word was tested.
-    if v != core and v.split()[0].lower() not in _CATEGORY and re.search(r"[^\W\d_]", v.split()[0]) \
-            and all(_is_name(w, casing) for w in v.split()):
-        out.append(("vendor_prefix", v))
+    # No `vendor_prefix` since 2026-11-16, the user's call: the vendor is never
+    # taken off. `AWS GuardDuty` asks for AWS, `Google Studio` is not `Studio`;
+    # the judge had passed both. `_VENDOR` stays for the day a bare service is
+    # joined the other way, to `vendor service`, once a person has checked the
+    # service is that vendor's alone.
     m = _VERSION.search(core)
     if m:
         v = core[: m.start()]
@@ -112,7 +108,20 @@ def _variants(core: str, casing: dict[str, str] | None = None) -> list[tuple[str
     return [(d, f.strip()) for d, f in out if f.strip()]
 
 
-DETECTORS = ("vendor_prefix", "version", "generic_suffix", "bracket")
+DETECTORS = ("version", "generic_suffix", "bracket")
+
+
+def _same_name(form: str, known: str) -> bool:
+    """The dictionary's lookup folds a plural on the last word, which reads an
+    acronym ending in S as one: `SAP IDM` was joined to `IDMS` (2026-11-16).
+    A join needs the known core to be the form itself, case aside, or its
+    plural when the form is a word, not an acronym."""
+    if form.casefold() == known.casefold():
+        return True
+    short, long_ = sorted((form, known), key=len)
+    if long_.split()[-1].isupper():            # `IDMS` is an acronym, not the plural of `IDM`
+        return False
+    return long_.casefold() in (short.casefold() + "s", short.casefold() + "es")
 
 
 def detect(postings: list[dict], dictionary, job: str = "") -> list[dict]:
@@ -129,7 +138,7 @@ def detect(postings: list[dict], dictionary, job: str = "") -> list[dict]:
                 continue
             for detector, form in _variants(core, dictionary.casing.get("en", {})):
                 hit = dictionary._known(space, form)
-                if hit is not None and hit.status == "known" and hit.group:
+                if hit is not None and hit.status == "known" and hit.group and _same_name(form, hit.via or form):
                     seen.add(key)
                     out.append({"kind": "alias", "space": space, "variant": core, "target_core": hit.via or form,
                                 "target_group": hit.group, "target_topic": hit.topic,
@@ -212,6 +221,14 @@ def attach(dictionary, store) -> int:
     return len(entries)
 
 
+def standing(store, detector: str) -> list[dict]:
+    """The joins a detector made that are still applied: resolved, and not overruled since."""
+    last: dict[tuple, dict] = {}
+    for e in log(store):
+        last[(e.get("space", ""), nr.canon(e.get("variant", "")))] = e
+    return [e for e in last.values() if e.get("status") == "resolved" and e.get("detector") == detector]
+
+
 def overrule(store, variant: str, space: str = "", by: str = "person", why: str = "") -> dict:
     """A person's verdict on an agent's entry: written as `rejected`, so `aliases` drops it.
     The agent's own line stays in the log; the log is never edited, only added to."""
@@ -227,13 +244,18 @@ def main(argv: list[str] | None = None) -> None:
     from .store import open_store
 
     p = argparse.ArgumentParser(description="The curator's log: list it, or overrule an entry.")
-    p.add_argument("--reject", metavar="VARIANT", help="a person rejects the agent's join of this spelling")
+    p.add_argument("--reject", metavar="VARIANT", nargs="+", help="a person rejects the agent's join of these spellings")
+    p.add_argument("--reject-detector", metavar="DETECTOR",
+                   help="a person rejects every join this detector made that still stands (vendor_prefix, 2026-11-16)")
     p.add_argument("--space", default="")
     p.add_argument("--why", default="")
     a = p.parse_args(argv)
     store = open_store()
-    if a.reject:
-        print(json.dumps(overrule(store, a.reject, a.space, why=a.why), ensure_ascii=False))
+    for variant in a.reject or []:
+        print(json.dumps(overrule(store, variant, a.space, why=a.why), ensure_ascii=False))
+    if a.reject_detector:
+        for e in standing(store, a.reject_detector):
+            print(json.dumps(overrule(store, e["variant"], e.get("space", ""), why=a.why), ensure_ascii=False))
     for e in log(store)[-30:]:
         print(f"{e.get('status', ''):9} {e.get('variant', '')[:40]:40} -> {e.get('target_name', '')[:30]:30} "
               f"{e.get('resolved_by', '')}")

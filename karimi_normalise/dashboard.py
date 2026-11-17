@@ -18,6 +18,7 @@ from .archivist import public as archivist_public
 from .archivist import summary as archivist_summary
 from .explorer import public as explorer_public
 from .explorer import summary as explorer_summary
+from .review import summary as review_summary
 from .store import now
 from .versions import RULES_VERSION
 
@@ -302,6 +303,8 @@ def aggregate(store, quality: dict | None, dict_version: str, judge_reference: d
         },
         "signals": lights,
         "novelty": novelty,
+        # a person's reviews of runs (`review.py`): the human measure, agents against it
+        "review": review_summary(store, list(dict.fromkeys(r["job"] for r in done if r.get("job")))),
         "error_estimate": {
             "runs": len(estimates),
             "mean_share": round(sum(e["share"] for e in estimates) / len(estimates), 4) if estimates else None,

@@ -134,7 +134,9 @@ def normalise_requirement(atom: str, translated: bool) -> str:
 
 _YEARS_RE = re.compile(
     r"(?:\b(?:at\s+least|minimum(?:\s+of)?|min\.?|more\s+than|over|up\s+to)\s+)?"
-    r"\b(?P<a>\d{1,2})\s*(?P<plus>\+)?\s*(?:(?:-|–|to)\s*(?P<b>\d{1,2})\s*\+?\s*)?"
+    # a number written out since rules 0.4.3: `At least five years of ...`
+    r"\b(?P<a>\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen)\s*(?P<plus>\+)?\s*"
+    r"(?:(?:-|–|to)\s*(?P<b>\d{1,2})\s*\+?\s*)?"
     r"(?:years?|yrs?)(?:['’]s?)?(?:\s+of)?(?!\w)|"
     # `equivalent years of experience` (rules 0.4.2): no number, and not the core
     r"\b(?P<vague>several|many|a\s+few|multiple|some|a\s+couple\s+of|first|equivalent|relevant|comparable)"
@@ -370,6 +372,10 @@ _HEAD_RE2 = re.compile(
     + r")\b(?P<post>.*)$", re.I)
 
 
+_NUMBER_WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8,
+                 "nine": 9, "ten": 10, "twelve": 12, "fifteen": 15}
+
+
 def _years(text: str) -> tuple[str, int | None, int | None, str]:
     m = _YEARS_RE.search(text)
     if not m:
@@ -378,7 +384,7 @@ def _years(text: str) -> tuple[str, int | None, int | None, str]:
         lo = hi = None
         raw = (m.group("vague") or m.group("multi")).lower()
     else:
-        lo = int(m.group("a"))
+        lo = int(m.group("a")) if m.group("a").isdigit() else _NUMBER_WORDS[m.group("a").lower()]
         hi = int(m.group("b")) if m.group("b") else (None if m.group("plus") or "least" in m.group(0).lower()
                                                      or "minimum" in m.group(0).lower() else lo)
         raw = m.group(0).strip()
@@ -393,23 +399,91 @@ def _years(text: str) -> tuple[str, int | None, int | None, str]:
 # read as no degree): 100 atoms of the 16,098 in the first batch of new
 # postings, 2026-11-15. Rules 0.4.2. `asset`, `plus` and `benefit` only after
 # a verb or an article: `digital asset` is a requirement.
-_ADJ = r"(?:big|strong|real|huge|definite|great|significant|distinct|nice|clear|additional|major|key)"
+_ADJ = (r"(?:big|strong|real|huge|definite|great|significant|distinct|nice|clear|additional|major|key|"
+        r"express|added|particular|decisive|important)")
 _BE = r"(?:(?:(?:this|that|it|which)\s+)?(?:is|are|would\s+be|will\s+be|being))"
 _MARK = (rf"(?:(?:{_BE}|(?:is\s+|are\s+)?(?:also\s+)?considered(?:\s+as)?|seen\s+as)\s+)"
          rf"(?:an?\s+)?(?:{_ADJ}\s+)?(?:plus|advantage|asset|bonus|benefit)|"
          rf"an?\s+(?:{_ADJ}\s+)?(?:plus|advantage|bonus)|"
          rf"(?:{_BE}\s+)?(?:(?:very|highly|strongly|much)\s+)?(?:preferred|desirable|advantageous)|"
          rf"{_BE}\s+(?:(?:very|highly|much)\s+)?(?:beneficial|appreciated|welcome|valued|desired)|"
-         rf"(?:{_BE}\s+)?nice[- ]to[- ]have")
+         rf"(?:{_BE}\s+)?nice[- ]to[- ]have|"
+         # Rules 0.4.3, from batch 2: how the translator writes the French
+         # `apprécié(e)`, `valorisé`, `vítány` and the German `von Vorteil` —
+         # no verb in front (`Green Belt appreciated`, `SAP Advantage`,
+         # `programming advantage`, `languages of advantage`). Not after
+         # `competitive` or `strategic`, where the advantage is the object.
+         r"(?:(?:very|highly|much|also)\s+)?(?:appreciated|valued|welcome|desired)|"
+         r"(?<!competitive\s)(?<!strategic\s)(?:of\s+)?advantage|"
+         # `is a plus, but not required`: optional said twice
+         rf"(?:(?:{_BE}\s+)?an?\s+(?:{_ADJ}\s+)?plus,?\s*)?(?:but|though)\s+not\s+(?:required|mandatory|essential)")
 # The marker alone in a bracket, or bare at a word's start: `(AWS preferred)`
 # names AWS and stays for the bracket rule, and `software preferred` is not
 # `softw` + `are preferred`.
 _OPTIONAL_TAIL_RE = re.compile(rf"\s*[,;:–—-]?\s*(?:\(\s*(?:{_MARK})\s*\)|\b(?:{_MARK}))\s*[.!]?$", re.I)
+# Opening the requirement (rules 0.4.3; `optional_head` in the archivist's
+# catalogue): `Desirable experience in design` was read as `Desirable`.
+# `Preferred` only before a frame word: `Preferred Shares` is a name.
+_OPTIONAL_HEAD_RE = re.compile(
+    r"^(?:desirable|advantageous|optional(?:ly)?|nice[- ]to[- ]have|an?\s+plus|bonus|"
+    r"preferred(?=\s+(?:experience|knowledge|skills?|qualifications?|background|familiarity|exposure)\b))"
+    r"\s*:?\s+(?=\S)", re.I)
+# Before a closing bracket of examples: `Relevant certifications preferred
+# (e.g., CISSP, CISM)` (rules 0.4.3)
+_MARK_BEFORE_BRACKET_RE = re.compile(rf"\s+(?:{_MARK})(?=\s*\([^()]*\)\s*[.!]?$)", re.I)
 
 
 def strip_optional(text: str) -> str:
-    """The requirement without the words saying it is optional (`_OPTIONAL_TAIL_RE`)."""
-    return _OPTIONAL_TAIL_RE.sub("", text).strip()
+    """The requirement without the words saying it is optional: closing it
+    (`_OPTIONAL_TAIL_RE`), before its examples, or opening it."""
+    t = _OPTIONAL_HEAD_RE.sub("", text)
+    t = _MARK_BEFORE_BRACKET_RE.sub("", t)
+    return _OPTIONAL_TAIL_RE.sub("", t).strip()
+
+
+# How the requirement is asked, closing it (rules 0.4.3; `required_left` in
+# the archivist's catalogue): `U.S. Citizenship is required`, `English B2+
+# required`, `Graduation is mandatory`. It is still counted, unlike an
+# optional one. Not after `if`, `when`, `as`, `where`, `unless`: `travel when
+# required` is a condition.
+_REQUIRED_TAIL_RE = re.compile(r"\s*[,;:–—-]?\s*\b(?:(?:is|are)\s+)?(?:required|mandatory|compulsory|a\s+must)"
+                               r"\s*[.!]?$", re.I)
+
+
+def strip_required(text: str) -> str:
+    m = _REQUIRED_TAIL_RE.search(text)
+    if not m or not text[: m.start()].strip():
+        return text
+    before = text[: m.start()].split()
+    if before and before[-1].lower() in ("if", "when", "as", "where", "unless", "whenever"):
+        return text
+    return text[: m.start()].strip(" ,;:–—-")
+
+
+# `or similar`, `or similar role`, `or equivalent tools` closing a requirement
+# add nothing (the count guide); after degrees `_education` drops them, and
+# here everywhere else (rules 0.4.3, `or_similar_left`). Never `or equivalent
+# experience`: that is a second route, counted.
+_OR_SIMILAR_TAIL_RE = re.compile(
+    r"\s*,?\s+or\s+(?:an?\s+|any\s+)?(?:other\s+)?(?:similar|equivalent|comparable|related)"
+    r"(?:\s+(?:roles?|positions?|functions?|titles?|tools?|technolog(?:y|ies)|platforms?|solutions?|software|"
+    r"languages?|frameworks?|products?|systems?|environments?))?\s*[.]?$", re.I)
+# A level after the name, as skill grids write it (rules 0.4.3, `level_left`):
+# `Python Advanced`, `LangChain Intermediate`. Not `Visual Basic`, and only
+# after a name: `basic` closing a phrase may be the object.
+_LEVEL_TAIL_RE = re.compile(
+    r"^(?P<obj>.+?)(?<!\bvisual)[\s,(–-]+(?P<lvl>beginner|basic|elementary|intermediate|upper[\s-]intermediate|"
+    r"advanced|proficient|confirmed|experienced)\s*\)?$", re.I)
+_TAIL_LEVEL = {"beginner": "basic", "basic": "basic", "elementary": "basic", "intermediate": "good",
+               "upper intermediate": "good", "upper-intermediate": "good", "proficient": "good",
+               "advanced": "strong", "confirmed": "strong", "experienced": "strong"}
+# Several frame nouns at once (`Qualifications/experience/knowledge of data
+# science`) and a German frame glued on (`CATIA V6-Kenntnisse`, translated
+# `CATIA V6-Knowledge`). Rules 0.4.3, from the explorer on batch 2.
+_SLASHED_HEADS_RE = re.compile(r"^(?:qualifications?|experience|knowledge|skills?|expertise)"
+                               r"(?:\s*/\s*(?:qualifications?|experience|knowledge|skills?|expertise))+\s+(?=of\b|in\b|with\b)",
+                               re.I)
+_GLUED_HEAD_RE = re.compile(r"(?<=\w)-(?:knowledge|skills|experience|expertise)$", re.I)
 
 
 def _named(text: str) -> bool:
@@ -427,7 +501,14 @@ def decompose(text: str) -> dict:
     that is not there stays empty, and an atom with no frame noun keeps all of
     itself as the core (`Python`, `Team player`).
     """
-    rest, lo, hi, years_raw = _years(strip_optional(text))
+    text = strip_required(strip_optional(text))
+    text = _GLUED_HEAD_RE.sub("", _SLASHED_HEADS_RE.sub("knowledge ", text))
+    # `Seven (7) years`, `progressively responsible experience` (rules 0.4.3):
+    # the number once, and how the experience grew is not its object
+    text = re.sub(r"\b([a-z]+)\s*\((\d{1,2})\)(?=\s+years?\b)", r"\2", text, flags=re.I)
+    text = re.sub(r"\b(?:progressively|increasingly)\s+(?:responsible|senior)\s+(?=experience\b)", "", text,
+                  flags=re.I)
+    rest, lo, hi, years_raw = _years(text)
     if years_raw:
         # `Bachelor's degree (5–7 years experience)`: the years are out, the
         # bracket that held them says nothing more (rules 0.4.2)
@@ -442,6 +523,12 @@ def decompose(text: str) -> dict:
         out["space"] = space(out["head_group"])
         out["key"] = key(out["head_group"], out["core"])
         return out
+    rest = _OR_SIMILAR_TAIL_RE.sub("", rest).strip()
+    tail_level = None
+    lv = _LEVEL_TAIL_RE.match(rest)
+    if lv and _named(lv.group("obj")) and not _LANG_ONLY_RE.match(lv.group("obj")):
+        rest, tail_level = lv.group("obj").strip(" ,(–-"), lv.group("lvl").lower()
+    out["core"] = rest
     m = _HEAD_RE2.match(rest)
     if m and m.group("head").lower() in _LEAD_ONLY and (
             any(w.lower() not in LEVEL_WORDS for w in m.group("pre").split())
@@ -458,7 +545,8 @@ def decompose(text: str) -> dict:
         # is something else (`problem-solving skills with excellent attention
         # to detail`): it goes to `extra`, not into the key.
         object_words = [w for w in pre if w.lower() not in LEVEL_WORDS]
-        post_obj = re.sub(r"^(?:of|in|with|on|for|at|to|regarding|around|within|across|as|using)\s+", "",
+        # `about` since rules 0.4.3: `Practical knowledge about microservices` kept `about`
+        post_obj = re.sub(r"^(?:of|in|with|on|for|at|to|regarding|about|around|within|across|as|using)\s+", "",
                           post, flags=re.I) if post else ""
         if object_words and post_obj != post.strip() and _named(post_obj) and not _named(" ".join(object_words)):
             # `Good programming knowledge in Python`: the words in front say what
@@ -574,6 +662,9 @@ def decompose(text: str) -> dict:
         out["core"] = ALIASES.get(canon(out["core"]), out["core"])
         if canon(out["core"]) in JUNK or all(w.lower() in LEVEL_WORDS for w in out["core"].split()):
             out["core"] = ""
+    if tail_level and not out["level"]:
+        out["level"] = _TAIL_LEVEL.get(re.sub(r"\s+", " ", tail_level), "")
+        out["level_words"] = " ".join(x for x in (out["level_words"], tail_level) if x)
     # Grouped on the core alone, in its space (`key`, decided 2026-11-10): how it
     # was asked is in `head_group`, as years are in `years_*`.
     out["space"] = space(out["head_group"])
