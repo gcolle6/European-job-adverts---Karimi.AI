@@ -186,7 +186,8 @@ def test_ideally_before_a_language_adds_one():
     ("Bachelor's or Master's degree in Computer Science",
      ["Bachelor's degree in Computer Science", "Master's degree in Computer Science"]),
     ("MSc/PhD in Physics", ["MSc in Physics", "PhD in Physics"]),
-    ("BA or MA (or equivalent) in Economics", ["BA (or equivalent) in Economics", "MA (or equivalent) in Economics"]),
+    # since rules 0.4.3 `(or equivalent)` after a degree is taken off before the split: it adds nothing
+    ("BA or MA (or equivalent) in Economics", ["BA in Economics", "MA in Economics"]),
 ])
 def test_degrees_in_alternative_share_the_field(item, atoms):
     # rules 0.3.1: with one field the first degree was left bare (`MSc`), since 0.2.0

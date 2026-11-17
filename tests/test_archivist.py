@@ -55,10 +55,8 @@ def test_a_requirement_left_in_another_language(r, flag):
 
 # the kinds the explorer found on batch 1 (Gemini, 2026-11-16), with controls
 @pytest.mark.parametrize("r, flag", [
-    (_r(atom="5+ years of experience building web services in Go also welcome",
-        core="building web services in Go also welcome"), "optional_marker_unknown"),
-    (_r(atom="Additional training in safety is an added advantage",
-        core="Additional training in safety is an added advantage"), "optional_marker_unknown"),
+    # a marker the rules know is not `unknown` (since 0.4.3 they know every one batches 1 and 2 showed)
+    (_r(atom="Kafka is considered an asset", core="Kafka is considered an asset"), None),
     (_r(atom="CISSP or CISM certification required", core="CISSP or CISM certification required"), "required_left"),
     (_r(atom="CV in English is a must", core="CV in English is a must"), "required_left"),
     (_r(atom="3+ years as a Data Engineer or similar role", core="Data Engineer or similar role"), "or_similar_left"),
@@ -73,6 +71,15 @@ def test_a_requirement_left_in_another_language(r, flag):
 ])
 def test_a_word_that_adds_nothing_left_in_the_requirement(r, flag):
     assert errors.word_kept_flag(r) == flag
+
+
+def test_markers_the_rules_learnt_are_a_known_kind_now():
+    # batch 1's `also welcome` and `is an added advantage` were unknown to the
+    # rules; since 0.4.3 they are taken off, so left in a core they are `optional_tail`
+    for core in ("building web services in Go also welcome", "Additional training in safety is an added advantage",
+                 "SAP Advantage", "Green Belt appreciated"):
+        r = _r(atom=core, core=core)
+        assert errors.word_kept_flag(r) is None and errors.optional_flag(r) == "optional_tail", core
 
 
 def test_higher_education_is_a_degree_the_rules_miss():

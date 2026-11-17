@@ -158,7 +158,7 @@ HEAD_GROUPS = {
                    # `competencies`, and `use of Excel` (only opening the requirement:
                    # `tool use` is not a frame; `_LEAD_ONLY`)
                    "competencies", "competences", "competency", "use", "usage"],
-    "experience": ["experience", "background", "track record", "exposure", "experienced"],
+    "experience": ["experience", "experiences", "background", "track record", "exposure", "experienced"],
     "ability": ["ability", "capacity", "capability", "aptitude", "abilities", "capabilities", "capacities"],
 }
 # Frames that count only at the start, after level words: `Use of Excel` is
@@ -214,10 +214,13 @@ DEGREES = [
     # postings: `BA/BS Degree in STEM` and `HBO or WO degree` were read as no
     # degree at all). `B.E.` only with its dots: `Be in the office` is a verb.
     # `BS` and `MS` only in capitals: `MS Office` (`atomise._DEG_WORD`).
+    # Rules 0.4.3, from batch 2: the French `L3` (third year of the licence),
+    # `BSE`, the Canadian `Baccalaureate` and the Italian `triennial degree`.
     (r"bachelor(?:'s|’s|s)?|b\.?\s?sc\.?|b\.?\s?a\.?|(?-i:B\.?S\.?)|b\.\s?e\.|b\.?\s?tech\.?|bba|b\.?\s?eng\.?|"
-     r"undergraduate|licen[cs]e|laurea triennale|hbo", "bachelor"),
-    (r"master(?:'s|’s|s)?|m\.?\s?sc\.?|m\.?\s?a\.?|(?-i:M\.?S\.?)|m\.?\s?tech\.?|mca|m\.?\s?eng\.?|postgraduate|"
-     r"diplom|laurea magistrale", "master"),
+     r"undergraduate|licen[cs]e|laurea triennale|hbo|(?-i:L3)|bse|baccalaureate|triennial(?=\s+degree)", "bachelor"),
+    # `Master 2`, the French second year of the master (rules 0.4.3)
+    (r"master\s*2(?!\d)|master(?:'s|’s|s)?|m\.?\s?sc\.?|m\.?\s?a\.?|(?-i:M\.?S\.?)|m\.?\s?tech\.?|mca|m\.?\s?eng\.?|"
+     r"postgraduate|diplom|laurea magistrale", "master"),
     (r"ph\.?\s?d\.?|doctorate|doctoral|doktor(?:at)?", "phd"),
     (r"mba", "mba"),
     # The French level, years after the baccalauréat (rules 0.4.1): Bac+3 is
@@ -230,7 +233,10 @@ DEGREES = [
     # `Associate's degree` and the Dutch `WO` (research university) name no
     # level the columns hold: a degree. `WO` only where it cannot be a word
     # (rules 0.4.2).
-    (r"associate(?:'s|’s)?(?=\s+degree)|(?-i:WO)(?=[\s-]+(?:degree|diploma|level|niveau|in|bachelor|master)\b|$)",
+    # The Dutch `MBO` (vocational) too, rules 0.4.3: `Minimum completed MBO or
+    # HBO training`.
+    (r"associate(?:'s|’s)?(?=\s+degree)|(?-i:WO)(?=[\s-]+(?:degree|diploma|level|niveau|in|bachelor|master|training)\b"
+     r"|$)|(?-i:MBO)",
      "degree"),
     (r"(?:university\s+|academic\s+|engineering\s+|technical\s+|college\s+|higher\s+)?(?:degree|diploma|"
      r"studies|study|education|qualification|graduate)", "degree"),
@@ -239,20 +245,32 @@ _DEGREE_ALT = "|".join(f"(?:{p})" for p, _ in DEGREES)
 # Words after the degree that are still the degree (rules 0.4.1: `Bac+5
 # training in`, `Master's student in`, `BAC+3 specialized in`).
 _DEG_SUFFIX = (r"(?:\s+(?:degree|diploma|studies|programme|program|training|qualification|level|holder|student|"
-               r"speciali[sz]ed|higher\s+education))*")
+               r"speciali[sz]ed|higher\s+education|course))*")
 _EDU_RE = re.compile(
     rf"^(?P<pre>(?:[\w'’-]+\s+){{0,3}}?)(?P<deg>(?:{_DEGREE_ALT}){_DEG_SUFFIX})"
     r"(?:\s*\([^)]*\))?(?:\s+(?:degree|diploma))?"
     # `Bachelor's degree required in X`, `A bachelor's degree, or equivalent
-    # in X`, `Master's degree, preferably in X` (rules 0.4.2)
-    r"(?:\s*,?\s+(?:required|preferred|mandatory|preferably|ideally|or\s+equivalent))?\s+"
+    # in X`, `Master's degree, preferably in X` (rules 0.4.2); several, and
+    # `minimum`, `strongly preferred` since 0.4.3 (`Bac +3 training minimum,
+    # ideally in trade`, `PhD strongly preferred in Biology`)
+    r"(?:\s*,?\s+(?:minimum|required|(?:strongly\s+|highly\s+)?preferred|mandatory|preferably|ideally|"
+    r"or\s+equivalent))*\s+"
     # `with specialisation in` (rules 0.4.2): the guard on `_EDU_NOPREP_RE`
-    # works now, and it had been the only path to these
-    r"(?:in|of|on|with\s+(?:an?\s+)?(?:speciali[sz]ation|focus|major|concentration|emphasis)\s+(?:in|on))\s+"
+    # works now, and it had been the only path to these; `towards` (0.4.3) is
+    # the translator's Dutch `richting`
+    r"(?:in|of|on|towards?|in\s+the\s+direction\s+of|"
+    r"with\s+(?:an?\s+)?(?:speciali[sz]ation|focus|major|concentration|emphasis)\s+(?:in|on))\s+"
     r"(?:the\s+)?(?:field\s+of\s+)?(?P<field>.+)$",
     re.I)
+# A bracket after a bare degree names it again or says nothing of a field
+# (rules 0.4.3): `Bachelor's degree (Graduate)`, `Master's degree (MSc)`.
 _EDU_BARE_RE = re.compile(rf"^(?P<pre>(?:[\w'’-]+\s+){{0,3}}?)(?P<deg>(?:{_DEGREE_ALT}){_DEG_SUFFIX})"
-                          r"(?:\s+(?:minimum|obtained|completed|required))?$", re.I)
+                          r"(?:\s*\([^)]*\))?(?:\s+(?:minimum|obtained|completed|required))?$", re.I)
+# `HBO Electrical engineering`, `Completed HBO IT` (rules 0.4.3): the Dutch
+# levels before a field with no preposition, as the translator writes them.
+_EDU_HBO_RE = re.compile(
+    r"^(?P<pre>(?:[\w'’-]+\s+){0,3}?)(?P<deg>(?-i:HBO|WO|MBO)(?:[\s-]+(?:training|education|degree|diploma|level))?)"
+    r"\s+(?!(?:or|and|of|level|work|training|education)\b)(?P<field>(?-i:[A-Z])[^,;]*)$", re.I)
 # `Master's degree Signal Processing`: the field with no `in`, only after the
 # word `degree`, and not opening on a word that starts something else. 0.4.1.
 # The guard closed on a backspace, not `\b`, until rules 0.4.2, so it never
@@ -299,7 +317,7 @@ def _education(text: str) -> dict | None:
         # `BA/BS degree`: one degree written two ways. Two levels stay unread,
         # for the splitter and the inspector (rules 0.4.2).
         text = s.group("a") + text[s.end():]
-    m = _EDU_RE.match(text) or _EDU_BARE_RE.match(text) or _EDU_NOPREP_RE.match(text)
+    m = _EDU_RE.match(text) or _EDU_BARE_RE.match(text) or _EDU_NOPREP_RE.match(text) or _EDU_HBO_RE.match(text)
     if not m:
         return None
     pre = m.group("pre") or ""
@@ -311,7 +329,11 @@ def _education(text: str) -> dict | None:
     field = re.sub(r"^(?:subject|discipline|field|area)s?\s+(?:of|in)\s+", "", field, flags=re.I)
     # `Data Science or a related field`: filler, as the splitter drops it (rules 0.4.2)
     field = re.sub(r"\s*,?\s+or\s+(?:an?\s+|any\s+)?(?:other\s+)?(?:related|similar|equivalent|comparable|relevant)"
-                   r"(?:\s+\w+)?\s+(?:fields?|disciplines?|areas?|subjects?|studies)$", "", field, flags=re.I)
+                   r"(?:\s+\w+)?\s+(?:fields?|disciplines?|areas?|subjects?|studies|degrees?|qualifications?|"
+                   r"education|programs?|programmes?|directions?)$", "", field, flags=re.I)
+    # `computer science with specialization in cybersecurity`: the field is the first (rules 0.4.3)
+    field = re.sub(r"\s+with\s+(?:an?\s+)?(?:speciali[sz]ation|focus|major|concentration|emphasis)\s+(?:in|on)\s+.+$",
+                   "", field, flags=re.I)
     # `(economic) computer science`, `Computer Science (or equivalent)`: the field is outside the brackets
     field = re.sub(r"\s{2,}", " ", re.sub(r"\s*\([^()]*\)\s*", " ", field)).strip()
     field = _DEGREE_NAME_RE.sub("", field)
@@ -362,6 +384,8 @@ LEVEL_WORDS = {
     # Evidence words, not objects (rules 0.3.0): `related experience as a Data
     # Scientist` had the core `related`, `Overall understanding of ...` `Overall`.
     "related": "", "similar": "", "comparable": "", "overall": "", "general": "",
+    # rules 0.4.3: `equivalent research experience`, `directly related professional experience`
+    "equivalent": "", "directly": "",
     # `Ideally Excel` is Excel, marked optional (`atomise.nice_to_have`)
     "ideally": "", "preferably": "", "especially": "", "particularly": "",
 }
@@ -425,7 +449,7 @@ _OPTIONAL_TAIL_RE = re.compile(rf"\s*[,;:–—-]?\s*(?:\(\s*(?:{_MARK})\s*\)|\b
 # catalogue): `Desirable experience in design` was read as `Desirable`.
 # `Preferred` only before a frame word: `Preferred Shares` is a name.
 _OPTIONAL_HEAD_RE = re.compile(
-    r"^(?:desirable|advantageous|optional(?:ly)?|nice[- ]to[- ]have|an?\s+plus|bonus|"
+    r"^(?:desirable|desired|advantageous|optional(?:ly)?|nice[- ]to[- ]have|an?\s+plus|bonus|"
     r"preferred(?=\s+(?:experience|knowledge|skills?|qualifications?|background|familiarity|exposure)\b))"
     r"\s*:?\s+(?=\S)", re.I)
 # Before a closing bracket of examples: `Relevant certifications preferred
@@ -502,6 +526,10 @@ def decompose(text: str) -> dict:
     itself as the core (`Python`, `Team player`).
     """
     text = strip_required(strip_optional(text))
+    # `a suitable combination of education, experience and training`: the
+    # second route beside a degree, an experience with no object (rules 0.4.3)
+    text = re.sub(r"^(?:an?\s+)?(?:suitable|equivalent|relevant|appropriate)\s+combination\s+of\s+.*$",
+                  "equivalent experience", text, flags=re.I)
     text = _GLUED_HEAD_RE.sub("", _SLASHED_HEADS_RE.sub("knowledge ", text))
     # `Seven (7) years`, `progressively responsible experience` (rules 0.4.3):
     # the number once, and how the experience grew is not its object
@@ -684,7 +712,10 @@ _LANG_FILLER = {
     "in", "of", "and", "both", "with", "a", "an", "the", "at", "least", "min", "minimum", "required",
     "mandatory", "plus", "asset", "advantage", "as", "well", "language", "languages", "word", "words", "perfect",
     "perfectly", "full", "complete", "proven", "demonstrated", "ability", "able", "to", "must", "have", "has",
-    "or", "equivalent", "certified", "certification", "nice"}
+    "or", "equivalent", "certified", "certification", "nice",
+    # the translator's Chinese `听说读写` (listen, speak, read, write) came out
+    # `I hear English is very fluent in reading and writing` (rules 0.4.3)
+    "i", "hear", "hearing", "listen", "listening"}
 _LANG_NOISE_RE = re.compile(
     r"\b(?:is\s+(?:a\s+(?:strong\s+|big\s+)?plus|an?\s+(?:asset|advantage)|desirable|preferred|required|mandatory)|"
     r"required|mandatory|preferred|essential|"
@@ -704,6 +735,7 @@ ALIASES = {
     "ms office": "Microsoft Office", "microsoft office": "Microsoft Office",
     "office package": "Microsoft Office", "office suite": "Microsoft Office", "ms office suite": "Microsoft Office",
     "microsoft office suite": "Microsoft Office", "office": "Microsoft Office",
+    "pack office": "Microsoft Office", "office pack": "Microsoft Office",
     "microsoft excel": "Excel", "ms excel": "Excel", "excel": "Excel",
     "microsoft azure": "Azure", "azure cloud": "Azure", "azure": "Azure",
     "google cloud platform": "GCP", "google cloud": "GCP", "gcp": "GCP",
@@ -729,6 +761,7 @@ JUNK = {"of", "one", "you have", "ideally", "preferably", "minimum", "confirmed"
         "specific", "direct", "clear", "full", "high", "foundational", "general", "expert level", "senior level",
         "multi year", "language", "interest", "unit", "equivalent", "equivalent through", "relevant", "similar",
         "comparable", "required", "mandatory", "plus", "asset", "advantage", "other", "etc", "various", "good",
+        "through",
         "ability", "skill", "knowledge", "experience", "competence", "understanding"}
 
 _BRITISH = {"modelling": "modeling", "labelling": "labeling", "organisation": "organization",
@@ -750,7 +783,11 @@ def canon(core: str) -> str:
     s = re.sub(r"(?<=\w)-(?=\w)", " ", s)
     s = re.sub(r"[^\w+#./' ]+", " ", s)
     words = [_BRITISH.get(w, w) for w in s.split()]
-    if words and len(words[-1]) > 3 and words[-1].endswith("s") and not words[-1].endswith(("ss", "us", "sis")):
+    # Not an acronym (rules 0.4.3): `IDMS` is not the plural of `IDM`, nor `HRIS` of `HRI`.
+    tokens = re.findall(r"[\w+#./']+", core)
+    acronym = bool(tokens) and tokens[-1].isupper() and len(tokens[-1]) > 1
+    if words and not acronym and len(words[-1]) > 3 and words[-1].endswith("s") \
+            and not words[-1].endswith(("ss", "us", "sis")):
         words[-1] = words[-1][:-1]
     return " ".join(words)
 

@@ -36,7 +36,37 @@ NUM_BEAMS = 4
 # model is right on about three items in four of the others, with errors a
 # reader would catch (`niezawodność`, reliability, as `inefficiency`): better
 # than no reading, and every such requirement says `translated_by`.
-EXTRA_MODEL_FOR = {"zh": "opus-mt-zh-en", "mul": "opus-mt-mul-en"}
+EXTRA_MODEL_FOR = {"zh": "opus-mt-zh-en", "mul": "opus-mt-mul-en",
+                   # rules 0.4.3, from batch 2: Danish went through the Swedish
+                   # model (`afdække needs og omsætte them`), Finnish and some
+                   # Czech were kept as written. Each now has its own model.
+                   "da": "opus-mt-da-en", "fi": "opus-mt-fi-en", "cs": "opus-mt-cs-en"}
+# Words of the languages the word lists of `karimi.language` do not hold (they
+# serve the analysis too, so they stay as they are). Two hits, one of them a
+# word of four letters or more: `a` and `na` alone are not Czech.
+_EXTRA_MARKERS = {
+    "da": {"og", "til", "med", "af", "erfaring", "kendskab", "viden", "evne", "uddannelse", "uddannelser", "gerne",
+           "behov", "omsætte", "forretningsmål", "samarbejde", "kompetencer", "stærk", "gode", "lyst", "dybere",
+           "opbygge", "vejlede", "øvrige", "konkrete"},
+    "fi": {"ja", "tai", "sekä", "kokemusta", "osaamista", "osaaminen", "kyky", "kykyä", "hyvä", "hyvät",
+           "erinomainen", "taidot", "ymmärrystä", "esim", "halua", "tuntemusta", "kielen", "englannin", "suomen",
+           "työskennellä", "ympäristössä", "toimia", "yhteistyössä"},
+    "cs": {"a", "na", "se", "ve", "zkušenost", "zkušenosti", "znalost", "znalosti", "jazyk", "jazyka", "úrovni",
+           "základě", "schopnost", "praxe", "vzdělání", "zájem", "rozhodování", "anglický", "komunikativní"},
+    "fr": {"et", "du", "des", "confirmé", "confirmée", "rigueur", "déploiement", "sens", "détail", "maîtrise",
+           "connaissances", "appréciée", "apprécié", "souhaitée", "souhaité"},
+}
+
+
+def extra_code(text: str) -> str | None:
+    """`da`, `fi`, `cs` or `fr` from the words alone, or None (rules 0.4.3)."""
+    words = set(re.findall(r"[^\W\d_]+", text.lower()))
+    best, hits = None, 1
+    for code, markers in _EXTRA_MARKERS.items():
+        found = words & markers
+        if len(found) > hits and any(len(w) >= 4 for w in found):
+            best, hits = code, len(found)
+    return best
 _KANA_RE = re.compile(r"[぀-ヿ]")
 _HAN_RE = re.compile(r"[一-鿿]")
 _OTHER_SCRIPT_RE = re.compile(r"[가-힯Ѐ-ӿͰ-Ͽ]")    # Hangul, Cyrillic, Greek
@@ -79,15 +109,28 @@ def item_code(item: str, posting_items: list[str] | None = None, hint: str | Non
     letters (`script_code`), and so is its posting when most of its items are
     in such a language: `Poznavanje rada u Git-u` has no letter to show it is
     Croatian, its neighbours do.
+
+    Since rules 0.4.3 Danish, Finnish and Czech words are read first
+    (`extra_code`), before the word lists, which took Danish for Swedish; and
+    a few French words they did not hold (`Confirmé`, `Rigueur`).
     """
     own = language.detect(item)[0]
-    if own:                     # English too: `Work on site in Łódź` stays as written
+    if own == "English":        # `Work on site in Łódź` stays as written
+        return None
+    extra = extra_code(item)
+    if extra:
+        return CODE.get("Français") if extra == "fr" else extra
+    if own:
         return CODE.get(own)
     by_script = script_code(item)
     if by_script:
         return by_script
     if posting_items:
-        own = language.detect(" | ".join(posting_items))[0]
+        joined = " | ".join(posting_items)
+        own = language.detect(joined)[0]
+        extra = extra_code(joined) if own != "English" else None
+        if extra and extra != "fr":
+            return extra
         if own:
             return CODE.get(own)
         codes = [script_code(i) for i in posting_items]

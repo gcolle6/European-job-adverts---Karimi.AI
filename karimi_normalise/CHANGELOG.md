@@ -262,6 +262,46 @@ Format: version · date · what changed · how it was measured.
   to be the form itself or its plural, and an acronym has none: `SAP IDM` had
   reached `IDMS` through the lookup's plural fold (the fold itself, in
   `canon`, is an open rule for 0.4.3).
+- **0.4.3** · 2026-11-17 · every error the agents found in batch 2 of the new
+  postings, under the user's process of that day: each batch's errors are all
+  fixed, and taught to the agents, before the next batch measures. Batch 2 is
+  now development; batch 3 measures. *How much it is wanted*: the translator's
+  `appreciated`, `valued`, `welcome`, `desired`, `of advantage` and a bare
+  `Advantage` (`SAP Advantage`, from `von Vorteil`), `an express/added plus`,
+  `, but not required`, a marker before a bracket of examples, and a marker
+  opening the atom (`Desirable experience in design` was `Desirable`; also
+  `Desired`, `Bonus points for`), which also makes it optional. *How it is
+  asked*: a closing `required`, `mandatory`, `a must` is taken off and the
+  requirement still counts; not after `if`, `when`, `as`, `where`. *Words that
+  add nothing*: `or similar (role)`, `or equivalent (tools)` closing a
+  requirement; on a list the `or` becomes the comma it replaced (`Ansible,
+  Terraform or similar` = 2). A level after a name goes to the level column
+  (`Python Advanced`, not `Visual Basic`). *Degrees*: `L3`, `Master 2`,
+  `BSE`, `Baccalaureate`, `triennial degree`, `MBO`; `Bac + 3`; `course`;
+  `strongly preferred`, `minimum`, `towards` before the field; a bracket after
+  a bare degree; `HBO X` with no preposition; `or equivalent`, `or engineering
+  school`, `or higher`, `from an accredited institution` after a degree add
+  nothing; two degrees of different levels joined by `/` are alternatives;
+  `X required, Y preferred, in F` (both in F), `X required; Y preferred in F`
+  (only Y); `PhD or equivalent research experience in F`; `degree with ...
+  knowledge`; `preferably with X background`; `with X direction`; `or 8+ years
+  of directly related experience`, `or a suitable combination of education,
+  experience and training` are the second route. *The explorer's kinds*
+  (confirmed by the process): activities before one object stay one
+  (`design, deployment and support of network solutions`); `knowledge about`,
+  `Qualifications/experience/knowledge of`, `X-Knowledge`, years written out
+  (`five years`, `Seven (7) years`) and `progressively responsible`; a
+  language written as `I hear English is very fluent`. *Translation*: Danish,
+  Finnish and Czech are recognised by their words and go to opus-mt-da-en,
+  -fi-en, -cs-en (Danish had gone through the Swedish model); a few French
+  words the lists missed (`Confirmé`, `Rigueur`); `Maîtrise Pack office` is
+  command of Microsoft Office and `maîtrise d'œuvre` is construction project
+  management, not degrees. *Acronyms*: `canon` keeps the S of `IDMS`, `HRIS`.
+  Measured on split and decomposition alone: batch 2's degree flags 56 -> 10,
+  optional tails 2 -> 0, 2.3% of items changed; batch 1 69 -> 7, 3.7%; every
+  change read, two that went worse fixed before release. Left, written in the
+  catalogue as open: broken fragments and long lists (no reliable detector,
+  watched by the explorer).
 
 ## Dictionary
 

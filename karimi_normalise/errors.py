@@ -251,10 +251,14 @@ def optional_flag(r: dict) -> str | None:
 # nothing left in the requirement, which no rule takes off. Its own marker
 # list, wider than `strip_optional`'s: a detector built on the fix would be
 # blind exactly where the fix is. Each read on batch 1 under rules 0.4.2.
-_WANT = (r"(?:(?:is|are|as|will\s+be|would\s+be|being|considered|seen\s+as|also|of)\s+)*(?:an?\s+)?"
-         r"(?:(?:big|huge|strong|added|great|real|definite|clear|additional|distinct|significant)\s+)?"
-         r"(?:plus|advantage|bonus|asset)|preferred|preferable|desirable|advantageous|beneficial|"
-         r"nice[\s-]to[\s-]have|welcome|appreciated|valued")
+# `plus`, `bonus` and `asset` only after an article or a verb: `Basic Plus` is a
+# course's name (read on batch 2, 2026-11-17); a bare `advantage` is the German
+# `von Vorteil`.
+_WANT = (r"(?:(?:is|are|as|will\s+be|would\s+be|being|considered|seen\s+as|also)\s+)*an?\s+"
+         r"(?:(?:big|huge|strong|added|great|real|definite|clear|additional|distinct|significant|express)\s+)?"
+         r"(?:plus|advantage|bonus|asset)|(?:is|are|as)\s+(?:a\s+)?plus|(?:of\s+)?advantage|"
+         r"preferred|preferable|desirable|advantageous|beneficial|"
+         r"nice[\s-]to[\s-]have|welcome|appreciated|valued|desired")
 _WANT_TAIL_RE = re.compile(rf"[\s,;:(–—-]+(?:{_WANT})\s*\)?\s*[.!]?$", re.I)
 # `if required`, `when required` are a condition, not a marker
 _REQUIRED_TAIL_RE = re.compile(r"(?<!\bif)(?<!\bwhen)(?<!\bas)(?<!\bwhere)[\s,;:(–—-]+(?:is\s+|are\s+)?"

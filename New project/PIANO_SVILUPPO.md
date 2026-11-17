@@ -364,6 +364,31 @@ run**.
 * I run controllati prima vengono riletti con la stessa regola. Explore accetta
   un run se gli errori non sono rossi.
 
+### Il ciclo per ogni lotto (2026-11-17)
+
+La regola di lavoro, decisa dal responsabile, per ogni lotto di annunci nuovi:
+
+1. **si manda il lotto all'API** come un esterno;
+2. **si trovano tutti gli errori**: quelli degli agenti (Inspector, Archivista,
+   Esploratore, giudice) e quelli trovati da noi (la nostra lettura e la
+   revisione umana in Metrics);
+3. **ogni tipo trovato da noi entra nel catalogo degli agenti**, con il suo
+   rilevatore, così la volta dopo lo trovano da soli;
+4. **si correggono tutti gli errori del lotto** (nuova versione delle regole e
+   del dizionario), si misura il residuo e si fa il deploy;
+5. **si passa al lotto dopo**, che misura: il lotto appena corretto diventa
+   sviluppo.
+
+L'obiettivo: un lotto con solo risultati corretti, oppure dove ogni errore
+viene trovato dagli agenti e la persona deve solo confermarlo. A ogni giro il
+processo diventa più automatico e l'intervento umano si riduce.
+
+**Giro del lotto 2 → regole 0.4.3.** Errori degli agenti: 125 dell'Inspector
+(titoli di studio 56, code facoltative 24, "required" 15, "or similar" 13,
+lingue 16) e 3 tipi nuovi dell'Esploratore. Tutti corretti; i tipi
+dell'Esploratore sono entrati nel catalogo. Restano aperti, senza rilevatore
+affidabile: pezzi rotti e liste lunghe.
+
 ### Revisione umana e Curator (2026-11-17)
 
 * **Revisione di una persona**: l'unico numero che conta tutti gli errori,

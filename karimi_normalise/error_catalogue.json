@@ -1,6 +1,6 @@
 {
   "about": "The archivist's catalogue: every kind of error found so far, why it happened, what fixed it and what guards it. Edited by a person; the archivist reads it on every run (archivist.py). No requirement text from Karimi's postings except the short examples a person chose.",
-  "updated": "2026-11-16",
+  "updated": "2026-11-17",
   "entries": [
     {
       "id": "degree_not_read",
@@ -11,9 +11,9 @@
       "cause": "Degree names and the words in front of them the rules did not know (BS, BA/BS, B.E., HBO, WO, 'Relevant bachelor's or master's'), so the atom was read as a skill.",
       "example": "BA/BS Degree in STEM -> 'BA/BS Degree in STEM' instead of Bachelor in STEM",
       "status": "resolved",
-      "resolved_in": "0.4.2",
+      "resolved_in": "0.4.3",
       "detector": "degree_not_read",
-      "guard": "tests/test_rules_042.py::test_degrees_from_the_first_batch",
+      "guard": "tests/test_rules_043.py::test_degrees_from_batch_2",
       "rule_files": [
         "karimi/normalise_req.py",
         "karimi/atomise.py"
@@ -79,15 +79,14 @@
       "found_by": "hand",
       "cause": "An atom opening on how much it is wanted ('Desirable', 'Advantageous', 'Preferred', 'Optional') is read as if that word were the requirement: the object after it is lost and the atom still counts.",
       "example": "Desirable experience in design -> 'Desirable', counted",
-      "status": "open",
-      "resolved_in": null,
+      "status": "resolved",
+      "resolved_in": "0.4.3",
       "detector": "optional_head",
-      "guard": null,
+      "guard": "tests/test_rules_043.py::test_words_that_add_nothing_and_the_explorers_kinds",
       "rule_files": [
         "karimi/normalise_req.py",
         "karimi/atomise.py"
-      ],
-      "fix_hint": "Take a leading marker off in normalise_req.strip_optional as the closing one is, and let atomise.nice_to_have see it, so the atom is optional and keeps its object."
+      ]
     },
     {
       "id": "untranslated",
@@ -185,9 +184,9 @@
       "stage": "normalisation",
       "found": "2026-11-16",
       "found_by": "explorer",
-      "status": "open",
-      "resolved_in": null,
-      "guard": null,
+      "status": "resolved",
+      "resolved_in": "0.4.3",
+      "guard": "tests/test_rules_043.py::test_words_that_add_nothing_and_the_explorers_kinds",
       "rule_files": [
         "karimi/normalise_req.py",
         "karimi/atomise.py"
@@ -196,16 +195,15 @@
       "title": "'as a plus', 'an added advantage' left in the requirement",
       "detector": "optional_marker_unknown",
       "cause": "The rules take off the closing words that say how much it is wanted only from a fixed list; 'as a plus', 'is an added advantage', 'also welcome', 'of advantage' are not on it.",
-      "example": "Financial services industry knowledge as a plus -> key keeps 'as a plus'",
-      "fix_hint": "Widen _MARK in normalise_req.strip_optional (and atomise._MARK_BARE) to the inspector's errors._WANT list."
+      "example": "Financial services industry knowledge as a plus -> key keeps 'as a plus'"
     },
     {
       "stage": "normalisation",
       "found": "2026-11-16",
       "found_by": "explorer",
-      "status": "open",
-      "resolved_in": null,
-      "guard": null,
+      "status": "resolved",
+      "resolved_in": "0.4.3",
+      "guard": "tests/test_rules_043.py::test_words_that_add_nothing_and_the_explorers_kinds",
       "rule_files": [
         "karimi/normalise_req.py"
       ],
@@ -213,16 +211,15 @@
       "title": "'required' or 'a must' left in the requirement",
       "detector": "required_left",
       "cause": "A closing 'required', 'mandatory', 'is a must' says how it is asked, like 'is a plus', and no rule takes it off.",
-      "example": "CISSP or CISM certification required -> key keeps 'required'",
-      "fix_hint": "Take a closing required/mandatory/a must off in normalise_req.strip_optional, without marking the atom optional; keep 'if required', 'when required'."
+      "example": "CISSP or CISM certification required -> key keeps 'required'"
     },
     {
       "stage": "normalisation",
       "found": "2026-11-16",
       "found_by": "explorer",
-      "status": "open",
-      "resolved_in": null,
-      "guard": null,
+      "status": "resolved",
+      "resolved_in": "0.4.3",
+      "guard": "tests/test_rules_043.py::test_words_that_add_nothing_and_the_explorers_kinds",
       "rule_files": [
         "karimi/normalise_req.py"
       ],
@@ -230,16 +227,15 @@
       "title": "'or similar role' left in the requirement",
       "detector": "or_similar_left",
       "cause": "'or similar', 'or equivalent', 'or related' add nothing (the counting guide) and are taken off after degrees only.",
-      "example": "3+ years as a Data Engineer or similar role -> key 'Data Engineer or similar role'",
-      "fix_hint": "Drop a closing 'or similar/equivalent/related <noun>' in normalise_req.decompose for every space, as _education already does for fields."
+      "example": "3+ years as a Data Engineer or similar role -> key 'Data Engineer or similar role'"
     },
     {
       "stage": "normalisation",
       "found": "2026-11-16",
       "found_by": "explorer",
-      "status": "open",
-      "resolved_in": null,
-      "guard": null,
+      "status": "resolved",
+      "resolved_in": "0.4.3",
+      "guard": "tests/test_rules_043.py::test_words_that_add_nothing_and_the_explorers_kinds",
       "rule_files": [
         "karimi/normalise_req.py"
       ],
@@ -247,16 +243,15 @@
       "title": "A level ('Advanced', 'Intermediate') left in the requirement",
       "detector": "level_left",
       "cause": "Skill grids put the level after the name ('<skill> Advanced'); the level rules read it only in front.",
-      "example": "LangChain Intermediate -> key 'LangChain Intermediate'",
-      "fix_hint": "Move a closing level word into the level column in normalise_req.decompose; not 'Visual Basic', not 'domain expert'."
+      "example": "LangChain Intermediate -> key 'LangChain Intermediate'"
     },
     {
       "stage": "normalisation",
       "found": "2026-11-16",
       "found_by": "explorer",
-      "status": "open",
-      "resolved_in": null,
-      "guard": null,
+      "status": "resolved",
+      "resolved_in": "0.4.3",
+      "guard": "tests/test_rules_043.py::test_degrees_from_batch_2",
       "rule_files": [
         "karimi/normalise_req.py",
         "karimi/atomise.py"
@@ -265,8 +260,7 @@
       "title": "'Higher education' not read as a degree",
       "detector": "degree_higher_education",
       "cause": "'Higher education' / 'University education' with fields in a bracket is not among the degree names.",
-      "example": "Higher Education (Electric Engineering, Automation Engineering) -> key 'Higher Education'",
-      "fix_hint": "Add higher/tertiary/university education to normalise_req.DEGREES as a degree with no level, and to atomise._DEG_WORD so the bracket fields cross with it."
+      "example": "Higher Education (Electric Engineering, Automation Engineering) -> key 'Higher Education'"
     },
     {
       "stage": "splitting",
@@ -310,14 +304,77 @@
       "found_by": "hand",
       "cause": "The fold that joins a plural to its singular (normalise_req.canon) takes the S off an acronym, so IDMS and IDM, HRIS and HRI become one key.",
       "example": "SAP IDM joined by the curator to IDMS",
-      "status": "open",
-      "resolved_in": null,
+      "status": "resolved",
+      "resolved_in": "0.4.3",
       "detector": null,
-      "guard": "tests/test_curator.py::test_an_acronym_ending_in_s_is_not_a_plural",
+      "guard": "tests/test_rules_043.py::test_an_acronym_ending_in_s_keeps_its_s",
       "rule_files": [
         "karimi/normalise_req.py"
-      ],
-      "fix_hint": "In canon, leave the last word alone when it is written in capitals; the curator already refuses such joins (curator._same_name)."
+      ]
+    },
+    {
+      "found": "2026-11-16",
+      "found_by": "explorer",
+      "status": "resolved",
+      "resolved_in": "0.4.3",
+      "detector": null,
+      "id": "shared_object_split",
+      "title": "Activities sharing one object split apart",
+      "stage": "splitting",
+      "cause": "Nouns or gerunds of activity before one object (design, deployment and support of X) were split, leaving the first ones with no object.",
+      "example": "Experience in design, deployment and support of network solutions -> design, deployment, support of network solutions",
+      "guard": "tests/test_rules_043.py::test_words_that_add_nothing_and_the_explorers_kinds",
+      "rule_files": [
+        "karimi/atomise.py"
+      ]
+    },
+    {
+      "found": "2026-11-16",
+      "found_by": "explorer",
+      "status": "resolved",
+      "resolved_in": "0.4.3",
+      "detector": null,
+      "id": "frame_left",
+      "title": "A frame word left in the requirement",
+      "stage": "normalisation",
+      "cause": "Frames the rules did not know: knowledge about X, several frame nouns at once (qualifications/experience/knowledge of X), a German frame glued on (X-Kenntnisse), years written out (five years of progressively responsible experience).",
+      "example": "Practical knowledge about microservices -> about microservices",
+      "guard": "tests/test_rules_043.py::test_words_that_add_nothing_and_the_explorers_kinds",
+      "rule_files": [
+        "karimi/normalise_req.py"
+      ]
+    },
+    {
+      "found": "2026-11-16",
+      "found_by": "explorer",
+      "status": "resolved",
+      "resolved_in": "0.4.3",
+      "detector": null,
+      "id": "language_not_normalised",
+      "title": "A language requirement not read as a language",
+      "stage": "normalisation",
+      "cause": "A translated language requirement with words the language rule did not accept (I hear English is very fluent, from the Chinese for listen, speak, read, write).",
+      "example": "I hear English is very fluent in reading and writing -> kept whole",
+      "guard": "tests/test_rules_043.py::test_words_that_add_nothing_and_the_explorers_kinds",
+      "rule_files": [
+        "karimi/normalise_req.py"
+      ]
+    },
+    {
+      "id": "language_misread",
+      "title": "A language read as another, or not at all",
+      "stage": "translation",
+      "found": "2026-11-17",
+      "found_by": "inspector",
+      "cause": "The word lists took Danish for Swedish and did not know Finnish or some Czech, so they went to the wrong model or none.",
+      "example": "Erfaring med at afdække behov -> Experience with afdække needs",
+      "status": "resolved",
+      "resolved_in": "0.4.3",
+      "detector": null,
+      "guard": "tests/test_rules_043.py::test_languages_batch_2_showed_go_to_their_own_model",
+      "rule_files": [
+        "karimi_normalise/translate.py"
+      ]
     }
   ]
 }
