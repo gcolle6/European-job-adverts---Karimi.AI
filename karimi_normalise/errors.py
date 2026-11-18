@@ -92,6 +92,10 @@ CAUSES = {
     "required_left": "'required', 'mandatory' or 'a must' left in the requirement",
     "or_similar_left": "'or similar role', 'or equivalent' left in the requirement",
     "level_left": "a level ('Advanced', 'Intermediate') left in the requirement",
+    "lead_punctuation": "it starts with a comma: a list cut on the wrong side",
+    "comma_in_key": "a list of names left in one requirement",
+    "duplicate_key": "two parts of one item read as the same requirement: a name or an object lost",
+    "edge_preposition": "a preposition left at its edge ('on CPaaS', 'development for')",
     "other": "no rule names it",
 }
 
@@ -318,8 +322,40 @@ def translation_flag(r: dict) -> str | None:
     return None
 
 
+# Rules 0.4.4, from the user's review of batch 2 (25 of 100 wrong, and the
+# inspector had caught none): the SHAPES those errors had, read off the result
+# alone, so they are found without a person next time.
+_EDGE_PREP_RE = re.compile(r"^(?:on|for|with|in|of|at|as|to|by|from)\s+\S|\s(?:on|for|with|in|of|at|as|to|by|from)$",
+                           re.I)
+
+
+def shape_flag(r: dict) -> str | None:
+    """`lead_punctuation`: an atom cut on the wrong side of a comma; `comma_in_key`:
+    a list left in one requirement; `edge_preposition`: a preposition that names
+    nothing at either edge of the core (`on CPaaS`, `development for`)."""
+    atom = (r.get("atom") or "").strip()
+    core = (r.get("core") or "").strip()
+    if re.match(r"^[,;:]", atom):
+        return "lead_punctuation"
+    outside = re.sub(r"\([^()]*\)", "", core)
+    if r.get("space") != "education" and "," in outside:
+        # only a list of NAMES: coordinated verbs and adjectives before one
+        # noun are one ask by the count conventions (2026-10-29, 2026-10-30),
+        # and flagging them made 3 of 4 flags wrong on batch 3
+        from karimi import normalise_req
+        if len(normalise_req._name_runs(outside)) >= 2:
+            return "comma_in_key"
+    if r.get("space") != "education" and _EDGE_PREP_RE.search(core):
+        return "edge_preposition"
+    return None
+
+
 INSPECTOR_DETECTORS = {
     # detector -> (stage, error kind), in the order the first that fires is taken
+    "lead_punctuation": ("splitting", "fragment"),
+    "comma_in_key": ("splitting", "merged"),
+    "duplicate_key": ("normalisation", "wrong_group"),
+    "edge_preposition": ("normalisation", "word_kept"),
     "degree_not_read": ("normalisation", "wrong_degree"),
     "degree_field_odd": ("normalisation", "wrong_degree"),
     "optional_head": ("normalisation", "optional_kept"),
@@ -340,7 +376,8 @@ def inspector_flag(r: dict) -> str | None:
         hit = "degree_higher_education"
     else:
         hit = None
-    return translation_flag(r) or degree_flag(r) or hit or optional_flag(r) or word_kept_flag(r)
+    return translation_flag(r) or degree_flag(r) or hit or optional_flag(r) or word_kept_flag(r) \
+        or shape_flag(r)
 
 
 def inspect(postings: list[dict], examples: int = 3) -> dict:
@@ -348,9 +385,15 @@ def inspect(postings: list[dict], examples: int = 3) -> dict:
     count, ex = Counter(), defaultdict(list)
     reqs = 0
     for p in postings:
+        seen = set()
         for r in p.get("requirements") or []:
             reqs += 1
             f = inspector_flag(r)
+            # one key twice in one item: the rules keep it once since 0.4.4
+            k = (r.get("item_idx"), r.get("key"))
+            if f is None and r.get("key") and k in seen:
+                f = "duplicate_key"
+            seen.add(k)
             if f is None:
                 continue
             stage, error = INSPECTOR_DETECTORS[f]

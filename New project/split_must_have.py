@@ -93,6 +93,10 @@ def split_export(rows: list[dict], translated: dict[str, str] | None = None) -> 
         text_lang = language.detect(" | ".join(items))[0]
         for i, item in enumerate(items):
             atoms, how = routed[item]
+            # One ask once per item (rules 0.4.4, review of batch 2): `Systems
+            # thinking` three times is one requirement (`normalise_req.keep_once`)
+            keep = normalise_req.keep_once([normed[(item, a)] for a in atoms])
+            atoms = [a for a, k in zip(atoms, keep) if k]
             counts = atom.counted(atoms)
             for j, a in enumerate(atoms):
                 out.append({

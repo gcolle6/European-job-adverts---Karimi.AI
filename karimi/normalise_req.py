@@ -119,8 +119,15 @@ def experience_with(text: str) -> str:
     return f"{m.group('head')} with {obj}"
 
 
+_BE_FRAME_RE = re.compile(r"^(?:be|being|are|i\s*['’]?\s*m|i\s+am)\s+(?=(?:familiar|proficient|fluent|comfortable|experienced|skilled|"
+                          r"knowledgeable|able)\b)", re.I)
+
+
 def normalise_requirement(atom: str, translated: bool) -> str:
     out = fix_translation(atom) if translated else atom
+    # `Be familiar with Eth` (rules 0.4.4, batch 3): `Be` was the core
+    out = _BE_FRAME_RE.sub("", out)
+    out = out[:1].upper() + out[1:] if out != atom else out
     return experience_with(out)
 
 
@@ -137,13 +144,13 @@ _YEARS_RE = re.compile(
     # a number written out since rules 0.4.3: `At least five years of ...`
     r"\b(?P<a>\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen)\s*(?P<plus>\+)?\s*"
     r"(?:(?:-|–|to)\s*(?P<b>\d{1,2})\s*\+?\s*)?"
-    r"(?:years?|yrs?)(?:['’]s?)?(?:\s+of)?(?!\w)|"
+    r"(?:years?|yrs?)(?:['’]s?)?(?:\s+or\s+more)?(?:\s+of)?(?!\w)|"
     # `equivalent years of experience` (rules 0.4.2): no number, and not the core
     r"\b(?P<vague>several|many|a\s+few|multiple|some|a\s+couple\s+of|first|equivalent|relevant|comparable)"
     r"\s+years?(?:\s+of)?\b|"
     # `Multi-year experience`, from German `Mehrjährige Erfahrung` (rules 0.3.0):
     # it was the core, `experience: Multi-year`, and the object went to `extra`.
-    r"\b(?P<multi>multi-?years?|multiple-years?)\b",
+    r"\b(?P<multi>multi-?years?|multiple-years?|multi-?annual)\b",
     re.I)
 
 # The frame nouns a requirement is asked through, by group. A closed set: the
@@ -152,6 +159,8 @@ HEAD_GROUPS = {
     "competence": ["knowledge", "understanding", "familiarity", "proficiency", "expertise",
                    "mastery", "command", "grasp", "awareness", "know-how", "skills", "skill",
                    "fluency",
+                   # `Good foundations in Python` is Python (review of batch 2, rules 0.4.4)
+                   "foundations", "foundation",
                    # the same frames as adjectives (rules 0.3.0): `Proficient with Windows`
                    # had no head, so its whole text was the key
                    "proficient", "familiar", "knowledgeable", "skilled", "versed", "conversant",
@@ -217,7 +226,9 @@ DEGREES = [
     # Rules 0.4.3, from batch 2: the French `L3` (third year of the licence),
     # `BSE`, the Canadian `Baccalaureate` and the Italian `triennial degree`.
     (r"bachelor(?:'s|’s|s)?|b\.?\s?sc\.?|b\.?\s?a\.?|(?-i:B\.?S\.?)|b\.\s?e\.|b\.?\s?tech\.?|bba|b\.?\s?eng\.?|"
-     r"undergraduate|licen[cs]e|laurea triennale|hbo|(?-i:L3)|bse|baccalaureate|triennial(?=\s+degree)", "bachelor"),
+     r"undergraduate|licen[cs]e|laurea triennale|hbo\+?|(?-i:L3)|bse|baccalaureate|triennial(?=\s+degree)|"
+     # rules 0.4.4: the translator's Dutch `HBO`, `higher professional education`
+     r"higher\s+professional\s+education", "bachelor"),
     # `Master 2`, the French second year of the master (rules 0.4.3)
     (r"master\s*2(?!\d)|master(?:'s|’s|s)?|m\.?\s?sc\.?|m\.?\s?a\.?|(?-i:M\.?S\.?)|m\.?\s?tech\.?|mca|m\.?\s?eng\.?|"
      r"postgraduate|diplom|laurea magistrale", "master"),
@@ -235,7 +246,7 @@ DEGREES = [
     # (rules 0.4.2).
     # The Dutch `MBO` (vocational) too, rules 0.4.3: `Minimum completed MBO or
     # HBO training`.
-    (r"associate(?:'s|’s)?(?=\s+degree)|(?-i:WO)(?=[\s-]+(?:degree|diploma|level|niveau|in|bachelor|master|training)\b"
+    (r"associate(?:'s|’s)?(?=\s+degree)|(?-i:WO)(?=[\s-]+(?:degree|diploma|level|niveau|in|bachelor|master|training|programme|program)\b"
      r"|$)|(?-i:MBO)",
      "degree"),
     (r"(?:university\s+|academic\s+|engineering\s+|technical\s+|college\s+|higher\s+)?(?:degree|diploma|"
@@ -253,12 +264,13 @@ _EDU_RE = re.compile(
     # in X`, `Master's degree, preferably in X` (rules 0.4.2); several, and
     # `minimum`, `strongly preferred` since 0.4.3 (`Bac +3 training minimum,
     # ideally in trade`, `PhD strongly preferred in Biology`)
-    r"(?:\s*,?\s+(?:minimum|required|(?:strongly\s+|highly\s+)?preferred|mandatory|preferably|ideally|"
+    r"(?:\s*[,–—-]?\s+(?:minimum|required|(?:strongly\s+|highly\s+)?preferred|mandatory|preferably|ideally|"
     r"or\s+equivalent))*\s+"
     # `with specialisation in` (rules 0.4.2): the guard on `_EDU_NOPREP_RE`
     # works now, and it had been the only path to these; `towards` (0.4.3) is
-    # the translator's Dutch `richting`
-    r"(?:in|of|on|towards?|in\s+the\s+direction\s+of|"
+    # the translator's Dutch `richting`; `within`, `with preference for`, a
+    # dash before `preferably` (0.4.4)
+    r"(?:in|of|on|within|towards?|in\s+the\s+direction\s+of|with\s+(?:a\s+)?preference\s+for|"
     r"with\s+(?:an?\s+)?(?:speciali[sz]ation|focus|major|concentration|emphasis)\s+(?:in|on))\s+"
     r"(?:the\s+)?(?:field\s+of\s+)?(?P<field>.+)$",
     re.I)
@@ -279,7 +291,8 @@ _EDU_NOPREP_RE = re.compile(
     rf"^(?P<pre>(?:[\w'’-]+\s+){{0,3}}?)(?P<deg>(?:{_DEGREE_ALT})\s+degree)\s+"
     r"(?!(?:with|or|and|from|at|for|to|by|as|obtained|completed|required|holder|preferably|ideally|is|are)\b)"
     r"(?P<field>[^\W\d_][^,;+]*)$", re.I)
-_STUDENT_RE = re.compile(r"\b(?:ongoing|current|currently|enrolled|pursuing|final[- ]year)\b", re.I)
+_STUDENT_RE = re.compile(r"\b(?:ongoing|current|currently|enrolled|pursuing|final[- ]year|following|completing)\b",
+                         re.I)
 _BAC_STEP = {2: "degree", 3: "bachelor", 4: "master", 5: "master", 6: "master", 7: "master", 8: "phd"}
 # `Master of Science in Physics`: `of Science` names the degree, not the field (rules 0.4.1)
 _DEGREE_NAME_RE = re.compile(r"^(?:(?:applied\s+)?sciences?|arts|engineering|technology|commerce|laws?)\s+(?:in|of)\s+",
@@ -334,6 +347,10 @@ def _education(text: str) -> dict | None:
     # `computer science with specialization in cybersecurity`: the field is the first (rules 0.4.3)
     field = re.sub(r"\s+with\s+(?:an?\s+)?(?:speciali[sz]ation|focus|major|concentration|emphasis)\s+(?:in|on)\s+.+$",
                    "", field, flags=re.I)
+    # `an appropriate subject` names no field (rules 0.4.4)
+    if re.fullmatch(r"(?:an?\s+)?(?:appropriate|relevant|related|suitable|technical)\s+(?:subject|field|discipline|"
+                    r"area|direction)s?", field, re.I):
+        field = ""
     # `(economic) computer science`, `Computer Science (or equivalent)`: the field is outside the brackets
     field = re.sub(r"\s{2,}", " ", re.sub(r"\s*\([^()]*\)\s*", " ", field)).strip()
     field = _DEGREE_NAME_RE.sub("", field)
@@ -341,10 +358,15 @@ def _education(text: str) -> dict | None:
         # `Bac+4/5 in Business School` says where, not what (rules 0.4.2)
         field = ""
     degree = _degree(m.group("deg"), pre)
+    # `Master Data Management` is a field, not a master's degree; under a
+    # master, `Master Informatique` is the field `Informatique` (rules 0.4.4)
+    if degree == "master" and re.match(r"master(?:'s|’s)?\s+(?!data\b)\S", field, re.I):
+        field = re.sub(r"^master(?:'s|’s)?\s+", "", field, flags=re.I)
+    inner = _education(field) if _DEGREE_START_RE.match(field) and not re.match(r"master\s+data\b", field, re.I) \
+        else None
     # A degree named inside the field (`Degree of Master of Science`, `Graduate
     # in Bachelor's`): the inner one is the requirement. Under a named outer
     # degree only its field is taken. Rules 0.4.1.
-    inner = _education(field) if _DEGREE_START_RE.match(field) else None
     if inner and inner["degree"] != "degree":       # `Degree in Education` keeps its field
         if degree == "degree":
             return inner
@@ -367,7 +389,9 @@ _EDU_PRE = {"a", "an", "the", "completed", "complete", "finished", "successfully
             "enrolled", "pursuing", "final-year", "recognised", "recognized", "accredited", "formal",
             "first", "second", "good", "excellent", "strong", "solid", "appropriate", "suitable", "minimum",
             "at", "least", "of", "or", "equivalent", "advanced", "scientific", "engineering", "college",
-            "graduated", "from", "diploma"}
+            "graduated", "from", "diploma",
+            # rules 0.4.4: `Final-year student Master's degree in X`
+            "student", "following", "completing"}
 # Degree and evidence words in front of the head: a small closed class.
 LEVEL_WORDS = {
     "basic": "basic", "first": "basic", "some": "basic", "initial": "basic", "fundamental": "basic",
@@ -388,6 +412,8 @@ LEVEL_WORDS = {
     "equivalent": "", "directly": "",
     # `Ideally Excel` is Excel, marked optional (`atomise.nice_to_have`)
     "ideally": "", "preferably": "", "especially": "", "particularly": "",
+    # rules 0.4.4, batch 3: `Ample`, `Vast`, `Real`, `Genuine` were the core
+    "ample": "strong", "vast": "strong", "real": "", "genuine": "", "highly": "strong", "high-level": "strong",
 }
 _LEVEL_RANK = {"": 0, "basic": 1, "good": 2, "strong": 3, "advanced": 3, "expert": 4}
 _HEAD_RE2 = re.compile(
@@ -437,8 +463,12 @@ _MARK = (rf"(?:(?:{_BE}|(?:is\s+|are\s+)?(?:also\s+)?considered(?:\s+as)?|seen\s
          # no verb in front (`Green Belt appreciated`, `SAP Advantage`,
          # `programming advantage`, `languages of advantage`). Not after
          # `competitive` or `strategic`, where the advantage is the object.
-         r"(?:(?:very|highly|much|also)\s+)?(?:appreciated|valued|welcome|desired)|"
+         r"(?:(?:very|highly|much|also)\s+)?(?:appreciated|valued|welcome|desired|beneficial)|"
+         # rules 0.4.4: `Prior Fintech experience is not a requirement, but an asset`
+         rf"(?:{_BE}\s+)?not\s+a\s+(?:requirement|must),?\s*but\s+(?:an?\s+)?(?:{_ADJ}\s+)?(?:asset|plus|advantage|bonus)|"
          r"(?<!competitive\s)(?<!strategic\s)(?:of\s+)?advantage|"
+         # rules 0.4.4: the translator's Chinese 优先 / 更好 (`... is given priority`, `is better`)
+         r"(?:(?:is|are|will\s+be)\s+)?given\s+priority|(?:is|are|would\s+be)\s+(?:even\s+)?better|"
          # `is a plus, but not required`: optional said twice
          rf"(?:(?:{_BE}\s+)?an?\s+(?:{_ADJ}\s+)?plus,?\s*)?(?:but|though)\s+not\s+(?:required|mandatory|essential)")
 # The marker alone in a bracket, or bare at a word's start: `(AWS preferred)`
@@ -510,10 +540,163 @@ _SLASHED_HEADS_RE = re.compile(r"^(?:qualifications?|experience|knowledge|skills
 _GLUED_HEAD_RE = re.compile(r"(?<=\w)-(?:knowledge|skills|experience|expertise)$", re.I)
 
 
+# Which words of a core are a named technology (rules 0.4.4, for the user's
+# call that a name wins over the activity around it). Strong by their shape: an
+# acronym (`AWS`, `CI/CD`), a capital inside (`DevOps`, `iOS`), a digit or a
+# sign (`S3`, `C#`, `.NET`, `Node.js`), one capital letter (`C`, `R`). A word
+# with a first capital only is a name inside the phrase, or first when a
+# technical word follows (`Python backend`) and it is not a generic one
+# (`Cloud engineering`). In a phrase written in Title Case only the strong
+# ones count. A capitalised word next to a name joins it (`Power BI`).
+_GENERIC_FIRST = {
+    "cloud", "data", "software", "network", "networking", "security", "system", "systems", "web", "mobile",
+    "business", "project", "product", "test", "testing", "quality", "digital", "technical", "enterprise",
+    "application", "applications", "solution", "solutions", "process", "people", "team", "change", "risk", "sales",
+    "customer", "financial", "finance", "marketing", "front", "back", "full", "full-stack", "platform",
+    "infrastructure", "database", "embedded", "hardware", "electrical", "mechanical", "industrial", "machine", "deep",
+    "computer", "information", "programming", "scripting", "agile", "service", "services", "backend", "frontend",
+    "structured", "analytical", "communication", "leadership", "management", "operations", "research", "design",
+    "development", "engineering", "architecture", "automation", "integration", "domain", "industry", "legal",
+}
+_TECH_TAIL = {
+    "backend", "frontend", "back-end", "front-end", "development", "programming", "scripting", "coding", "skills",
+    "fundamentals", "ecosystem", "stack", "environment", "environments", "infrastructure", "platform", "platforms",
+    "services", "applications", "apps", "code", "codebase", "projects", "libraries", "library", "framework",
+    "frameworks", "knowledge", "experience", "expertise", "proficiency", "administration", "engineering",
+    "modelling", "modeling", "dashboards", "reporting", "queries", "databases", "database", "pipelines",
+    "certification", "certifications", "patterns", "solutions", "tools", "tooling",
+}
+
+
+_NOT_NAMES = {"IT", "HR", "OR", "AND"}
+# words in front of a frame noun that say what kind, not what (rules 0.4.4)
+_WEAK_OBJECT = {"technical", "work", "working", "business", "professional", "practical", "industry", "field",
+                "functional", "operational", "hands-on", "coding", "programming", "scripting", "user", "computer",
+                "application"}
+# names that are categories: the word in front of them is part of what is asked
+# (`conversational AI`, `edge AI deployments` are not the AI skill)
+_CATEGORY_NAMES = {"AI", "ML", "AI/ML", "BI", "UX", "UI", "API", "APIs", "IoT", "NLP", "LLM", "LLMs", "OT", "QA"}
+# names with a small word inside, whole as written
+_NAME_WITH_SMALL_WORD_RE = re.compile(r"Ruby on Rails|Infrastructure as Code|Software as a Service", re.I)
+
+
+def _strong_name(tok: str) -> bool:
+    t = tok.strip(",.;:()[]")
+    if not any(c.isalpha() for c in t) or t in _NOT_NAMES:
+        return False
+    if any(c.isdigit() for c in t) or re.search(r"[+#]|\.\w", t):
+        return True
+    letters = [c for c in t if c.isalpha()]
+    if len(letters) >= 2 and all(c.isupper() for c in letters):
+        return True
+    if any(c.isupper() for c in t[1:]) and any(c.islower() for c in t):
+        return True
+    return len(t) == 1 and t.isupper() and t not in ("A", "I")
+
+
+def _name_runs(text: str) -> list[str]:
+    """The named technologies in ``text``, each as written: `Azure`, `Power BI`, `ISO 14229`."""
+    whole = _NAME_WITH_SMALL_WORD_RE.search(text)
+    if whole:
+        # `Ruby on Rails` reads as Title Case, and is a name
+        return [whole.group()] + _name_runs(text[: whole.start()] + ", " + text[whole.end():])
+    toks = text.split()
+    words = [t.strip(",.;:()[]") for t in toks]
+    rest = [w for w in words[1:] if w[:1].isalpha()]
+    title = len(rest) >= 2 and sum(w[:1].isupper() for w in rest) * 2 >= len(rest)
+    name = []
+    for i, w in enumerate(words):
+        cap = w[:1].isupper() and w.lower() not in LEVEL_WORDS and w not in _NOT_NAMES
+        if _strong_name(w):
+            name.append(True)
+        elif cap and not title and i > 0:
+            name.append(True)
+        elif cap and not title and i == 0 and w.lower() not in _GENERIC_FIRST and (
+                len(words) == 1 or words[1].lower() in _TECH_TAIL or toks[0][-1:] in ",;:"):
+            name.append(True)
+        else:
+            name.append(False)
+    # a capitalised word or a number next to a name joins it: `Power BI`, `ISO 14229`
+    for _ in range(2):
+        for i, w in enumerate(words):
+            if name[i] or not w:
+                continue
+            # never across a comma: `CAN Protocol, Diagnosis` is one name and a word
+            near = (i > 0 and name[i - 1] and toks[i - 1][-1:] not in ",;:") or \
+                   (i + 1 < len(words) and name[i + 1] and toks[i][-1:] not in ",;:")
+            if near and (w.isdigit() or (w[:1].isupper() and w.lower() not in _GENERIC_FIRST)):
+                name[i] = True
+    runs, cur = [], []
+    for i, w in enumerate(words):
+        if name[i]:
+            cur.append(w)
+            # a comma or a bracket ends a name
+            if toks[i].rstrip()[-1:] in ",;:)" or toks[i][:1] == "(":
+                runs.append(" ".join(cur))
+                cur = []
+        elif cur:
+            runs.append(" ".join(cur))
+            cur = []
+    if cur:
+        runs.append(" ".join(cur))
+    return [r for r in runs if r]
+
+
+_NAME_FOLLOWERS = _TECH_TAIL | {"software", "systems", "system", "workflows", "workflow", "architectures", "architecture",
+                                 "apis", "api", "tests", "testing", "tech", "technologies", "technology", "suite",
+                                 "integration", "integrations", "deployment", "deployments",
+                                 "models", "concepts", "methodology", "methodologies", "language", "languages"}
+_NAME_PREPS = {"as", "in", "for", "with", "on", "of", "to", "at", "from", "using", "and", "or", "within", "across"}
+
+
+def _name_is_modifier(run: str, core: str) -> bool:
+    """A name at the start that a common noun completes: `IR drop analysis`,
+    `AD product system development` are terms of their own, not IR or AD
+    (the review of batch 2). `Python backend`, `GIS systems`, `AI as part of
+    the workflow` keep the name: what follows is a known tail or a preposition."""
+    if not core.startswith(run):
+        return False
+    rest = core[len(run):].split()
+    return bool(rest) and rest[0][:1].islower() and rest[0].lower().strip(",.;:") not in _NAME_FOLLOWERS | _NAME_PREPS
+
+
 def _named(text: str) -> bool:
     """A capital or a digit anywhere, the first letter included: `Python` alone is a name here,
     where `names` reads a first capital as the start of a sentence."""
     return any(ch.isupper() or ch.isdigit() for ch in text)
+
+
+def first_per_key(keys: list[str]) -> list[bool]:
+    """True for the first atom of each value in one item (its normalised words); an empty one always stays."""
+    seen: set[str] = set()
+    out = []
+    for k in keys:
+        out.append(not k or k not in seen)
+        if k:
+            seen.add(k)
+    return out
+
+
+def keep_once(norms: list[str]) -> list[bool]:
+    """Which atoms of ONE item stay (rules 0.4.4, from the user's review of batch 2).
+
+    The same words twice go (`Systems thinking` three times). The same key
+    twice goes too when what was set aside names nothing: `communication
+    skills with clients, specialist teams and stakeholders` is one ask, its
+    contexts implied (the call of 2026-11-17). A name in `extra` stays — the
+    key lost it (`SW` for `SW development experience with INCA`), and the
+    inspector shows that as `duplicate_key`; dropping it would hide the error.
+    """
+    parts = [decompose(n) for n in norms]
+    same_words = first_per_key([n.lower() for n in norms])
+    seen: set[str] = set()
+    out = []
+    for p, w in zip(parts, same_words):
+        k = p["key"]
+        out.append(w and not (k and k in seen and not _name_runs(p["extra"])))
+        if k:
+            seen.add(k)
+    return out
 
 
 def decompose(text: str) -> dict:
@@ -576,7 +759,25 @@ def decompose(text: str) -> dict:
         # `about` since rules 0.4.3: `Practical knowledge about microservices` kept `about`
         post_obj = re.sub(r"^(?:of|in|with|on|for|at|to|regarding|about|around|within|across|as|using)\s+", "",
                           post, flags=re.I) if post else ""
-        if object_words and post_obj != post.strip() and _named(post_obj) and not _named(" ".join(object_words)):
+        # names read by `_name_runs` since rules 0.4.4: `Cloud engineering
+        # experience on Azure` kept `Cloud engineering`, its capital C taken
+        # for a name
+        # `SW development experience using INCA`: what is used is asked, even
+        # beside a name in front (batch 3: `SW` three times for three tools)
+        weak = all(w.lower() in _WEAK_OBJECT for w in object_words)
+        if object_words and post_obj and post_obj != post.strip() and weak:
+            # `Deep technical mastery of high-density cooling`, `work experience
+            # in robotics`: `technical` and `work` say what kind, the object
+            # after the preposition is what is asked (rules 0.4.4, batch 3)
+            core, extra = post_obj, " ".join(object_words)
+        elif object_words and post_obj and post_obj == post.strip() and _name_runs(post) == [post.strip()] \
+                and not _name_runs(" ".join(object_words)):
+            # `Development skills Perl`: the head distributed over a list of names
+            core, extra = post_obj, " ".join(object_words)
+        elif object_words and post_obj != post.strip() and _name_runs(post_obj) \
+                and (not _name_runs(" ".join(object_words))
+                     or (re.match(r"(?:using|with)\s", post, re.I)
+                         and object_words[-1].lower() in ("development", "engineering", "integration", "testing"))):
             # `Good programming knowledge in Python`: the words in front say what
             # kind, the name after the preposition is what is asked (rules 0.3.0;
             # the core was `programming`, and Python went to `extra`).
@@ -670,9 +871,39 @@ def decompose(text: str) -> dict:
         # And a preposition left in front names nothing (`In Python`).
         pm = re.match(r"^(?P<c>.+?)\s*\((?P<p>[^()]+)\)$", out["core"])
         if pm:
-            out["core"] = pm.group("c")
-            out["extra"] = " ".join(x for x in (out["extra"], pm.group("p")) if x)
+            ex = re.sub(r"^(?:e\.?\s?g\.?,?|such\s+as|like|incl\.?|including)\s+", "", pm.group("p").strip(),
+                        flags=re.I)
+            if _name_runs(ex) == [ex] and not _name_runs(pm.group("c")):
+                # A NAMED example after a generic category is the requirement
+                # (the user's call, 2026-11-17): `databases (SQL/NoSQL)` is
+                # SQL/NoSQL, `tools (Sparx EA)` Sparx EA; the category goes to `extra`.
+                out["core"], extra = ex, pm.group("c")
+            else:
+                out["core"], extra = pm.group("c"), pm.group("p")
+            out["extra"] = " ".join(x for x in (out["extra"], extra) if x)
         out["core"] = re.sub(r"^(?:in|of|with|on|for)\s+(?=\S)", "", out["core"], flags=re.I)
+        # Rules 0.4.4, from the user's review of batch 2: a preposition left at
+        # either edge names nothing (`working on CPaaS`, `development for`), nor
+        # do `sense of`, `strength`, `motivation for`
+        out["core"] = re.sub(r"^(?:working|work)\s+(?:on|with|in)\s+", "", out["core"], flags=re.I)
+        out["core"] = re.sub(r"\s+(?:for|with|in|of|on|at|as|to)$", "", out["core"], flags=re.I)
+        out["core"] = re.sub(r"^(?:an?\s+)?sense\s+of\s+(?=\S)", "", out["core"], flags=re.I)
+        out["core"] = re.sub(r"^(?:the\s+)?(?:field|area|domain)s?\s+of\s+(?=\S)", "", out["core"], flags=re.I)
+        # batch 3, read by the inspector's `edge_preposition`: `Experience from
+        # large organisations`, `working directly with customers`, `in at least
+        # one public cloud`, `as an IT Support Officer`. Lower case only:
+        # `AS 9100` is a standard.
+        out["core"] = re.sub(r"^(?:working\s+|work\s+)?(?:directly\s+|closely\s+)?(?:with|from)\s+(?=\S)", "",
+                             out["core"])
+        out["core"] = re.sub(r"^at\s+least\s+(?:one|1|\d\s*[–-]\s*\d)\s+(?:of\s+(?:the\s+)?)?(?=\S)", "", out["core"])
+        out["core"] = re.sub(r"^as\s+(?:an?\s+)?(?=\S)", "", out["core"])
+        out["core"] = re.sub(r"(?<=\w)\s+strengths?$", "", out["core"], flags=re.I)
+        out["core"] = re.sub(r"^(motivation)\s+(?:for|to)\s+.+$", r"\1", out["core"], flags=re.I)
+        # `build and manage a sales pipeline`: verbs that share one object are
+        # one ask (2026-10-29), and the object is what is asked
+        out["core"] = re.sub(r"^[a-z]+\s+(?:and|&|or)\s+[a-z]+\s+(?:an?|the)\s+(?=\S)", "", out["core"])
+        if out["core"].lower() in ("soft", "hard", "people"):
+            out["core"] += " skills"      # `Soft skills (communication)`: `Soft` names nothing
         # Degree words after the frame (`Safe handling of especially Excel`,
         # `use of in particular Excel`): the level, not the object.
         out["core"] = re.sub(r"^(?:in particular|expert-level)\s+(?=\S)", "", out["core"], flags=re.I)
@@ -685,6 +916,27 @@ def decompose(text: str) -> dict:
                 lv = [LEVEL_WORDS[w.lower()] for w in lead[:k]]
                 out["level"] = max(lv, key=lambda l: _LEVEL_RANK[l])
             out["core"] = " ".join(lead[k:])
+        # A named technology is the requirement, the activity or role around it
+        # its context (the user's call, 2026-11-17): `Cloud engineering on
+        # Azure` is Azure, `SAP as a technical consultant` SAP, `Python
+        # backend` Python. Only one name in the core, and some words that are
+        # not names beside it: two names are a split's business, and `Scrum
+        # Master` is one name.
+        runs = _name_runs(out["core"])
+        bare = out["core"].strip(" ,.;:")
+        if len(runs) == 1 and runs[0].replace(".", "") != bare.replace(".", "") \
+                and re.search(r"(?<![\w/&.+#-])[a-z]", bare) \
+                and not _NAME_WITH_SMALL_WORD_RE.fullmatch(bare) \
+                and not re.search(r"\blicen[cs]e\s+[A-Z]\b", bare) \
+                and not re.match(r"(?:an?\s+)?(?:interest|passion|curiosity|enthusiasm)\s+(?:in|for)\b", bare, re.I) \
+                and not _name_is_modifier(runs[0], bare) \
+                and not (runs[0] in _CATEGORY_NAMES
+                         and re.search(rf"(?<![\w-])[a-z][\w-]*\s+{re.escape(runs[0])}(?!\w)", bare)) \
+                and not re.fullmatch(rf"{re.escape(runs[0])}\s+(?:certifications?|certificates?|licen[cs]es?)",
+                                     bare, re.I):
+            rest = re.sub(rf"\s*{re.escape(runs[0])}\s*", " ", out["core"]).strip(" ,.:;-")
+            out["core"] = runs[0]
+            out["extra"] = " ".join(x for x in (out["extra"], rest) if x)
         # Product names written several ways (`Golang`, `PowerBI`, `MS Office`):
         # one spelling, from a closed list (`ALIASES`). Then what names nothing.
         out["core"] = ALIASES.get(canon(out["core"]), out["core"])

@@ -134,8 +134,12 @@ class Client:
         if self.token:
             headers["Authorization"] = f"Bearer {self.token()}"
         # room for a model that reasons before it answers: at 600 half of
-        # Gemini 3.5 Flash's answers came back empty, cut inside its reasoning
-        body = {"model": self.model, "temperature": 0, "max_tokens": 4000,
+        # Gemini 3.5 Flash's answers came back empty, cut inside its reasoning.
+        # And JSON only (2026-11-17): on batch 3 it wrote its reasoning into
+        # the grouping answer (`Let's check 2: ...`), ran out of room before
+        # any JSON, and the run's kinds came back empty without a word.
+        body = {"model": self.model, "temperature": 0, "max_tokens": 8000,
+                "response_format": {"type": "json_object"},
                 "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
                 **self.extra}
         for attempt in range(4):
@@ -213,9 +217,14 @@ Answer with JSON only:
 """
 
 
+GROUP_TRIES = 2
+
+
 def group(client: Client, problems: list[dict], entries: list[dict] | None = None,
-          rejected: list[str] = ()) -> list[dict]:
-    """The problems of one run, grouped into kinds by the model; [] when unreadable.
+          rejected: list[str] = ()) -> list[dict] | None:
+    """The problems of one run, grouped into kinds by the model; [] for no
+    problem, None when the model's answer could not be read twice (said in the
+    run's reading, `grouped`: an empty list looked like no kind at all).
     ``rejected``: kinds a person turned down, offered as known so the model
     names them again instead of proposing them as new."""
     if not problems:
@@ -223,16 +232,22 @@ def group(client: Client, problems: list[dict], entries: list[dict] | None = Non
     known = [e["id"] for e in (entries if entries is not None else archivist.catalogue())] + list(rejected)
     lines = [f"{k}. [{p.get('stage', '')}] {p.get('what', '')} | pattern: {p.get('pattern', '')}"
              for k, p in enumerate(problems)]
-    try:
-        text = client.ask(_GROUP.format(known=", ".join(known)), "\n".join(lines))
-    except requests.RequestException:
-        return []
-    text = re.sub(r"<think>.*?</think>", "", text or "", flags=re.S)
-    m = re.search(r"\{.*\}", text, re.S)
-    try:
-        kinds = json.loads(m.group(0)).get("kinds") if m else None
-    except json.JSONDecodeError:
-        kinds = None
+    kinds = None
+    for _ in range(GROUP_TRIES):
+        try:
+            text = client.ask(_GROUP.format(known=", ".join(known)), "\n".join(lines))
+        except requests.RequestException:
+            continue
+        text = re.sub(r"<think>.*?</think>", "", text or "", flags=re.S)
+        m = re.search(r"\{.*\}", text, re.S)
+        try:
+            kinds = json.loads(m.group(0)).get("kinds") if m else None
+        except (json.JSONDecodeError, AttributeError):
+            kinds = None
+        if isinstance(kinds, list):
+            break
+    if not isinstance(kinds, list):
+        return None
     out = []
     for k in kinds or []:
         if not isinstance(k, dict) or not k.get("id"):
@@ -269,7 +284,8 @@ def explore(postings: list[dict], job: str, client: Client, entries: list[dict] 
         for p in (a or {}).get("problems") or []:
             problems.append(p)
             owner.append(k)
-    kinds = group(client, problems, entries, rejected)
+    grouped = group(client, problems, entries, rejected)
+    kinds = grouped or []
     texts = [it["item"] for it in items] + [r.get("atom", "") for it in items for r in it["requirements"]]
     for kd in kinds:
         kd["count"] = len({owner[i] for i in kd["members"]})
@@ -281,7 +297,7 @@ def explore(postings: list[dict], job: str, client: Client, entries: list[dict] 
                        for i in kd["members"][:5]]
     return {"agent": AGENT, "model": client.model, "prompt": PROMPT_VERSION, "sampled": len(items),
             "answered": sum(a is not None for a in answers), "flagged": sum(bool(a and not a["ok"]) for a in answers),
-            "kinds": kinds}
+            "grouped": grouped is not None, "problems": len(problems), "kinds": kinds}
 
 
 def public(ex: dict | None) -> dict | None:
@@ -290,7 +306,8 @@ def public(ex: dict | None) -> dict | None:
     if not ex:
         return None
     keep = ("id", "stage", "catalogue", "new", "count", "rejected_before")
-    return {k: ex.get(k) for k in ("agent", "model", "prompt", "sampled", "answered", "flagged")} | {
+    return {k: ex.get(k) for k in ("agent", "model", "prompt", "sampled", "answered", "flagged", "grouped",
+                                   "problems")} | {
         "kinds": [{**{k: kd.get(k) for k in keep},
                    "title": None if kd.get("quotes") else kd.get("title"),
                    "shape": None if kd.get("quotes") else kd.get("shape")} for kd in ex.get("kinds") or []]}

@@ -192,6 +192,9 @@ def split_posting(items: list[str], dictionary=None, translate: bool = True,
         text = atom.repair_translation(item, text)
         was = item in english and text != clean[item]
         atoms, how = atom.route(text)
+        # One ask once per item (rules 0.4.4, `normalise_req.keep_once`)
+        keep = normalise_req.keep_once([normalise_req.normalise_requirement(a, was) for a in atoms])
+        atoms = [a for a, k in zip(atoms, keep) if k]
         counts = atom.counted(atoms)
         for j, a in enumerate(atoms):
             norm = normalise_req.normalise_requirement(a, was)

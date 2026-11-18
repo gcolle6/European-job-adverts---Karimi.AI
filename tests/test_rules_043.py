@@ -104,8 +104,9 @@ def test_degrees_from_batch_2(item, keys):
     ("Cloud Services (Azure, Microsoft 365) Advantage", ["Cloud Services"]),
     ("Experience with AWS or Azure is a plus, but not required", ["AWS", "Azure"]),
     ("Lean Explorer certification, desired", ["Lean Explorer certification"]),
+    # named examples are the requirements since 0.4.4 (the user's call of 2026-11-17)
     ("Relevant certifications preferred (e.g., ISO 27001 Lead Auditor/Implementer, CISM, CISSP, CISA)",
-     ["certifications"]),
+     ["ISO 27001 Lead Auditor/Implementer", "CISM", "CISSP", "CISA"]),
     ("Desirable experience in design", ["design"]),
     ("Advantageous knowledge of English", ["language: English"]),
     # `required`, `or similar`, a level after the name

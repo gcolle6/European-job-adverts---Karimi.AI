@@ -47,26 +47,50 @@ EXTRA_MODEL_FOR = {"zh": "opus-mt-zh-en", "mul": "opus-mt-mul-en",
 _EXTRA_MARKERS = {
     "da": {"og", "til", "med", "af", "erfaring", "kendskab", "viden", "evne", "uddannelse", "uddannelser", "gerne",
            "behov", "omsætte", "forretningsmål", "samarbejde", "kompetencer", "stærk", "gode", "lyst", "dybere",
-           "opbygge", "vejlede", "øvrige", "konkrete"},
+           "opbygge", "vejlede", "øvrige", "konkrete",
+           # rules 0.4.4
+           "inden", "kandidatuddannelse", "eller", "beslægtet", "fagområde", "datalogi", "sundhedsvidenskab"},
     "fi": {"ja", "tai", "sekä", "kokemusta", "osaamista", "osaaminen", "kyky", "kykyä", "hyvä", "hyvät",
            "erinomainen", "taidot", "ymmärrystä", "esim", "halua", "tuntemusta", "kielen", "englannin", "suomen",
            "työskennellä", "ympäristössä", "toimia", "yhteistyössä"},
     "cs": {"a", "na", "se", "ve", "zkušenost", "zkušenosti", "znalost", "znalosti", "jazyk", "jazyka", "úrovni",
            "základě", "schopnost", "praxe", "vzdělání", "zájem", "rozhodování", "anglický", "komunikativní"},
     "fr": {"et", "du", "des", "confirmé", "confirmée", "rigueur", "déploiement", "sens", "détail", "maîtrise",
-           "connaissances", "appréciée", "apprécié", "souhaitée", "souhaité"},
+           "connaissances", "appréciée", "apprécié", "souhaitée", "souhaité",
+           # rules 0.4.4, from batch 3
+           "années", "expérience", "développement", "logiciels", "embarqués"},
+    # Rules 0.4.4, from batch 3: Spanish the word lists left undecided or took
+    # for Portuguese (`Nivel de inglés mínimo B2` went through no model), Dutch
+    # whose English terms made it look English (`HBO+ of WO werk- en
+    # denkniveau in Data Science`), and Croatian, read as Italian
+    # (`poznavanje ... ili spremnost`).
+    "es": {"años", "experiencia", "gestión", "evaluación", "nivel", "inglés", "mínimo", "conocimientos", "técnica",
+           "técnicos", "definición", "elaboración", "requerimientos", "comunicación", "perfiles", "propietario",
+           "grado", "universitario", "estudios", "afines", "formación", "riesgos", "asociados", "factibilidad",
+           "soluciones", "principios", "políticas", "analítica", "producto", "excelente", "medición", "como"},
+    "nl": {"werk", "denkniveau", "opleiding", "richting", "vergelijkbare", "bijvoorbeeld", "afgeronde", "minimaal",
+           "jaar", "ervaring", "kennis", "technische", "bedrijfskunde", "informatica", "volgt", "een"},
+    "mul": {"poznavanje", "iskustvo", "znanje", "ili", "spremnost", "okruženju", "radu", "rada"},
 }
+# a code here -> the CODE name it stands for, when it is one of the seven
+_EXTRA_AS = {"fr": "Français", "es": "Español", "nl": "Nederlands"}
 
 
-def extra_code(text: str) -> str | None:
-    """`da`, `fi`, `cs` or `fr` from the words alone, or None (rules 0.4.3)."""
+def extra_hits(text: str) -> tuple[str | None, int]:
+    """The language the extra word lists read in ``text``, and how many of its words they found."""
     words = set(re.findall(r"[^\W\d_]+", text.lower()))
     best, hits = None, 1
     for code, markers in _EXTRA_MARKERS.items():
         found = words & markers
         if len(found) > hits and any(len(w) >= 4 for w in found):
             best, hits = code, len(found)
-    return best
+    return best, (hits if best else 0)
+
+
+def extra_code(text: str) -> str | None:
+    """`da`, `fi`, `cs`, `mul` or a code of the seven, from the words alone, or None (rules 0.4.3)."""
+    code = extra_hits(text)[0]
+    return CODE.get(_EXTRA_AS[code]) if code in _EXTRA_AS else code
 _KANA_RE = re.compile(r"[぀-ヿ]")
 _HAN_RE = re.compile(r"[一-鿿]")
 _OTHER_SCRIPT_RE = re.compile(r"[가-힯Ѐ-ӿͰ-Ͽ]")    # Hangul, Cyrillic, Greek
@@ -115,11 +139,14 @@ def item_code(item: str, posting_items: list[str] | None = None, hint: str | Non
     a few French words they did not hold (`Confirmé`, `Rigueur`).
     """
     own = language.detect(item)[0]
-    if own == "English":        # `Work on site in Łódź` stays as written
+    extra, hits = extra_hits(item)
+    # `Work on site in Łódź` stays as written; but three words of another
+    # language outweigh the English names around them (rules 0.4.4: `HBO+ of
+    # WO werk- en denkniveau in Data Science, GIS, Computer Science`)
+    if own == "English" and hits < 3:
         return None
-    extra = extra_code(item)
     if extra:
-        return CODE.get("Français") if extra == "fr" else extra
+        return extra_code(item)
     if own:
         return CODE.get(own)
     by_script = script_code(item)
@@ -129,7 +156,7 @@ def item_code(item: str, posting_items: list[str] | None = None, hint: str | Non
         joined = " | ".join(posting_items)
         own = language.detect(joined)[0]
         extra = extra_code(joined) if own != "English" else None
-        if extra and extra != "fr":
+        if extra:
             return extra
         if own:
             return CODE.get(own)

@@ -131,7 +131,9 @@ def test_education_needs_the_degree_in_front():
     (["Vue.js", "Vue"], "Vue"),
     (["Driving licence B", "Valid driver's license"], "Driving licence"),
     (["Git version control", "Use of Git", "Git"], "Git"),
-    (["version control (Git)", "version control"], "version control"),
+    # `version control (Git)` was here until rules 0.4.4: a named example now
+    # wins over its category (the user's call of 2026-11-17), so it is Git
+    (["version control"], "version control"),
 ])
 def test_spellings_of_one_requirement_share_a_key(texts, key):
     assert {normalise_req.decompose(t)["key"] for t in texts} == {key}
@@ -153,7 +155,9 @@ def test_debris_names_nothing(text):
 
 
 def test_controls_keep_their_words():
-    # a frame only at the start: `access control`, `AI use` are what is asked
+    # a frame only at the start: `access control`, `AI use` are what is asked.
+    # Since rules 0.4.4 a name wins over the words beside it, except a common
+    # noun that completes it into a term (`IR drop analysis`, `AI use`)
     assert normalise_req.decompose("access control")["key"] == "access control"
     assert normalise_req.decompose("AI use")["key"] == "AI use"
     # `Interest in AI` is not the AI skill

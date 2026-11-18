@@ -93,7 +93,7 @@ def test_controls_stay(item, keys):
     ("Python is a plus", "Python"), ("Python preferred", "Python"), ("Python (preferred)", "Python"),
     ("German is strongly preferred", "language: German"), ("Ansible is a plus", "Ansible"),
     ("Kafka would be an advantage", "Kafka"), ("Desirable", ""),
-    ("TwinCAT software preferred", "TwinCAT software"), ("M-Files will be advantageous", "M-Files"),
+    ("TwinCAT software preferred", "TwinCAT"),  # the name wins since 0.4.4 ("M-Files will be advantageous", "M-Files"),
     ("Microsoft Purview; this is a plus", "Microsoft Purview"),
     # the marker inside a bracket that names something stays for the bracket rule
     ("cloud infrastructure (AWS preferred)", "cloud infrastructure"),

@@ -302,6 +302,41 @@ Format: version · date · what changed · how it was measured.
   change read, two that went worse fixed before release. Left, written in the
   catalogue as open: broken fragments and long lists (no reliable detector,
   watched by the explorer).
+- **0.4.4** · 2026-11-17 · every error the agents found in batch 3, and the
+  user's first human review (batch 2, 100 items: 25 wrong, CI 17.6–34.3%; the
+  inspector had caught none of the 25). Batch 3 is now development; batch 4
+  measures. *Conventions the user settled after the review*: a named
+  technology wins and the words around it go to `extra` (`Cloud engineering
+  experience on Azure` -> Azure, `SAP as a technical consultant` -> SAP),
+  except a common noun that completes the name into a term (`IR drop
+  analysis`, `AI use`), a category name after its modifier (`conversational
+  AI`), a licence class, `Interest in`; NAMED examples are the requirements and
+  the category goes (`ERP systems such as SAP or Oracle` = 2, `databases
+  (SQL/NoSQL)`, `(AWS or Azure)`, `(Ruby on Rails / React)`); common-noun
+  examples and what `including` adds stay with the category (`digital
+  components such as Ethernet switch, memories` = 1). *Splitting*: a list cut
+  before its comma (`, and cybersecurity frameworks`); `X with the ability to
+  Y` = 2; trait lists with `eager to learn`; `3 years or more`, `C1 level or
+  above`; `is given priority, and ... is better` = 2; one ask once per item
+  (`Systems thinking` x3; contexts of one key that name nothing, `communication
+  skills with clients, teams`). *Normalisation*: `technical`, `work`,
+  `coding` before a frame noun say what kind (`Deep technical mastery of X` ->
+  X); `Be/I'm familiar with`; `the field of`, `at least one of`, `from`, `with`
+  opening the core; `Ample`, `Vast`, `Highly`, `Multi-annual`; `foundations
+  in`; `build and manage a sales pipeline` -> sales pipeline; `Soft skills`.
+  *Degrees* (batch 3): HBO/higher professional education, `WO programme`,
+  `Bac+5 ... or university master's`, `or the like`, qualifiers before the
+  field. *Translation*: Spanish, Dutch, Croatian markers; Chinese `优先`/`更好`
+  read as optional. *The inspector learns the review's error shapes*:
+  `lead_punctuation`, `comma_in_key` (names only: verb and adjective runs are
+  one ask by convention, and flagging them made 3 flags in 4 wrong),
+  `edge_preposition`, `duplicate_key` (two parts of one item with one key: a
+  name lost). *The explorer*: JSON mode and a retry — on batch 3 its kinds came
+  back empty. Measured on split and decomposition alone: inspector flags on
+  batch 3 ~630 -> ~130 (with the new detectors applied to both), batch 2 ~700
+  -> ~140; on the 100 reviewed items, 20 of 25 wrong ones change and 19 of 75
+  right ones change, every one read — all follow the user's notes. Old
+  convention tests changed with a comment where the user's call reversed them.
 
 ## Dictionary
 
@@ -367,3 +402,24 @@ Format: version · date · what changed · how it was measured.
   Master in Computer Science 830 (811); Lithuanian enters. A first 0.3.2 was
   built the same day without the 866 translations, never published, and
   discarded.
+- **0.3.3** · 2026-11-17 · batch regenerated with rules 0.4.3, the items now
+  read as Danish, Finnish, Czech or French translated first (139 per new
+  model). 96,296 cores, 72,744 groups, 48,484 topics. Parity with the batch
+  99.4% of 1,533 items; lookup agrees with the batch group 99.6% when known,
+  72.4% when placed by similarity; blind count 79.7% exact on the blind half,
+  unchanged; pattern cases 138/138. Judge's reference: 12 of 150 group
+  decisions called wrong (8.0%), topics 10%. Explore: 816 requirements. The
+  whole chain took 57 minutes on a machine with nothing else running.
+- **0.3.4** · 2026-11-17 · batch regenerated with rules 0.4.4 (the user's
+  review conventions: a name wins, named examples are the requirements). 79,570
+  cores (was 96,296: -17%, the same technology no longer split across its
+  contexts), 60,207 groups, 40,447 topics. Parity with the batch 99.4% of 1,533
+  items (casing and one `and industry` split); lookup agrees with the batch
+  group 99.6% when known, 71.9% when placed by similarity; blind count
+  unchanged on the blind half, found/human 1.128 -> 1.117. Judge's reference:
+  11 of 150 group decisions called wrong (7.3%, was 8.0%), topics 17 of 100
+  (was 10: within the noise of 100 pairs, ±7 points, and read — mostly coarse
+  topic merges such as `Technical autonomy` / `Operational autonomy`, not the
+  new rules). Two rule artefacts seen there, left for 0.4.5: `Interest and
+  experience in X` keyed `Interest and`, `experience minimum in X`. Explore:
+  806 requirements. Chain 48 minutes.

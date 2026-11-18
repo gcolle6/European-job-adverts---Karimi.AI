@@ -389,6 +389,18 @@ lingue 16) e 3 tipi nuovi dell'Esploratore. Tutti corretti; i tipi
 dell'Esploratore sono entrati nel catalogo. Restano aperti, senza rilevatore
 affidabile: pezzi rotti e liste lunghe.
 
+**Giro del lotto 3 e della prima revisione umana → regole 0.4.4, dizionario
+0.3.4.** La revisione del lotto 2 (100 righe) ha trovato 25 errori; l'Inspector
+ne aveva trovati 0. Le convenzioni decise dopo: il nome preciso vince (il
+contesto va in `extra`); esempi con nomi → sono i requisiti, esempi con nomi
+comuni → resta la categoria; `including` è sottinteso; macro-gruppi dopo, come
+progetto a parte. Le forme di quegli errori sono diventate rilevatori
+dell'Inspector (`lead_punctuation`, `comma_in_key` solo su nomi,
+`edge_preposition`, `duplicate_key`) e voci del catalogo con `found_by:
+review`. Lotto 3: titoli di studio, lingue (spagnolo, olandese, croato),
+"or more", "or above". Misura su split e normalizzazione: segnali sul lotto 3
+da ~630 a ~130, sul lotto 2 da ~700 a ~140. Lotto 4 misura.
+
 ### Revisione umana e Curator (2026-11-17)
 
 * **Revisione di una persona**: l'unico numero che conta tutti gli errori,

@@ -11,19 +11,13 @@
       "cause": "Degree names and the words in front of them the rules did not know (BS, BA/BS, B.E., HBO, WO, 'Relevant bachelor's or master's'), so the atom was read as a skill.",
       "example": "BA/BS Degree in STEM -> 'BA/BS Degree in STEM' instead of Bachelor in STEM",
       "status": "resolved",
-      "resolved_in": "0.4.3",
+      "resolved_in": "0.4.4",
       "detector": "degree_not_read",
-      "guard": "tests/test_rules_043.py::test_degrees_from_batch_2",
+      "guard": "tests/test_rules_044.py::test_degrees_and_words_from_batch_3",
       "rule_files": [
         "karimi/normalise_req.py",
         "karimi/atomise.py"
-      ],
-      "residual": {
-        "count": 8,
-        "of": 16336,
-        "rate": 0.00049,
-        "measured_on": "batch 1 of the new postings, rules 0.4.2, library re-run 2026-11-16"
-      }
+      ]
     },
     {
       "id": "degree_field_odd",
@@ -34,19 +28,13 @@
       "cause": "An alternative after the degree glued into its field: 'or relevant experience', a second degree, a language.",
       "example": "Bachelor's degree or relevant experience -> 'Bachelor in or relevant experience'",
       "status": "resolved",
-      "resolved_in": "0.4.2",
+      "resolved_in": "0.4.4",
       "detector": "degree_field_odd",
-      "guard": "tests/test_rules_042.py::test_degrees_from_the_first_batch",
+      "guard": "tests/test_rules_044.py::test_degrees_and_words_from_batch_3",
       "rule_files": [
         "karimi/normalise_req.py",
         "karimi/atomise.py"
-      ],
-      "residual": {
-        "count": 0,
-        "of": 16336,
-        "rate": 0.0,
-        "measured_on": "batch 1 of the new postings, rules 0.4.2, library re-run 2026-11-16"
-      }
+      ]
     },
     {
       "id": "optional_tail",
@@ -97,18 +85,12 @@
       "cause": "The translator knew seven languages; Chinese, Japanese, Polish, Lithuanian, Hungarian and others were kept as written and nearly all came out 'nuovo'.",
       "example": "Laisvas anglų kalbos mokėjimas -> kept as written",
       "status": "resolved",
-      "resolved_in": "0.4.2",
+      "resolved_in": "0.4.4",
       "detector": "untranslated",
-      "guard": "tests/test_library.py::test_languages_the_batch_never_met_are_read_by_their_letters",
+      "guard": "tests/test_rules_044.py::test_languages_batch_3_showed",
       "rule_files": [
         "karimi_normalise/translate.py"
-      ],
-      "residual": {
-        "count": 12,
-        "of": 16336,
-        "rate": 0.000735,
-        "measured_on": "batch 1 of the new postings, rules 0.4.2, library re-run 2026-11-16"
-      }
+      ]
     },
     {
       "id": "translation_failed",
@@ -119,18 +101,12 @@
       "cause": "A language sent to the wrong model (Polish through the Romance one, until 0.4.2), or a model that cannot read it.",
       "example": "Wykształcenie wyższe w zakresie takim jak Informatyka -> unchanged after 'translation'",
       "status": "resolved",
-      "resolved_in": "0.4.2",
+      "resolved_in": "0.4.4",
       "detector": "translation_failed",
-      "guard": "tests/test_library.py::test_languages_the_batch_never_met_are_read_by_their_letters",
+      "guard": "tests/test_rules_044.py::test_languages_batch_3_showed",
       "rule_files": [
         "karimi_normalise/translate.py"
-      ],
-      "residual": {
-        "count": 2,
-        "of": 16336,
-        "rate": 0.000122,
-        "measured_on": "batch 1 of the new postings, rules 0.4.2, library re-run 2026-11-16"
-      }
+      ]
     },
     {
       "id": "curator_category_join",
@@ -185,8 +161,8 @@
       "found": "2026-11-16",
       "found_by": "explorer",
       "status": "resolved",
-      "resolved_in": "0.4.3",
-      "guard": "tests/test_rules_043.py::test_words_that_add_nothing_and_the_explorers_kinds",
+      "resolved_in": "0.4.4",
+      "guard": "tests/test_rules_044.py::test_degrees_and_words_from_batch_3",
       "rule_files": [
         "karimi/normalise_req.py",
         "karimi/atomise.py"
@@ -218,8 +194,8 @@
       "found": "2026-11-16",
       "found_by": "explorer",
       "status": "resolved",
-      "resolved_in": "0.4.3",
-      "guard": "tests/test_rules_043.py::test_words_that_add_nothing_and_the_explorers_kinds",
+      "resolved_in": "0.4.4",
+      "guard": "tests/test_rules_044.py::test_degrees_and_words_from_batch_3",
       "rule_files": [
         "karimi/normalise_req.py"
       ],
@@ -250,8 +226,8 @@
       "found": "2026-11-16",
       "found_by": "explorer",
       "status": "resolved",
-      "resolved_in": "0.4.3",
-      "guard": "tests/test_rules_043.py::test_degrees_from_batch_2",
+      "resolved_in": "0.4.4",
+      "guard": "tests/test_rules_044.py::test_degrees_and_words_from_batch_3",
       "rule_files": [
         "karimi/normalise_req.py",
         "karimi/atomise.py"
@@ -369,11 +345,108 @@
       "cause": "The word lists took Danish for Swedish and did not know Finnish or some Czech, so they went to the wrong model or none.",
       "example": "Erfaring med at afdække behov -> Experience with afdække needs",
       "status": "resolved",
-      "resolved_in": "0.4.3",
+      "resolved_in": "0.4.4",
       "detector": null,
-      "guard": "tests/test_rules_043.py::test_languages_batch_2_showed_go_to_their_own_model",
+      "guard": "tests/test_rules_044.py::test_languages_batch_3_showed",
       "rule_files": [
         "karimi_normalise/translate.py"
+      ]
+    },
+    {
+      "id": "name_in_context",
+      "title": "A named technology kept inside the words around it",
+      "stage": "normalisation",
+      "found": "2026-11-17",
+      "found_by": "review",
+      "cause": "The core kept the activity or the category beside the name, so the same technology landed in many groups. The user's call of 2026-11-17: the name wins, the rest goes to extra.",
+      "example": "Cloud engineering experience on Azure -> Cloud engineering experience on Azure",
+      "status": "resolved",
+      "resolved_in": "0.4.4",
+      "detector": null,
+      "guard": "tests/test_rules_044.py::test_review_of_batch_2",
+      "rule_files": [
+        "karimi/normalise_req.py"
+      ]
+    },
+    {
+      "id": "named_examples_kept_category",
+      "title": "Named examples read as words of their category",
+      "stage": "splitting",
+      "found": "2026-11-17",
+      "found_by": "review",
+      "cause": "`such as`, `e.g.` and brackets of names were glued to the category or dropped. The user's call of 2026-11-17: named examples are the requirements, the category goes; common-noun examples and what `including` adds stay with the category.",
+      "example": "ERP systems such as SAP or Oracle -> ERP systems SAP",
+      "status": "resolved",
+      "resolved_in": "0.4.4",
+      "detector": null,
+      "guard": "tests/test_rules_044.py::test_review_of_batch_2",
+      "rule_files": [
+        "karimi/atomise.py"
+      ]
+    },
+    {
+      "id": "lead_punctuation",
+      "title": "An atom starting with a comma",
+      "stage": "splitting",
+      "found": "2026-11-17",
+      "found_by": "review",
+      "cause": "A list cut on the wrong side of its comma.",
+      "example": ", and cybersecurity frameworks",
+      "status": "resolved",
+      "resolved_in": "0.4.4",
+      "detector": "lead_punctuation",
+      "guard": "tests/test_rules_044.py::test_review_of_batch_2",
+      "rule_files": [
+        "karimi/atomise.py"
+      ]
+    },
+    {
+      "id": "comma_in_key",
+      "title": "A list left in one requirement",
+      "stage": "splitting",
+      "found": "2026-11-17",
+      "found_by": "review",
+      "cause": "Adjective lists, `with the ability to` and `eager to learn` were not split.",
+      "example": "Curious, open-minded, eager to learn -> one requirement",
+      "status": "resolved",
+      "resolved_in": "0.4.4",
+      "detector": "comma_in_key",
+      "guard": "tests/test_rules_044.py::test_review_of_batch_2",
+      "rule_files": [
+        "karimi/atomise.py"
+      ]
+    },
+    {
+      "id": "edge_preposition",
+      "title": "A preposition left at the edge of a requirement",
+      "stage": "normalisation",
+      "found": "2026-11-17",
+      "found_by": "review",
+      "cause": "The frame was cut one word too late or too early.",
+      "example": "working on CPaaS -> on CPaaS",
+      "status": "resolved",
+      "resolved_in": "0.4.4",
+      "detector": "edge_preposition",
+      "guard": "tests/test_rules_044.py::test_review_of_batch_2",
+      "rule_files": [
+        "karimi/normalise_req.py"
+      ]
+    },
+    {
+      "id": "duplicate_key",
+      "title": "The same requirement twice in one item",
+      "stage": "splitting",
+      "found": "2026-11-17",
+      "found_by": "review",
+      "cause": "A head distributed over a list whose items normalise to one key.",
+      "example": "Systems thinking x3 in one item",
+      "status": "resolved",
+      "resolved_in": "0.4.4",
+      "detector": "duplicate_key",
+      "guard": "tests/test_rules_044.py::test_one_key_once_per_item",
+      "rule_files": [
+        "karimi_normalise/requirements.py",
+        "New project/split_must_have.py"
       ]
     }
   ]
