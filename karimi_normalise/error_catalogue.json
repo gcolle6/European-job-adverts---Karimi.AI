@@ -1,6 +1,6 @@
 {
   "about": "The archivist's catalogue: every kind of error found so far, why it happened, what fixed it and what guards it. Edited by a person; the archivist reads it on every run (archivist.py). No requirement text from Karimi's postings except the short examples a person chose.",
-  "updated": "2026-11-17",
+  "updated": "2026-11-18",
   "entries": [
     {
       "id": "degree_not_read",
@@ -308,16 +308,17 @@
       "found": "2026-11-16",
       "found_by": "explorer",
       "status": "resolved",
-      "resolved_in": "0.4.3",
-      "detector": null,
+      "resolved_in": "0.4.5",
+      "detector": "frame_left",
       "id": "frame_left",
       "title": "A frame word left in the requirement",
       "stage": "normalisation",
-      "cause": "Frames the rules did not know: knowledge about X, several frame nouns at once (qualifications/experience/knowledge of X), a German frame glued on (X-Kenntnisse), years written out (five years of progressively responsible experience).",
+      "cause": "Frames the rules did not know: knowledge about X, several frame nouns at once (qualifications/experience/knowledge of X), a German frame glued on (X-Kenntnisse), years written out (five years of progressively responsible experience). The user's review of batch 3 (2026-11-18) found more: `Interest in`, `programming with`, `using ... as`, `popular`/`modern`/`scalable`, `concepts of`, `Registered studies in`. Since 0.4.5 the inspector detects the shape (`frame_left`).",
       "example": "Practical knowledge about microservices -> about microservices",
-      "guard": "tests/test_rules_043.py::test_words_that_add_nothing_and_the_explorers_kinds",
+      "guard": "tests/test_rules_045.py::test_review_of_batch_3",
       "rule_files": [
-        "karimi/normalise_req.py"
+        "karimi/normalise_req.py",
+        "karimi/atomise.py"
       ]
     },
     {

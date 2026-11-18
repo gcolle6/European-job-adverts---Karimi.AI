@@ -159,8 +159,6 @@ HEAD_GROUPS = {
     "competence": ["knowledge", "understanding", "familiarity", "proficiency", "expertise",
                    "mastery", "command", "grasp", "awareness", "know-how", "skills", "skill",
                    "fluency",
-                   # `Good foundations in Python` is Python (review of batch 2, rules 0.4.4)
-                   "foundations", "foundation",
                    # the same frames as adjectives (rules 0.3.0): `Proficient with Windows`
                    # had no head, so its whole text was the key
                    "proficient", "familiar", "knowledgeable", "skilled", "versed", "conversant",
@@ -599,7 +597,8 @@ def _name_runs(text: str) -> list[str]:
     whole = _NAME_WITH_SMALL_WORD_RE.search(text)
     if whole:
         # `Ruby on Rails` reads as Title Case, and is a name
-        return [whole.group()] + _name_runs(text[: whole.start()] + ", " + text[whole.end():])
+        after = re.sub(r"^\W*(?:(?:with|in|on|using|and|or|for|via)\s+)*", "", text[whole.end():])
+        return [whole.group()] + _name_runs(text[: whole.start()]) + _name_runs(after)
     toks = text.split()
     words = [t.strip(",.;:()[]") for t in toks]
     rest = [w for w in words[1:] if w[:1].isalpha()]
@@ -612,7 +611,10 @@ def _name_runs(text: str) -> list[str]:
         elif cap and not title and i > 0:
             name.append(True)
         elif cap and not title and i == 0 and w.lower() not in _GENERIC_FIRST and (
-                len(words) == 1 or words[1].lower() in _TECH_TAIL or toks[0][-1:] in ",;:"):
+                len(words) == 1 or words[1].lower() in _TECH_TAIL
+                # a language before a comma (`English, both written and verbal`);
+                # not any word: `Communicative, team-capable` is a trait list
+                or (toks[0][-1:] in ",;:" and re.fullmatch(atom._LANGS, w, re.I))):
             name.append(True)
         else:
             name.append(False)
@@ -649,6 +651,14 @@ _NAME_FOLLOWERS = _TECH_TAIL | {"software", "systems", "system", "workflows", "w
 _NAME_PREPS = {"as", "in", "for", "with", "on", "of", "to", "at", "from", "using", "and", "or", "within", "across"}
 
 
+def _initials_of(acronym: str, words: str) -> bool:
+    """`MDM` for `Master Data Management`, `HPC` for `high-performance computing`:
+    the bracket only abbreviates, and the words written out are kept."""
+    initials = "".join(w[0] for w in re.split(r"[\s-]+", words) if w[:1].isalpha()).upper()
+    a = acronym.replace(".", "").upper()
+    return len(a) >= 2 and a.isalpha() and initials.endswith(a)
+
+
 def _name_is_modifier(run: str, core: str) -> bool:
     """A name at the start that a common noun completes: `IR drop analysis`,
     `AD product system development` are terms of their own, not IR or AD
@@ -657,7 +667,14 @@ def _name_is_modifier(run: str, core: str) -> bool:
     if not core.startswith(run):
         return False
     rest = core[len(run):].split()
-    return bool(rest) and rest[0][:1].islower() and rest[0].lower().strip(",.;:") not in _NAME_FOLLOWERS | _NAME_PREPS
+    if not rest or not rest[0][:1].islower():
+        return False
+    word = rest[0].lower().strip(",.;:")
+    # a category name keeps any noun after it: `AI coding tools`, `API development`
+    # (review of batch 3); only a preposition sets it free (`AI/ML in production`)
+    if run in _CATEGORY_NAMES:
+        return word not in _NAME_PREPS
+    return word not in _NAME_FOLLOWERS | _NAME_PREPS
 
 
 def _named(text: str) -> bool:
@@ -675,6 +692,69 @@ def first_per_key(keys: list[str]) -> list[bool]:
         if k:
             seen.add(k)
     return out
+
+
+# Rules 0.4.5, from the user's review of batch 3 (2026-11-18): what is asked
+# is the thing, not the frame around it. Each rule moves what it takes off to
+# `extra`, so nothing is lost for the level and context analyses.
+_INTEREST_RE = re.compile(r"^(?:(?:demonstrated|strong|genuine|keen|real)\s+)?interest\s+(?:in|for)\s+(?:the\s+)?(?=\S)",
+                          re.I)
+_THROUGH_RE = re.compile(r"^(?P<x>.+?)\s+(?P<y>through\s+.+)$", re.I)
+_FOCUS_RE = re.compile(r"^(?P<y>.+?)\s+with\s+(?:an?\s+)?(?:(?:strong|clear|particular)\s+)?focus\s+on\s+(?P<x>.+)$",
+                       re.I)
+_PROG_FRAME_RE = re.compile(r"^(?P<y>programming|coding|scripting|development)\s+(?:with|in|using)\s+(?P<x>.+)$", re.I)
+_GERUND_FRAME_RE = re.compile(r"^(?P<y>(?:(?:confidence|comfort)\s+)?(?:using|leveraging|applying|utili[sz]ing))\s+"
+                              r"(?P<x>.+?)(?:\s+(?P<z>as\s+.+))?$", re.I)
+_SHOW_RE = re.compile(r"^(?:exhibit|demonstrate|show|possess)\s+(?=\S)", re.I)
+_EVALUATIVE_ADJ_RE = re.compile(
+    r"^(?:scalable|highly\s+available|available|robust|modern|popular|reliable|secure|large-scale|cutting-edge|"
+    r"state-of-the-art|latest|current|common|well-known|clear|accurate|actionable|prioriti[sz]ed|other)\s*,?\s+"
+    r"(?:and\s+)?(?=\S)", re.I)
+_BASED_RE = re.compile(r"^(?P<x>[A-Z][\w.+#]*)-based\s+(?P<y>.+)$")
+_CONCEPTS_RE = re.compile(r"^(?:the\s+)?(?:basic\s+|core\s+)?concepts?\s+of\s+(?=\S)", re.I)
+_WRITE_RE = re.compile(r"^write\s+(?P<y>.+)$", re.I)
+
+
+def _review_045(core: str) -> tuple[str, str]:
+    """The core with its frame taken off, and what was taken off (for `extra`)."""
+    moved: list[str] = []
+    c = re.sub(r"^including\s+(?=\S)", "", core, flags=re.I)
+    # `Good foundations in Python` is Python (review of batch 2); `ITIL Foundations`
+    # is a certificate, so only `foundations in/of`
+    m = re.match(r"^foundations?\s+(?:in|of)\s+(?=\S)", c, re.I)
+    if m:
+        c, moved = c[m.end():], moved + ["foundations"]
+    m = _INTEREST_RE.match(c)
+    if m:
+        c, moved = c[m.end():], moved + ["interest"]
+        th = _THROUGH_RE.match(c)
+        if th:
+            c, moved = th.group("x"), moved + [th.group("y")]
+        c = re.sub(r"\s+field$", "", c, flags=re.I)
+    m = _FOCUS_RE.match(c)
+    if m and _name_runs(m.group("x")):
+        c, moved = m.group("x"), moved + [m.group("y")]
+    m = _PROG_FRAME_RE.match(c)
+    if m and _name_runs(m.group("x")):
+        c, moved = m.group("x"), moved + [m.group("y")]
+    m = _GERUND_FRAME_RE.match(c)
+    if m and _name_runs(m.group("x")):
+        c, moved = m.group("x"), moved + [m.group("y")] + ([m.group("z")] if m.group("z") else [])
+    c = _SHOW_RE.sub("", c)
+    while True:
+        m = _EVALUATIVE_ADJ_RE.match(c)
+        if not m or not c[m.end():].strip():
+            break
+        moved.append(m.group().strip(" ,"))
+        c = c[m.end():]
+    m = _BASED_RE.match(c)
+    if m:
+        c, moved = m.group("x"), moved + [f"{m.group('x')}-based {m.group('y')}"]
+    c = _CONCEPTS_RE.sub("", c)
+    m = _WRITE_RE.match(c)
+    if m:
+        c, moved = "writing", moved + [m.group("y")]
+    return c.strip(" ,.;:"), " ".join(moved)
 
 
 def keep_once(norms: list[str]) -> list[bool]:
@@ -873,7 +953,8 @@ def decompose(text: str) -> dict:
         if pm:
             ex = re.sub(r"^(?:e\.?\s?g\.?,?|such\s+as|like|incl\.?|including)\s+", "", pm.group("p").strip(),
                         flags=re.I)
-            if _name_runs(ex) == [ex] and not _name_runs(pm.group("c")):
+            cat_names = [r for r in _name_runs(pm.group("c")) if not _NAME_WITH_SMALL_WORD_RE.fullmatch(r)]
+            if _name_runs(ex) == [ex] and not cat_names and not _initials_of(ex, pm.group("c")):
                 # A NAMED example after a generic category is the requirement
                 # (the user's call, 2026-11-17): `databases (SQL/NoSQL)` is
                 # SQL/NoSQL, `tools (Sparx EA)` Sparx EA; the category goes to `extra`.
@@ -904,6 +985,11 @@ def decompose(text: str) -> dict:
         out["core"] = re.sub(r"^[a-z]+\s+(?:and|&|or)\s+[a-z]+\s+(?:an?|the)\s+(?=\S)", "", out["core"])
         if out["core"].lower() in ("soft", "hard", "people"):
             out["core"] += " skills"      # `Soft skills (communication)`: `Soft` names nothing
+        out["core"], moved = _review_045(out["core"])
+        if moved:
+            out["extra"] = " ".join(x for x in (out["extra"], moved) if x)
+        if out["core"].lower() in ("work", "relevant work", "professional work") and out["head_group"] == "experience":
+            out["core"] = "work experience"     # `3 years of relevant work experience` (review of batch 3)
         # Degree words after the frame (`Safe handling of especially Excel`,
         # `use of in particular Excel`): the level, not the object.
         out["core"] = re.sub(r"^(?:in particular|expert-level)\s+(?=\S)", "", out["core"], flags=re.I)
@@ -923,12 +1009,16 @@ def decompose(text: str) -> dict:
         # not names beside it: two names are a split's business, and `Scrum
         # Master` is one name.
         runs = _name_runs(out["core"])
+        # `Infrastructure as Code with Bicep` is Bicep (review of batch 3)
+        named = [r for r in runs if not _NAME_WITH_SMALL_WORD_RE.fullmatch(r)]
+        if len(runs) > 1 and len(named) == 1:
+            runs = named
         bare = out["core"].strip(" ,.;:")
         if len(runs) == 1 and runs[0].replace(".", "") != bare.replace(".", "") \
+                and not runs[0][:1].islower() \
                 and re.search(r"(?<![\w/&.+#-])[a-z]", bare) \
                 and not _NAME_WITH_SMALL_WORD_RE.fullmatch(bare) \
                 and not re.search(r"\blicen[cs]e\s+[A-Z]\b", bare) \
-                and not re.match(r"(?:an?\s+)?(?:interest|passion|curiosity|enthusiasm)\s+(?:in|for)\b", bare, re.I) \
                 and not _name_is_modifier(runs[0], bare) \
                 and not (runs[0] in _CATEGORY_NAMES
                          and re.search(rf"(?<![\w-])[a-z][\w-]*\s+{re.escape(runs[0])}(?!\w)", bare)) \
@@ -1007,6 +1097,11 @@ ALIASES = {
     "driving license": "Driving licence", "driving license b": "Driving licence", "driver's license": "Driving licence",
     "valid driver's license": "Driving licence", "valid driving license": "Driving licence",
     "git version control": "Git",
+    # rules 0.4.5, the user's review of batch 3: one word for one soft skill
+    "work as a team": "teamwork", "work in a team": "teamwork", "working in a team": "teamwork",
+    "team work": "teamwork", "work independently": "autonomy", "work autonomously": "autonomy",
+    "working independently": "autonomy", "work collaboratively": "collaboration",
+    "solve problem": "problem solving", "problem solving skill": "problem solving",
 }
 # Cores that name nothing once the frame and level are out: debris of a split.
 JUNK = {"of", "one", "you have", "ideally", "preferably", "minimum", "confirmed", "consolidated", "successful",

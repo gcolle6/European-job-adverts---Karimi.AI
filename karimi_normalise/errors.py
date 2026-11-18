@@ -96,6 +96,7 @@ CAUSES = {
     "comma_in_key": "a list of names left in one requirement",
     "duplicate_key": "two parts of one item read as the same requirement: a name or an object lost",
     "edge_preposition": "a preposition left at its edge ('on CPaaS', 'development for')",
+    "frame_left": "a frame left in front of what is asked ('Interest in', 'programming with', 'popular')",
     "other": "no rule names it",
 }
 
@@ -347,7 +348,21 @@ def shape_flag(r: dict) -> str | None:
             return "comma_in_key"
     if r.get("space") != "education" and _EDGE_PREP_RE.search(core):
         return "edge_preposition"
+    if r.get("space") != "education" and _FRAME_LEFT_RE.match(core):
+        return "frame_left"
     return None
+
+
+# Rules 0.4.5, from the user's review of batch 3: a frame left in front of what
+# is asked. Written apart from the rules' own patterns so that a variant they
+# miss is still seen (`Keen interest towards`, `coding in`, `leveraging`).
+_FRAME_LEFT_RE = re.compile(
+    r"^(?:(?:demonstrated|strong|genuine|keen)\s+)?interest\s+(?:in|for|towards?)\b|"
+    r"^(?:programming|coding|scripting)\s+(?:with|in|using)\b|"
+    r"^(?:using|leveraging|applying|utili[sz]ing|exhibit|demonstrate|possess)\s|"
+    r"^(?:popular|modern|scalable|robust|cutting-edge|state-of-the-art|latest)\s|"
+    r"^(?:the\s+)?concepts?\s+of\b|"
+    r"^(?:registered|enrolled|successful(?:ly)?)\s+(?:completion\s+of\s+)?stud", re.I)
 
 
 INSPECTOR_DETECTORS = {
@@ -356,6 +371,7 @@ INSPECTOR_DETECTORS = {
     "comma_in_key": ("splitting", "merged"),
     "duplicate_key": ("normalisation", "wrong_group"),
     "edge_preposition": ("normalisation", "word_kept"),
+    "frame_left": ("normalisation", "word_kept"),
     "degree_not_read": ("normalisation", "wrong_degree"),
     "degree_field_odd": ("normalisation", "wrong_degree"),
     "optional_head": ("normalisation", "optional_kept"),

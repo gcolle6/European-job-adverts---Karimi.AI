@@ -337,6 +337,33 @@ Format: version · date · what changed · how it was measured.
   -> ~140; on the 100 reviewed items, 20 of 25 wrong ones change and 19 of 75
   right ones change, every one read — all follow the user's notes. Old
   convention tests changed with a comment where the user's call reversed them.
+- **0.4.5** · 2026-11-18 · the user's review of batch 3 (100 items, 41 wrong).
+  That review read rules 0.4.3: 0.4.4 had already changed 18 of the 41, and
+  23 were left — mostly conventions already decided. *The frame goes, the
+  thing stays* (each part moved to `extra`): `programming with/in X`, `using /
+  leveraging X as ...`, `with a strong focus on X`, `Interest in X` (and its
+  `through ...`; this reverses the 0.3.0 control `Interest in AI`), `Exhibit`,
+  `concepts of`, `X-based`, `write ...` -> writing; praising adjectives in
+  front (`popular`, `modern`, `scalable, highly available`, `other`); `work`
+  alone -> work experience. *Names*: `Infrastructure as Code with Bicep (or
+  Terraform)` = Bicep, Terraform; a platform named before its services wins
+  (`pipelines in AWS with services like S3, Athena` -> AWS); `virtualization
+  and containerization (VMware, Docker)` -> the names; a category name keeps
+  the noun after it (`AI coding tools`, `API development`); an acronym in
+  brackets only abbreviates (`Master Data Management (MDM)`). *One soft skill,
+  one word*: `work independently and collaboratively` -> autonomy,
+  collaboration; `work as a team` -> teamwork; `Ability to solve problems and
+  autonomy` = 2; `Teamwork & Communication` = 2; communication skills `towards
+  engineering, product` and skills `to support scripting` are one, the rest
+  context. *Degrees*: `Registered studies in` (student), `Successful completion
+  of studies in`, the Chinese `Graduate and above, X, Y`; `another relevant
+  discipline`, `comparable course of study`, `related professions` dropped.
+  `leading CoE / practice / teams`: spaced slashes make a list. *The inspector*
+  gets `frame_left`: on batch 3 as run (0.4.3) it flags 274, under 0.4.5 11.
+  Measured on the 100 reviewed items of batch 3: 38 of the 41 wrong change,
+  7 of the 59 right change (read: an acronym and two names now won, as
+  decided); on batch 2's review, 20 of 25 wrong change and 20 of 75 right
+  ones, the same as 0.4.4 plus `ITIL Foundations` kept whole.
 
 ## Dictionary
 
@@ -423,3 +450,12 @@ Format: version · date · what changed · how it was measured.
   new rules). Two rule artefacts seen there, left for 0.4.5: `Interest and
   experience in X` keyed `Interest and`, `experience minimum in X`. Explore:
   806 requirements. Chain 48 minutes.
+- **0.3.5** · 2026-11-18 · batch regenerated with rules 0.4.5 (the user's
+  review of batch 3). 78,403 cores (was 79,570), 59,572 groups, 40,157 topics.
+  Parity with the batch 99.3% of 1,533 items; lookup agrees with the batch
+  group 99.6% when known, 72.8% when placed by similarity (was 71.9%). Blind
+  count on the blind half unchanged; on all labelled items exact 80.9% ->
+  80.0%, under-split 4.3% -> 5.2% (those labels predate the conventions of
+  2026-11-17 and 2026-11-18). Judge's reference: 5 of 150 group decisions called wrong
+  (3.3%, was 7.3%), topics 9 of 100 (was 17). Explore: 809 requirements.
+  Chain 59 minutes.

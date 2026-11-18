@@ -399,7 +399,16 @@ dell'Inspector (`lead_punctuation`, `comma_in_key` solo su nomi,
 `edge_preposition`, `duplicate_key`) e voci del catalogo con `found_by:
 review`. Lotto 3: titoli di studio, lingue (spagnolo, olandese, croato),
 "or more", "or above". Misura su split e normalizzazione: segnali sul lotto 3
-da ~630 a ~130, sul lotto 2 da ~700 a ~140. Lotto 4 misura.
+da ~630 a ~130, sul lotto 2 da ~700 a ~140.
+
+**Revisione umana del lotto 3 → regole 0.4.5, dizionario 0.3.5.** 41 errori su
+100, ma il run era fatto con le regole 0.4.3: la 0.4.4 ne cambiava già 18.
+Corretti gli altri (cornici intorno al nome, aggettivi di lode, "Interest in",
+una parola per una soft skill, titoli di studio tedeschi e cinesi). Nuovo
+rilevatore `frame_left`: sul lotto 3 così com'era ne avrebbe segnalati 274.
+Giudice sul dizionario: gruppi sbagliati 3,3% (era 7,3%), topic 9% (era 17%).
+Regola per le prossime revisioni: rivedere un run fatto con le regole in
+produzione, sennò si misurano errori già corretti. Lotto 4 misura la 0.4.5.
 
 ### Revisione umana e Curator (2026-11-17)
 

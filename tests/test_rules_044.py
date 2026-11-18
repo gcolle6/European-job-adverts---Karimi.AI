@@ -36,7 +36,7 @@ def _keys(item: str) -> list[str]:
      ["education: Degree in Supply Chain", "education: Degree in Master Data Management"]),
     ("Good degree in an appropriate subject or significant experience in a Software Engineering environment",
      ["education: Degree (any field)", "Software Engineering environment"]),
-    ("Bachelor's degree or equivalent (minimum 12 years) work experience", ["education: Bachelor (any field)", "work"]),
+    ("Bachelor's degree or equivalent (minimum 12 years) work experience", ["education: Bachelor (any field)", "work experience"]),  # 0.4.5
     ("Higher education within business, finance, data science or a related field",
      ["education: Degree in business", "education: Degree in finance", "education: Degree in data science"]),
     ("Hbo work and think level and at least 5 years experience within cybersecurity",
@@ -138,7 +138,7 @@ def test_review_of_batch_2(item, keys):
     # controls: a name beside its category word, a licence class, an interest
     ("Experience in IT project management", ["IT project management"]),
     ("Driving licence B", ["Driving licence"]),
-    ("Interest in AI", ["Interest in AI"]),
+    ("Interest in AI", ["AI"]),  # since 0.4.5, the review of batch 3
     ("Lean Explorer certification", ["Lean Explorer certification"]),
     ("Proven experience as a Product Owner", ["Product Owner"]),
     ("Strong testing habits (JUnit, Mockito)", ["JUnit", "Mockito"]),

@@ -160,8 +160,10 @@ def test_controls_keep_their_words():
     # noun that completes it into a term (`IR drop analysis`, `AI use`)
     assert normalise_req.decompose("access control")["key"] == "access control"
     assert normalise_req.decompose("AI use")["key"] == "AI use"
-    # `Interest in AI` is not the AI skill
-    assert normalise_req.decompose("Interest in AI")["key"] == "Interest in AI"
+    # `Interest in AI` was kept whole until rules 0.4.5; the user's review of
+    # batch 3 reads `Interest in X` as X, the interest kept in `extra`
+    interest = normalise_req.decompose("Interest in AI")
+    assert (interest["key"], interest["extra"]) == ("AI", "interest")
     assert normalise_req.display("", "analytical") == "Analytical skills"
     assert normalise_req.display("", "proactive") == "Proactive"
 

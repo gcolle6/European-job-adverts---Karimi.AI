@@ -116,12 +116,13 @@ LEAD_CONJ_RE = re.compile(rf"^(?:{_CONJ})\s+", re.I)
 # and produced `Strong programming skills in languages such as similar`.
 STOP_RE = re.compile(
     r"^(?:and|or|etc\.?|ecc\.?|usw\.?|others?|altri|more|(?:the\s+)?like|"
-    r"(?:a|an|the)?\s*(?:closely\s+)?(?:related|similar|equivalent|relevant|comparable)"
+    r"(?:a|an|the|another|any|other)?\s*(?:closely\s+)?(?:related|similar|equivalent|relevant|comparable)"
     # any one word before the field since rules 0.4.3: `a closely related life-sciences field`
     r"(?:\s+(?:technical|scientific|academic|professional|[\w-]+(?=\s+(?:field|fields|area|areas|discipline|"
     r"disciplines|subject|subjects)\b)))?"
     r"(?:\s+(?:field|fields|area|areas|discipline|disciplines|subject|subjects|"
-    r"experience|qualification|qualifications|degree|role|roles|studies))?|"
+    r"experience|qualification|qualifications|degree|role|roles|studies|course\s+of\s+study|courses\s+of\s+study|"
+    r"professions?|majors?|programmes?|programs?))?|"
     r"similar|similaire|similaires|[eé]quivalent(?:e|es|s)?|simili|"
     r"vergleichbar(?:e|er|en|es)?(?:\s+\w+)?|[aä]hnlich(?:e|er|en|es)?|"
     r"gleichwertig(?:e|er|en|es)?|verwandt(?:e|er|en|es)?(?:\s+\w+)?|"
@@ -1464,6 +1465,10 @@ def _split_list(s: str) -> list[str]:
             named = [bool(_nr._name_runs(e)) for e in examples]
             if re.search(r"\bone\s+of\s+(?:the\s+)?(?:following\s+)?", pre, re.I):
                 lead_ok = False
+            elif examples and all(named) and _PLATFORM_RE.search(_unmasked(pre)):
+                # the examples are parts of a platform named before them: the
+                # platform is asked, its services kept for `extra` (review of batch 3)
+                return [clean(f"{pre} ({rest.strip(' .;')})")]
             elif examples and all(named):
                 lead_ok = False
                 # the category goes with the lead: `Scripting languages such as
@@ -1850,6 +1855,7 @@ def _paren_items(inner: str) -> list[str]:
     return items
 
 
+_PLATFORM_RE = re.compile(r"\b(?:AWS|Azure|GCP|Google\s+Cloud|Salesforce)\b")
 _INCLUDING_RE = re.compile(r"(?:including|includes|such as|e\.g\.|like)\b", re.I)
 
 
@@ -1869,7 +1875,12 @@ def _examples_named(before: str, after: str, items: list[str]) -> str:
     frame = [f for f in TRIGGER_RE.finditer(before + " ") if f.group().strip().lower() != "an"]
     tail = before[frame[-1].end():] if frame else before
     words = tail.split()
-    if "," in tail or re.search(rf"\s(?:{_CONJ})\s", f" {tail} ", re.I) or (
+    joined = re.search(rf"\s(?:{_CONJ})\s", f" {tail} ", re.I)
+    # `concepts of virtualization and containerization (VMware, Docker)`: two
+    # categories joined by `and`, no names, are the category the names exemplify
+    # (review of batch 3); a comma or a name there is a real list
+    joined = joined and _nr._name_runs(tail)
+    if "," in tail or joined or (
             len(words) >= 2 and re.fullmatch(r"\w{3,}ing", words[0], re.I)):
         return "list"
     named = [bool(_nr._name_runs(i)) for i in items]
@@ -2569,9 +2580,64 @@ _TRAIT_WITH_ABILITY_RE = re.compile(
     r"(?P<ability>(?:the|an?|strong|proven|good)?\s*abilit(?:y|ies)\s+to\s+.+)$", re.I)
 
 
+# Rules 0.4.5, from the user's review of batch 3 (2026-11-18).
+_INDEP_COLLAB_RE = re.compile(
+    r"^(?P<h>.*?\b(?:work|working))\s+(?P<a>independently|autonomously)\s+(?:and|as\s+well\s+as|&)\s+"
+    r"(?P<b>collaboratively|in\s+(?:a\s+)?teams?|as\s+(?:part\s+of\s+)?a\s+team)\s*\.?$", re.I)
+_ABILITY_AND_TRAIT_RE = re.compile(
+    r"^(?P<a>(?:the\s+)?abilit(?:y|ies)\s+to\s+.+?)\s+and\s+(?P<t>autonomy|independence|creativity|flexibility|"
+    r"initiative|curiosity|resilience|proactivity|reliability)\s*\.?$", re.I)
+# who the communication is for is its context, not more requirements
+_SKILL_CONTEXT_RE = re.compile(
+    r"^(?P<s>.*?\bcommunication\s+skills?)\s+(?P<c>(?:targeted\s+)?(?:towards?|with|for|across)\s+.+?)\s*\.?$", re.I)
+# what a skill is for: `Basic programming skills to support scripting and configuration tasks`
+_SKILL_PURPOSE_RE = re.compile(
+    r"^(?P<s>.*?\bskills?)\s+(?P<p>to\s+(?:support|help|enable|perform|handle|automate)\b.+?)\s*\.?$", re.I)
+
+
+def _review_045_split(segment: str) -> list[str] | None:
+    s = segment.strip()
+    m = _INDEP_COLLAB_RE.match(s)
+    if m:
+        return [clean(f"{m.group('h')} {m.group('a')}"), clean(f"{m.group('h')} {m.group('b')}")]
+    m = _ABILITY_AND_TRAIT_RE.match(s)
+    if m:
+        return [clean(m.group("a")), m.group("t")[:1].upper() + m.group("t")[1:]]
+    for rx, part in ((_SKILL_CONTEXT_RE, "c"), (_SKILL_PURPOSE_RE, "p")):
+        m = rx.match(s)
+        if m and "(" not in m.group(part):
+            return [clean(f"{m.group('s')} ({m.group(part)})")]
+    return None
+
+
+def _review_045_rewrite(segment: str) -> str:
+    s = re.sub(r"^Number\s+of\s+years\s*:\s*", "", segment, flags=re.I)
+    # `(or Terraform, with willingness to learn)`: how open to learning, not a requirement
+    s = re.sub(r",?\s*with\s+(?:a\s+)?willingness\s+to\s+learn(?=\s*\))", "", s, flags=re.I)
+    # `with Bicep (or Terraform)`: an alternative in brackets is an alternative
+    s = re.sub(r"\s*\(\s*or\s+([A-Z][^(),]*)\)", r" or \1", s)
+    # the translator's Chinese `本科及以上`: a bachelor or more, in the fields that follow
+    s = re.sub(r"^(?:Graduate|Bachelor(?:'s|’s)?(?:\s+degree)?|College(?:\s+degree)?|Undergraduate)\s+(?:and|or)\s+"
+               r"(?:above|higher)\s*,\s*", "Bachelor's degree in ", s, flags=re.I)
+    # the German `Eingeschriebenes Studium`, `Erfolgreich abgeschlossenes Studium`
+    s = re.sub(r"^(?:registered|enrolled)\s+(?:university\s+)?stud(?:ies|y)\s+in\s+", "Current degree in ", s, flags=re.I)
+    s = re.sub(r"^(?:successful(?:ly)?\s+)?complet(?:ion\s+of|ed)\s+(?:(?:university|your)\s+)?stud(?:ies|y)\s+in\s+",
+               "Degree in ", s, flags=re.I)
+    s = re.sub(r"\b(Teamwork|Team\s*spirit|Teamfähigkeit)\s*&\s*", r"\1, ", s)
+    # `leading CoE / practice / large delivery teams`: two spaced slashes make a list
+    outside = re.sub(r"\([^()]*\)", "", s)
+    if outside.count(" / ") >= 2:
+        s = re.sub(r" / (?![^()]*\))", ", ", s)
+    return s
+
+
 def _atomise(segment: str) -> list[str]:
     if config.SPLIT_REPAIRS:
         segment = _YEARS_OR_MORE_RE.sub(r"\1+ \2", segment)
+        whole = _review_045_split(segment)
+        if whole is not None:
+            return whole
+        segment = _review_045_rewrite(segment)
         segment = _LEVEL_OR_ABOVE_RE.sub(r"\1", segment)
         # `chassis system area is given priority, and the suspension knowhow is
         # better`: two optional asks, each closed by its marker (review of batch 2)

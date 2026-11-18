@@ -100,7 +100,7 @@ def test_degrees_from_batch_2(item, keys):
     ("Green Belt appreciated", ["Green Belt"]),
     ("Experience with Cisco Meraki is an express plus", ["Cisco Meraki"]),
     ("Very good German and English; other national languages of advantage",
-     ["language: German", "language: English", "other national languages"]),
+     ["language: German", "language: English", "national languages"]),  # `other` goes to extra since 0.4.5
     ("Cloud Services (Azure, Microsoft 365) Advantage", ["Cloud Services"]),
     ("Experience with AWS or Azure is a plus, but not required", ["AWS", "Azure"]),
     ("Lean Explorer certification, desired", ["Lean Explorer certification"]),
