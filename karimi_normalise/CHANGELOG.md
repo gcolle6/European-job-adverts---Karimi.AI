@@ -364,6 +364,49 @@ Format: version · date · what changed · how it was measured.
   7 of the 59 right change (read: an acronym and two names now won, as
   decided); on batch 2's review, 20 of 25 wrong change and 20 of 75 right
   ones, the same as 0.4.4 plus `ITIL Foundations` kept whole.
+- **0.4.6** · 2026-11-18 · the user's review of batch 4, the first review of a
+  run made with the rules in production (0.4.5): 37 of 100 wrong, and the
+  inspector had flagged 2 of them. *Every kind became a detector first*
+  (`errors.review_flag`, `errors.item_flags`): `language_as_skill`,
+  `context_left`, `name_not_taken`, `bare_verb`, `names_in_extra`,
+  `verb_run_left`, `shared_tail_lost`, `head_glued`; `frame_left` and
+  `comma_in_key` widened. Measured by `New project/score_review_detectors.py`
+  against the person's labels: on batch 4 they find 29 of the 37 (was 2),
+  almost all at precision 1.00 — tuned on that review, so also read on the
+  reviews of batches 2 and 3, where they find 9 of 25 and 17 of 41 (those
+  labels predate the conventions of 2026-11-17, and some detectors read 0
+  there: shown, not hidden). *Rules*: a language with how much
+  (`Minimum English level C1`, `excellent English understanding`, `sufficient
+  mastery of Dutch to understand ...`) is the language, CEFR read first; where
+  and what for go to `extra` (`in a fast paced environment`, `within ...`, `to
+  interact with`, `with large projects`); a word that adds nothing after a name
+  goes (`SQL Domain`, `Data Analytics Methodologies`, `Python software
+  development`, `SonarQube for CI/CD`); a vague holder gives way to the name
+  it holds (`IT affinity (SQL knowledge)`); named brackets after a gerund are
+  the names (`orchestrating hybrid-cloud infrastructures (AWS, Azure,
+  VMware)`); coordinated gerunds before one object go (`training and
+  evaluating ML models`); `including` over a list that is not all names is one
+  requirement (`AI literacy, including ...`); `Spirit of analysis`, `Easy
+  contact with colleagues`, `desire to learn`; `a minimum of 3 years in X` is a
+  second requirement. *Degrees*: the translator's `Master ' s degree` (13 items
+  in batch 4 not read as degrees), fields joined by `/` are alternatives,
+  `three-year degree`, `Any degree and 8+ years` = 2. *Columns*: the item's
+  years reach every part they apply to (`inherit_years`, not degrees or
+  languages); the CSV gets `years_raw`, `level_words`, `qualifier`, `modes`.
+  Measured on the reviewed items: batch 4, 23 of 37 wrong change, 2 of 63 right
+  change (read: `Agile methodologies` -> Agile, a broken split unchanged in
+  substance); batch 3 and 2 as with 0.4.5. Left open in the catalogue:
+  `shared_tail_lost`, `bare_verb` (detected, not yet fixed by a rule).
+  *Roles in alternative* (the user's call, 2026-11-18, replacing the
+  2026-10-30 "always one"): the same role written several ways is one
+  requirement, that role (`as an Azure Cloud Architect, Lead Architect or
+  Design Architect` -> Cloud Architect; seniority, platform and the other
+  wordings to `extra`); different roles are separate requirements (`as a Data
+  Engineer or Data Scientist` = 2). Same role = same job noun, the title list's
+  (`normalise_title._ROLE_NOUNS`), Developer = Engineer. Over the export's
+  91,834 translated items: 46 collapse to one role, 83 split. The
+  inspector reads what is left (`roles_in_key`): on the batch 4 run (rules
+  0.4.5) it flags 9 requirements of 15,622, all nine roles in alternative.
 
 ## Dictionary
 
@@ -459,3 +502,23 @@ Format: version · date · what changed · how it was measured.
   2026-11-17 and 2026-11-18). Judge's reference: 5 of 150 group decisions called wrong
   (3.3%, was 7.3%), topics 9 of 100 (was 17). Explore: 809 requirements.
   Chain 59 minutes.
+- **0.3.6** · 2026-11-18 · frozen on a draft of rules 0.4.6, before the
+  roles-in-alternative rule. **Never released**: kept only because a
+  dictionary is never overwritten. Judge's reference 9 of 150 groups, 13 of
+  100 topics.
+- **0.3.7** · 2026-11-19 · batch regenerated with rules 0.4.6 (the user's
+  review of batch 4, roles in alternative included). 76,438 cores (was
+  78,403), 58,064 groups, 39,229 topics. Parity 99.35% of 1,533 items, as
+  0.3.5 (the 10 differences are translations). Lookup agrees with the batch
+  group 99.6% when known, 72.8% when placed by similarity; blind count
+  unchanged (exact 79.7% on the blind half, 80.0% on all). Paired-label
+  errors: groups 8 -> 7, topics 3 -> 2. ⚠️ Judge's reference: **11 of 150
+  group decisions called wrong (7.3%, was 3.3%)**, topics 11 of 100 (was 9).
+  Not significant (Fisher p = 0.20; each reference draws different pairs),
+  but the wrong direction, and it makes the reference every run is compared
+  to more lenient. Read pair by pair: 2 wrong merges (`Telework` ~
+  `telephone`, `logic applications` ~ `programming logic`); most of the rest
+  are right groups whose new core still carries a frame the rules do not
+  strip (`role in Machine Learning`, `integrating models into production
+  systems`, `accompany architecture decisions`, `supporting applications in
+  regulated environment`): batch 5's round. Explore: 803 requirements.

@@ -196,13 +196,13 @@ def split_posting(items: list[str], dictionary=None, translate: bool = True,
         keep = normalise_req.keep_once([normalise_req.normalise_requirement(a, was) for a in atoms])
         atoms = [a for a, k in zip(atoms, keep) if k]
         counts = atom.counted(atoms)
-        for j, a in enumerate(atoms):
-            norm = normalise_req.normalise_requirement(a, was)
+        norms = [normalise_req.normalise_requirement(a, was) for a in atoms]
+        parts = normalise_req.inherit_years(text, [normalise_req.decompose(n) for n in norms])
+        for j, (a, norm, part) in enumerate(zip(atoms, norms, parts)):
             out.append(Requirement(item_idx=i, item=item, item_split=text, translated=was,
                                    translated_by=by if was else "", route=how,
                                    atom_idx=j, atom=a, atom_norm=norm,
-                                   nice_to_have=atom.nice_to_have(a), counted=counts[j],
-                                   **normalise_req.decompose(norm)))
+                                   nice_to_have=atom.nice_to_have(a), counted=counts[j], **part))
     if dictionary is not None:
         for r, m in zip(out, dictionary.lookup_requirements([(r.space, r.core) for r in out])):
             r.req_group, r.req_topic, r.match, r.match_cosine = m.group, m.topic, m.status, m.cosine

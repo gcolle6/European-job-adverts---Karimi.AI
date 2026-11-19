@@ -38,7 +38,8 @@ def _counted(item: str) -> list[bool]:
 
 @pytest.mark.parametrize("item, keys", [
     # degrees the rules did not read
-    ("Bac + 3 / L3 in Accounting/Finance", ["education: Bachelor in Accounting/Finance"]),
+    # fields joined by a slash are alternatives since 0.4.6 (review of batch 4)
+    ("Bac + 3 / L3 in Accounting/Finance", ["education: Bachelor in Accounting", "education: Bachelor in Finance"]),
     ("B.E. / B.Tech or equivalent in Computer Science (CS), Information Science (IS), or Electronics & "
      "Communication Engineering",
      ["education: Bachelor in Computer Science", "education: Bachelor in Information Science",
@@ -111,7 +112,7 @@ def test_degrees_from_batch_2(item, keys):
     ("Advantageous knowledge of English", ["language: English"]),
     # `required`, `or similar`, a level after the name
     ("U.S. Citizenship is required", ["U.S. Citizenship"]),
-    ("English B2+ required", ["English B2+"]),
+    ("English B2+ required", ["language: English"]),  # one key per language, 0.4.6
     ("Graduation is mandatory", ["Graduation"]),
     ("Proven experience as a Product Owner or similar role", ["Product Owner"]),
     ("Practical knowledge of Ansible, Terraform or similar", ["Ansible", "Terraform"]),

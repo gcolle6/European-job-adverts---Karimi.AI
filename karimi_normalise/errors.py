@@ -97,6 +97,15 @@ CAUSES = {
     "duplicate_key": "two parts of one item read as the same requirement: a name or an object lost",
     "edge_preposition": "a preposition left at its edge ('on CPaaS', 'development for')",
     "frame_left": "a frame left in front of what is asked ('Interest in', 'programming with', 'popular')",
+    "language_as_skill": "a language read as its level or as a skill ('C1', 'English understanding')",
+    "context_left": "where or what for left in the requirement ('within a mission-critical environment')",
+    "name_not_taken": "a name kept with a word that adds nothing ('SQL Domain')",
+    "bare_verb": "a verb alone, its object lost ('take')",
+    "names_in_extra": "named examples set aside while the requirement names nothing",
+    "shared_tail_lost": "a word cut from the noun it shared ('national' beside 'EU financing mechanisms')",
+    "head_glued": "the item's first requirement glued in front of the others ('AI literacy automation')",
+    "verb_run_left": "activities left in front of the object ('training and evaluating ML models')",
+    "roles_in_key": "several roles left in one requirement ('Data Engineer or Data Scientist')",
     "other": "no rule names it",
 }
 
@@ -339,7 +348,7 @@ def shape_flag(r: dict) -> str | None:
     if re.match(r"^[,;:]", atom):
         return "lead_punctuation"
     outside = re.sub(r"\([^()]*\)", "", core)
-    if r.get("space") != "education" and "," in outside:
+    if r.get("space") != "education" and ("," in outside or re.search(r"\s(?:and|&)\s", outside)):
         # only a list of NAMES: coordinated verbs and adjectives before one
         # noun are one ask by the count conventions (2026-10-29, 2026-10-30),
         # and flagging them made 3 of 4 flags wrong on batch 3
@@ -362,7 +371,9 @@ _FRAME_LEFT_RE = re.compile(
     r"^(?:using|leveraging|applying|utili[sz]ing|exhibit|demonstrate|possess)\s|"
     r"^(?:popular|modern|scalable|robust|cutting-edge|state-of-the-art|latest)\s|"
     r"^(?:the\s+)?concepts?\s+of\b|"
-    r"^(?:registered|enrolled|successful(?:ly)?)\s+(?:completion\s+of\s+)?stud", re.I)
+    r"^(?:registered|enrolled|successful(?:ly)?)\s+(?:completion\s+of\s+)?stud|"
+    # batch 4's review: `Spirit of analysis`, `Easy contact with colleagues`, `Wide range of knowledge`
+    r"^(?:spirit|sense|wide\s+range|breadth|desire)\s+(?:of|to)\b|^easy\s+\w+\s+with\b", re.I)
 
 
 INSPECTOR_DETECTORS = {
@@ -372,6 +383,15 @@ INSPECTOR_DETECTORS = {
     "duplicate_key": ("normalisation", "wrong_group"),
     "edge_preposition": ("normalisation", "word_kept"),
     "frame_left": ("normalisation", "word_kept"),
+    "language_as_skill": ("normalisation", "wrong_group"),
+    "context_left": ("normalisation", "word_kept"),
+    "name_not_taken": ("normalisation", "word_kept"),
+    "bare_verb": ("splitting", "fragment"),
+    "names_in_extra": ("splitting", "merged"),
+    "shared_tail_lost": ("splitting", "fragment"),
+    "head_glued": ("splitting", "over_split"),
+    "verb_run_left": ("normalisation", "word_kept"),
+    "roles_in_key": ("splitting", "merged"),
     "degree_not_read": ("normalisation", "wrong_degree"),
     "degree_field_odd": ("normalisation", "wrong_degree"),
     "optional_head": ("normalisation", "optional_kept"),
@@ -386,6 +406,110 @@ INSPECTOR_DETECTORS = {
 }
 
 
+# Rules 0.4.6, from the user's review of batch 4 (2026-11-18): 37 of 100 wrong,
+# and the inspector had flagged 2 of them. Each shape below is one kind of
+# those 37, read off the result alone. Written apart from the rules that fix
+# them, so a variant the rules miss is still seen. Each was measured on that
+# review before it entered the colour (`New project/score_review_detectors.py`).
+_CEFR_ONLY_RE = re.compile(r"^(?:[ABC][12](?:\s*[/+–-]\s*[ABC]?[12])?|native|fluent|sufficient|intermediate)$", re.I)
+_CONTEXT_RE = re.compile(
+    r"\s(?:within\s|in\s+(?:an?|the)\s+[\w\s/-]{0,40}?environments?\b|with\s+(?:large|complex)\s|"
+    r"to\s+(?:interact|work|communicate|collaborate|enhance|ensure|support|drive|deliver)\b|"
+    r"for\s+(?:large|complex)\s|in\s+the\s+field\s+of\s)|"
+    # `testing domain, with a minimum of 3 years in test automation`: a second ask
+    r",\s*with\s+(?:a\s+)?(?:minimum|at\s+least)\b|"
+    # `SonarQube for CI/CD and code quality`: a name and what it is for
+    r"^\s[A-Z][\w./+#-]*\s+for\s", re.I)
+# coordinated gerunds before one object, or a second activity glued on
+_VERB_RUN_RE = re.compile(r"^\w+ing\s+(?:and|or|&)\s+\w+ing\b|\sand\s+the\s+\w+(?:ion|ment|ery)$", re.I)
+_VAGUE_HOLDER_RE = re.compile(r"\b(?:affinity|savvy|literacy|exposure)\b", re.I)
+_GENERIC_TAIL_RE = re.compile(
+    r"\s(?:domain|methodolog(?:y|ies)|affinity|software\s+development|development\s+experience|"
+    r"environments?|landscape|ecosystem|stack|world|universe)$", re.I)
+_BARE_VERBS = {"take", "understand", "maintain", "evaluate", "validate", "improve", "manage", "develop", "build",
+               "design", "create", "lead", "drive", "deliver", "implement", "support", "ensure", "work",
+               "handle", "perform", "analyse", "analyze", "solve", "write", "train", "test", "run", "own"}
+
+
+def review_flag(r: dict) -> str | None:
+    """`language_as_skill`: a language requirement read as its level or as a skill;
+    `context_left`: where or what for, left in the key; `roles_in_key`: roles in
+    alternative left in one key; `name_not_taken`: a name
+    with a generic word that adds nothing (`SQL Domain`); `bare_verb`: a verb
+    alone (`take`); `names_in_extra`: a bracket of names set aside while the
+    core names nothing."""
+    from karimi import atomise as atom, normalise_req
+
+    core = (r.get("core") or "").strip()
+    extra = r.get("extra") or ""
+    space = r.get("space")
+    if space == "language":
+        return None
+    if core and _CEFR_ONLY_RE.match(core):
+        return "language_as_skill"
+    if core and re.search(rf"\b(?:{atom._LANGS})\b", core, re.I) and re.search(
+            r"\b(?:understanding|level|proficiency|command|knowledge|fluency)\b", core, re.I):
+        return "language_as_skill"
+    if not core or space == "education":
+        return None
+    if _CONTEXT_RE.search(f" {core}"):
+        return "context_left"
+    if re.search(r"\b(?:degree|diploma|bachelor'?s?|master'?s?|ph\.?d)\b", core, re.I):
+        return "degree_not_read"
+    tail = _GENERIC_TAIL_RE.search(core)
+    if tail and normalise_req._name_runs(core[: tail.start()]):
+        return "name_not_taken"
+    words = core.split()
+    first = words[0].lower()
+    if len(words) <= 2 and (first in _BARE_VERBS and (len(words) == 1 or words[1].lower() in ("and", "on"))
+                            or (first.endswith("ly") and len(words) == 2 and words[1].lower() in _BARE_VERBS)):
+        return "bare_verb"
+    if _VERB_RUN_RE.search(core):
+        return "verb_run_left"
+    # Roles in alternative left in one key (the user's call, 2026-11-18): the
+    # same role is one requirement, different roles are separate ones
+    if re.search(r",|\bor\b|\band/or\b", core) and len(atom.role_alternatives(core)) > 1:
+        return "roles_in_key"
+    held = normalise_req._name_runs(re.sub(r"[()]", " ", extra).replace(" / ", ", "))
+    if not normalise_req._name_runs(core) and (len(held) >= 2 or (held and _VAGUE_HOLDER_RE.search(core))):
+        return "names_in_extra"
+    return None
+
+
+def item_flags(reqs: list[dict]) -> dict[int, str]:
+    """Shapes seen only across the atoms of ONE item, by atom position:
+    `shared_tail_lost` — one atom is a lone word that the next atom's last noun
+    completes (`national` beside `EU financing mechanisms`); `head_glued` — the
+    item's first key glued in front of three or more others (`AI literacy
+    prompt engineering`, `AI literacy automation`)."""
+    out: dict[int, str] = {}
+    keys = [(r.get("core") or "").strip() for r in reqs]
+    for i, k in enumerate(keys):
+        if r_space(reqs[i]) or not k:
+            continue
+        # an adjective alone, never a noun: `documentation`, `governance` stand by themselves
+        if len(k.split()) == 1 and k[:1].islower() and i + 1 < len(keys) and len(keys[i + 1].split()) >= 2 \
+                and k.lower() not in _SOFT_SINGLE \
+                and re.search(r"(?:al|ic|ive|ary|ous|ar)$", k):
+            out[i] = "shared_tail_lost"
+    first = keys[0] if keys else ""
+    if first and len(first.split()) >= 2:
+        glued = [i for i, k in enumerate(keys[1:], 1) if k.startswith(first + " ")]
+        if len(glued) >= 3:
+            for i in glued:
+                out.setdefault(i, "head_glued")
+    return out
+
+
+_SOFT_SINGLE = {"communication", "teamwork", "autonomy", "collaboration", "leadership", "creativity", "flexibility",
+                "curiosity", "reliability", "analytical", "organized", "proactive", "motivated", "responsibility",
+                "writing", "programming", "troubleshoot", "integration", "architecture", "security", "testing"}
+
+
+def r_space(r: dict) -> bool:
+    return r.get("space") in ("language", "education")
+
+
 def inspector_flag(r: dict) -> str | None:
     """The first of the inspector's tests that fires on one requirement, or None."""
     if r.get("space") != "education" and _HIGHER_EDUCATION_RE.match(r.get("atom") or ""):
@@ -393,7 +517,7 @@ def inspector_flag(r: dict) -> str | None:
     else:
         hit = None
     return translation_flag(r) or degree_flag(r) or hit or optional_flag(r) or word_kept_flag(r) \
-        or shape_flag(r)
+        or shape_flag(r) or review_flag(r)
 
 
 def inspect(postings: list[dict], examples: int = 3) -> dict:
@@ -402,9 +526,17 @@ def inspect(postings: list[dict], examples: int = 3) -> dict:
     reqs = 0
     for p in postings:
         seen = set()
-        for r in p.get("requirements") or []:
+        by_item: dict[int, list[int]] = defaultdict(list)
+        rs = p.get("requirements") or []
+        for j, r in enumerate(rs):
+            by_item[r.get("item_idx", 0)].append(j)
+        across = {}
+        for idx in by_item.values():
+            for pos_, f in item_flags([rs[j] for j in idx]).items():
+                across[idx[pos_]] = f
+        for j, r in enumerate(rs):
             reqs += 1
-            f = inspector_flag(r)
+            f = inspector_flag(r) or across.get(j)
             # one key twice in one item: the rules keep it once since 0.4.4
             k = (r.get("item_idx"), r.get("key"))
             if f is None and r.get("key") and k in seen:

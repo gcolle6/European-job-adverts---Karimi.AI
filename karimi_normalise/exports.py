@@ -22,8 +22,8 @@ import io
 
 REQUIREMENT_COLUMNS = [
     "posting_id", "item_idx", "item", "item_split", "translated_by", "route", "atom_idx", "atom", "req_name",
-    "atom_norm", "counted", "nice_to_have", "years_min", "years_max", "level", "degree", "head", "head_group",
-    "core", "extra", "req_group", "req_topic", "match", "match_cosine", "match_via", "match_by",
+    "atom_norm", "counted", "nice_to_have", "years_min", "years_max", "years_raw", "level", "level_words",
+    "degree", "head", "head_group", "core", "extra", "qualifier", "modes", "req_group", "req_topic", "match", "match_cosine", "match_via", "match_by",
     "title", "title_role", "title_level", "title_name", "title_match", "rules_version", "dict_version",
 ]
 POSTING_ADDED = [

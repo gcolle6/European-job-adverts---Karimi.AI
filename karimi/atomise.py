@@ -1023,6 +1023,72 @@ _ROLE_END_RE = re.compile(
     r"similar|equivalent|comparable|role|roles|position|positions)\s*$", re.I)
 _FOR_NAME_RE = re.compile(r"^(?P<name>.*?[A-Z0-9#+].*?)\s+for\s+\S", re.S)
 
+# Roles in alternative (rules 0.4.6, the user's call of 2026-11-18 on the review
+# of batch 4): `as an Azure Cloud Architect, Lead Architect or Design Architect`
+# names one role written three ways — one requirement, `Cloud Architect`;
+# `as a Data Engineer or Data Scientist` names two roles — two requirements.
+# Same role = same job noun (the last word, Developer = Engineer as titles read
+# it); a seniority word does not make another role.
+_ROLE_FILLER_RE = re.compile(r"^(?:an?\s+)?(?:similar|equivalent|comparable|related)"
+                             r"(?:\s+(?:roles?|positions?|capacity|function))?$|^(?:roles?|positions?)$", re.I)
+_ROLE_SENIORITY = {"senior", "sr", "junior", "jr", "lead", "principal", "staff", "chief", "head", "expert",
+                   "mid-level", "medior", "experienced"}
+def _role_noun(alt: str) -> str:
+    """The job noun an alternative ends on, singular, Developer read as Engineer.
+    The nouns are the job-title ones (`normalise_title._ROLE_NOUNS`), so `EMVI
+    writer or tender specialist` is two roles, not `EMVI writer specialist`."""
+    from . import normalise_title
+    words = re.findall(r"[\w+#.-]+", alt)
+    if not words:
+        return ""
+    w = words[-1].lower()
+    if w not in normalise_title._ROLE_NOUNS and w.endswith("s") and w[:-1] in normalise_title._ROLE_NOUNS:
+        w = w[:-1]
+    # `ML engineering`, `software support`: a field or a service, not a job
+    if w not in normalise_title._ROLE_NOUNS or w in ("engineering", "support", "thesis"):
+        return ""
+    if w == "developer" and not re.search(r"\b(?:business|sales)\b", alt, re.I):
+        w = "engineer"
+    return w
+
+
+def role_alternatives(text: str) -> list[str]:
+    """`Machine Learning or Software engineer` -> `Machine Learning engineer`,
+    `Software engineer`: each role whole, the job noun given to those that
+    share it. Filler (`or similar role`) is not a role. [] when a part is not
+    a role at all."""
+    parts = [p.strip(" ,.;") for p in re.split(r"\s*,\s*(?:or\s+|and/or\s+)?|\s+(?:or|and/or)\s+|\s+/\s+", text)]
+    parts = [re.sub(r"^(?:an?|the)\s+", "", p, flags=re.I) for p in parts if p.strip(" ,.;")]
+    parts = [p for p in parts if not _ROLE_FILLER_RE.match(p)]
+    if not parts or not _role_noun(parts[-1]):
+        return []
+    # `leading, coaching and mentoring software developers`: activities, not roles
+    if any(re.fullmatch(r"[a-z]+ing", p) or re.match(r"[a-z]+ing\s+(?:and|&)\s", p) for p in parts):
+        return []
+    noun = re.findall(r"[\w+#.-]+", parts[-1])[-1]
+    out = [p if _role_noun(p) else f"{p} {noun}" for p in parts]
+    return out if all(len(p.split()) <= 5 for p in out) else []
+
+
+def one_role(alts: list[str]) -> tuple[str, str] | None:
+    """The one role several alternatives name, and what was set aside for
+    `extra`; None when they name different roles. The first alternative wins,
+    without seniority and without a platform in front (`Azure Cloud Architect`
+    -> `Cloud Architect`, Azure in `extra`): the role is the requirement."""
+    if len(alts) < 2 or len({_role_noun(a) for a in alts}) != 1:
+        return None
+    words = alts[0].split()
+    moved = []
+    while len(words) > 1 and words[0].lower() in _ROLE_SENIORITY:
+        moved.append(words.pop(0))
+    rest = " ".join(words)
+    m = re.match(r"(AWS|Azure|GCP|Google\s+Cloud|Salesforce)\s+(?=\S+\s+\S)", rest)
+    if m:
+        moved.append(m.group(1))
+        rest = rest[m.end():]
+    moved.append("or " + ", ".join(alts[1:]))
+    return rest, "; ".join(moved)
+
 
 def _merge_purposes(items: list[str]) -> list[str]:
     """`Python for modelling, data analysis and automation` is one requirement.
@@ -1476,8 +1542,8 @@ def _split_list(s: str) -> list[str]:
                 # preposition (`Experience with`)
                 frame = list(TRIGGER_RE.finditer(head + " "))
                 head = (head + " ")[: frame[-1].end()] if frame else ""
-            elif examples and not any(named) and (word or _nr._name_runs(_unmasked(pre))) \
-                    and word not in ("i.e.", "ie"):
+            elif examples and (not any(named) or (word == "including" and not all(named))) \
+                    and (word or _nr._name_runs(_unmasked(pre))) and word not in ("i.e.", "ie"):
                 if PLACEHOLDER_RE.search(pre):
                     # `Solid cloud experience (AWS or Azure), including managed
                     # services`: what is included is implied, the bracket split as usual
@@ -1506,7 +1572,13 @@ def _split_list(s: str) -> list[str]:
         if m and _ROLE_END_RE.search(s[m.end():]) and SPLIT_RE.search(s[m.end():]):
             # `2+ years of experience as a Machine Learning or Software engineer`:
             # roles in alternative, any one will do — one requirement, by the
-            # convention for equivalent alternatives (rules 0.3.0).
+            # convention for equivalent alternatives (rules 0.3.0). Unless they
+            # are different roles (rules 0.4.6, 2026-11-18): `as a Data Engineer
+            # or Data Scientist` is two requirements.
+            alts = role_alternatives(s[m.end():])
+            if len(alts) > 1 and len({_role_noun(a) for a in alts}) > 1:
+                prefix = re.sub(r"\s+an?\s*$", " ", s[:m.end()])
+                return [clean(f"{prefix}{a}") for a in alts]
             return _one(s)
         if _CANDIDATE_RE.match(s) and re.search(r"\s+or\s+an?\s+", s, re.I):
             # `Are a student in your final year or a young professional with ...`:
@@ -1880,8 +1952,9 @@ def _examples_named(before: str, after: str, items: list[str]) -> str:
     # categories joined by `and`, no names, are the category the names exemplify
     # (review of batch 3); a comma or a name there is a real list
     joined = joined and _nr._name_runs(tail)
+    all_named = bool(items) and all(_nr._name_runs(i) for i in items)
     if "," in tail or joined or (
-            len(words) >= 2 and re.fullmatch(r"\w{3,}ing", words[0], re.I)):
+            len(words) >= 2 and re.fullmatch(r"\w{3,}ing", words[0], re.I) and not all_named):
         return "list"
     named = [bool(_nr._name_runs(i)) for i in items]
     return "all" if all(named) else "none" if not any(named) else ""
@@ -2563,7 +2636,7 @@ def _drop_or_similar(segment: str) -> str:
 # after another experience is a second one.
 _CATEGORY_EG_RE = re.compile(r"\s+in\s+an?\s+(?:technical|relevant|related|similar)\s+(?:direction|field|area|discipline)"
                              r",?\s+(?:e\.g\.|such\s+as|for\s+example|like)\s+", re.I)
-_WITH_YEARS_RE = re.compile(r",\s*with\s+(?=(?:at\s+least\s+|minimum\s+(?:of\s+)?)?\d{1,2}\s*\+?\s*years?\s+(?:as|in|of)\b)",
+_WITH_YEARS_RE = re.compile(r",\s*with\s+(?=(?:at\s+least\s+|(?:a\s+)?minimum\s+(?:of\s+)?)?\d{1,2}\s*\+?\s*years?\s+(?:as|in|of)\b)",
                             re.I)
 # `3 years or more of experience` (rules 0.4.4): `or more` is not an alternative
 _YEARS_OR_MORE_RE = re.compile(r"\b(\d{1,2})\s*(years?|yrs?)\s+or\s+more\b", re.I)
@@ -2581,6 +2654,10 @@ _TRAIT_WITH_ABILITY_RE = re.compile(
 
 
 # Rules 0.4.5, from the user's review of batch 3 (2026-11-18).
+# `Master's degree in Power Electronics/Electrical/Mechatronics`: fields in
+# alternative (review of batch 4); `AI/ML` and `CI/CD` are too short to touch
+_DEGREE_SLASH_FIELDS_RE = re.compile(
+    r"(?<=\bin\s)[A-Za-z][\w ]{3,}?(?:/[A-Za-z][\w ]{3,}?)+(?=$|[,.;(])")
 _INDEP_COLLAB_RE = re.compile(
     r"^(?P<h>.*?\b(?:work|working))\s+(?P<a>independently|autonomously)\s+(?:and|as\s+well\s+as|&)\s+"
     r"(?P<b>collaboratively|in\s+(?:a\s+)?teams?|as\s+(?:part\s+of\s+)?a\s+team)\s*\.?$", re.I)
@@ -2589,14 +2666,24 @@ _ABILITY_AND_TRAIT_RE = re.compile(
     r"initiative|curiosity|resilience|proactivity|reliability)\s*\.?$", re.I)
 # who the communication is for is its context, not more requirements
 _SKILL_CONTEXT_RE = re.compile(
-    r"^(?P<s>.*?\bcommunication\s+skills?)\s+(?P<c>(?:targeted\s+)?(?:towards?|with|for|across)\s+.+?)\s*\.?$", re.I)
+    r"^(?P<s>.*?\bcommunication\s+skills?)\s+(?P<c>(?:targeted\s+)?(?:towards?|with|for|across|"
+    r"to\s+(?:interact|communicate|work)\s+with)\s+.+?)\s*\.?$", re.I)
 # what a skill is for: `Basic programming skills to support scripting and configuration tasks`
 _SKILL_PURPOSE_RE = re.compile(
     r"^(?P<s>.*?\bskills?)\s+(?P<p>to\s+(?:support|help|enable|perform|handle|automate)\b.+?)\s*\.?$", re.I)
 
 
+# `Any degree and 8+ years' relevant experience`: a degree and an experience (batch 4)
+_DEGREE_AND_YEARS_RE = re.compile(
+    r"^(?P<d>.*?\b(?:degree|diploma|bachelor\S*|master\S*|ph\.?d)\b[^,;]*?)\s*,?\s+(?:and|plus|\+)\s+"
+    r"(?P<y>(?:at\s+least\s+|minimum\s+(?:of\s+)?)?\d{1,2}\s*\+?\s*(?:years?|yrs?)\b.*)$", re.I)
+
+
 def _review_045_split(segment: str) -> list[str] | None:
     s = segment.strip()
+    m = _DEGREE_AND_YEARS_RE.match(s)
+    if m:
+        return [clean(m.group("d"))] + _atomise_once(clean(m.group("y")))
     m = _INDEP_COLLAB_RE.match(s)
     if m:
         return [clean(f"{m.group('h')} {m.group('a')}"), clean(f"{m.group('h')} {m.group('b')}")]
@@ -2634,6 +2721,10 @@ def _review_045_rewrite(segment: str) -> str:
 def _atomise(segment: str) -> list[str]:
     if config.SPLIT_REPAIRS:
         segment = _YEARS_OR_MORE_RE.sub(r"\1+ \2", segment)
+        # the translator writes `Master ' s degree` (batch 4: 13 items not read)
+        segment = re.sub(r"(\w)\s+['’]\s*s\b", r"\1's", segment)
+        if _DEG_ANY_RE.search(segment):
+            segment = _DEGREE_SLASH_FIELDS_RE.sub(lambda m: m.group(0).replace("/", " or "), segment)
         whole = _review_045_split(segment)
         if whole is not None:
             return whole

@@ -225,6 +225,8 @@ DEGREES = [
     # `BSE`, the Canadian `Baccalaureate` and the Italian `triennial degree`.
     (r"bachelor(?:'s|’s|s)?|b\.?\s?sc\.?|b\.?\s?a\.?|(?-i:B\.?S\.?)|b\.\s?e\.|b\.?\s?tech\.?|bba|b\.?\s?eng\.?|"
      r"undergraduate|licen[cs]e|laurea triennale|hbo\+?|(?-i:L3)|bse|baccalaureate|triennial(?=\s+degree)|"
+     # rules 0.4.6: the translator's Italian `Laurea triennale`
+     r"three-year(?=\s+degree)|"
      # rules 0.4.4: the translator's Dutch `HBO`, `higher professional education`
      r"higher\s+professional\s+education", "bachelor"),
     # `Master 2`, the French second year of the master (rules 0.4.3)
@@ -382,7 +384,7 @@ DEGREE_LABEL = {"bachelor": "Bachelor", "master": "Master", "phd": "PhD", "mba":
                 "student": "Student"}
 
 
-_EDU_PRE = {"a", "an", "the", "completed", "complete", "finished", "successfully", "successful", "relevant",
+_EDU_PRE = {"a", "an", "the", "any", "completed", "complete", "finished", "successfully", "successful", "relevant",
             "related", "university", "academic", "technical", "higher", "ongoing", "current", "currently",
             "enrolled", "pursuing", "final-year", "recognised", "recognized", "accredited", "formal",
             "first", "second", "good", "excellent", "strong", "solid", "appropriate", "suitable", "minimum",
@@ -754,7 +756,71 @@ def _review_045(core: str) -> tuple[str, str]:
     m = _WRITE_RE.match(c)
     if m:
         c, moved = "writing", moved + [m.group("y")]
+    # Rules 0.4.6, the user's review of batch 4: where and what for are context
+    m = _CONTEXT_046_RE.match(c)
+    if m and len(m.group("x").split()) >= 2:
+        # `role within IT / Data` keeps it: `role` alone would name nothing
+        c, moved = m.group("x"), moved + [m.group("y")]
+    m = _GENERIC_046_RE.match(c)
+    if m:
+        c, moved = m.group("x"), moved + [m.group("y")]
+    m = _NAME_FOR_RE.match(c)
+    if m:
+        c, moved = m.group("x"), moved + [m.group("y")]
+    c = re.sub(r"^(?:an?\s+)?spirit\s+of\s+(?=\S)", "", c, flags=re.I)
+    m = re.match(r"^(?:wide|broad)\s+(?:range|spectrum)\s+of\s+(?:knowledge|experience)\s+(?:in|of)\s+"
+                 r"(?:the\s+(?:field|area)\s+of\s+)?(?=\S)", c, re.I)
+    if m:
+        c, moved = c[m.end():], moved + ["broad knowledge"]
+    m = _GERUND_PAIR_RE.match(c)
+    if m:
+        c, moved = c[m.end():], moved + [m.group().strip()]
     return c.strip(" ,.;:"), " ".join(moved)
+
+
+_CONTEXT_046_RE = re.compile(
+    r"^(?P<x>.+?)\s+(?P<y>in\s+(?:an?|the)\s+[\w\s/-]{0,40}?environments?|within\s+[\w\s,/-]+|"
+    r"to\s+interact\s+with\s+.+|with\s+large\s+projects?)\s*$", re.I)
+# a word after the thing that adds nothing: `SQL Domain`, `Data Analytics Methodologies`,
+# `Python software development`, `testing domain`
+_GENERIC_046_RE = re.compile(r"^(?P<x>.+?)\s+(?P<y>domain|methodolog(?:y|ies)|software\s+development)$", re.I)
+# `SonarQube for CI/CD and code quality`: the name, and what it is for
+_NAME_FOR_RE = re.compile(r"^(?P<x>[A-Z][\w./+#-]*(?:\s+[A-Z][\w./+#-]*)?)\s+(?P<y>for\s+.+)$")
+# `training and evaluating machine learning models`: the activities say how (2026-10-29)
+_GERUND_PAIR_RE = re.compile(r"^\w+ing\s+(?:and|or|&)\s+\w+ing\s+(?=\S)", re.I)
+
+
+def _whole_language(text: str) -> bool:
+    """One language, every other word saying how much or how."""
+    words = re.findall(r"[ABCabc][12](?!\d)|[^\W\d_]+", re.sub(r"\s+to\s+(?:understand|discuss|communicate|work|read|"
+                                                           r"write)\b.*$", "", text, flags=re.I))
+    langs = {w.title() for w in words if _LANG_ONLY_RE.match(w)}
+    return len(langs) == 1 and all(_LANG_ONLY_RE.match(w) or w.lower() in _LANG_FILLER | _LANG_HOW
+                                   or re.fullmatch(r"[ABCabc][12]", w) for w in words)
+
+
+_LANG_HOW = {"understanding", "sufficient", "adequate", "either", "fluency", "excellent", "minimum"}
+
+
+def inherit_years(item: str, parts: list[dict]) -> list[dict]:
+    """The item's years on every part they apply to (rules 0.4.6).
+
+    `5+ years of Enterprise software QA and test automation experience` is
+    split in two, and only the first part read the years: the second lost
+    them (36 of 989 parts with years in batch 4). When the item says ONE
+    number of years and some parts carry it, the parts without years take
+    it, except degrees and languages, which years do not qualify (`Any degree
+    and 8+ years' relevant experience`). Two different numbers in an item
+    (`4-6 years ..., with a minimum of 3 years in X`) are left as read.
+    """
+    found = {p["years_raw"] for p in parts if p.get("years_raw")}
+    if len(found) != 1 or len(_YEARS_RE.findall(item)) != 1:
+        return parts
+    src = next(p for p in parts if p.get("years_raw"))
+    for p in parts:
+        if not p.get("years_raw") and p.get("space") not in ("language", "education") and p.get("core"):
+            p.update(years_min=src["years_min"], years_max=src["years_max"], years_raw=src["years_raw"])
+    return parts
 
 
 def keep_once(norms: list[str]) -> list[bool]:
@@ -821,6 +887,14 @@ def decompose(text: str) -> dict:
         rest, tail_level = lv.group("obj").strip(" ,(–-"), lv.group("lvl").lower()
     out["core"] = rest
     m = _HEAD_RE2.match(rest)
+    if _whole_language(rest) and re.search(r"\b(?:[ABC][12]|understanding|sufficient|adequate|minimum)\b", rest,
+                                           re.I):
+        # `Minimum English level C1`, `excellent English understanding`,
+        # `sufficient mastery of Dutch to understand ...` (review of batch 4):
+        # a language with words that say how much; the frame parse took `C1`,
+        # `sufficient` or `English understanding` for the object
+        out["core"], m = re.sub(r"\s+to\s+(?:understand|discuss|communicate|work|read|write)\b.*$", "", rest,
+                                flags=re.I), None
     if m and m.group("head").lower() in _LEAD_ONLY and (
             any(w.lower() not in LEVEL_WORDS for w in m.group("pre").split())
             or not re.match(r"\s+(?:of|in)\s", m.group("post"))):
@@ -932,9 +1006,9 @@ def decompose(text: str) -> dict:
         # Word by word, for what the phrases above miss (`Communicate in English`,
         # `High level of English`, `English, both in speech and writing`): one
         # language, and every other word says how much or how.
-        words = re.findall(r"[^\W\d_]+|[ABCabc][12]", out["core"])
+        words = re.findall(r"[ABCabc][12](?!\d)|[^\W\d_]+", out["core"])
         langs = {w.title() for w in words if _LANG_ONLY_RE.match(w)}
-        if len(langs) == 1 and all(_LANG_ONLY_RE.match(w) or w.lower() in _LANG_FILLER
+        if len(langs) == 1 and all(_LANG_ONLY_RE.match(w) or w.lower() in _LANG_FILLER | _LANG_HOW
                                    or re.fullmatch(r"[ABCabc][12]", w) for w in words):
             lang_core = langs.pop()
     if _LANG_ONLY_RE.match(lang_core):
@@ -977,7 +1051,13 @@ def decompose(text: str) -> dict:
         out["core"] = re.sub(r"^(?:working\s+|work\s+)?(?:directly\s+|closely\s+)?(?:with|from)\s+(?=\S)", "",
                              out["core"])
         out["core"] = re.sub(r"^at\s+least\s+(?:one|1|\d\s*[–-]\s*\d)\s+(?:of\s+(?:the\s+)?)?(?=\S)", "", out["core"])
-        out["core"] = re.sub(r"^as\s+(?:an?\s+)?(?=\S)", "", out["core"])
+        out["core"] = re.sub(r"^(?:working\s+|worked\s+)?as\s+(?:an?\s+)?(?=\S)", "", out["core"])
+        # One role written several ways is that role (rules 0.4.6, 2026-11-18):
+        # `Azure Cloud Architect, Lead Architect or Design Architect` is Cloud Architect
+        role = atom.one_role(atom.role_alternatives(out["core"]))
+        if role:
+            out["core"] = role[0]
+            out["extra"] = " ".join(x for x in (out["extra"], role[1]) if x)
         out["core"] = re.sub(r"(?<=\w)\s+strengths?$", "", out["core"], flags=re.I)
         out["core"] = re.sub(r"^(motivation)\s+(?:for|to)\s+.+$", r"\1", out["core"], flags=re.I)
         # `build and manage a sales pipeline`: verbs that share one object are
@@ -988,6 +1068,11 @@ def decompose(text: str) -> dict:
         out["core"], moved = _review_045(out["core"])
         if moved:
             out["extra"] = " ".join(x for x in (out["extra"], moved) if x)
+        held = _name_runs(out["extra"])
+        if re.search(r"\b(?:affinity|literacy|savvy)\b", out["core"], re.I) and len(held) == 1:
+            # `IT affinity (SQL knowledge)` is SQL (review of batch 4)
+            out["extra"] = " ".join(x for x in (out["core"], out["extra"].replace(held[0], "").strip()) if x)
+            out["core"] = held[0]
         if out["core"].lower() in ("work", "relevant work", "professional work") and out["head_group"] == "experience":
             out["core"] = "work experience"     # `3 years of relevant work experience` (review of batch 3)
         # Degree words after the frame (`Safe handling of especially Excel`,
@@ -1002,6 +1087,8 @@ def decompose(text: str) -> dict:
                 lv = [LEVEL_WORDS[w.lower()] for w in lead[:k]]
                 out["level"] = max(lv, key=lambda l: _LEVEL_RANK[l])
             out["core"] = " ".join(lead[k:])
+            # `a minimum of 3 years in test automation`: the `a` went, the `in` is next
+            out["core"] = re.sub(r"^(?:in|of|with|on|for)\s+(?=\S)", "", out["core"], flags=re.I)
         # A named technology is the requirement, the activity or role around it
         # its context (the user's call, 2026-11-17): `Cloud engineering on
         # Azure` is Azure, `SAP as a technical consultant` SAP, `Python
@@ -1102,6 +1189,9 @@ ALIASES = {
     "team work": "teamwork", "work independently": "autonomy", "work autonomously": "autonomy",
     "working independently": "autonomy", "work collaboratively": "collaboration",
     "solve problem": "problem solving", "problem solving skill": "problem solving",
+    # rules 0.4.6, the review of batch 4
+    "easy contact with colleague": "teamwork", "desire to learn": "willingness to learn",
+    "desire to grow": "willingness to grow", "analysi": "analysis",
 }
 # Cores that name nothing once the frame and level are out: debris of a split.
 JUNK = {"of", "one", "you have", "ideally", "preferably", "minimum", "confirmed", "consolidated", "successful",

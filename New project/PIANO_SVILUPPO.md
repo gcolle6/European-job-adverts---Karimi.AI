@@ -410,6 +410,42 @@ Giudice sul dizionario: gruppi sbagliati 3,3% (era 7,3%), topic 9% (era 17%).
 Regola per le prossime revisioni: rivedere un run fatto con le regole in
 produzione, sennò si misurano errori già corretti. Lotto 4 misura la 0.4.5.
 
+**Revisione umana del lotto 4 → regole 0.4.6, dizionario 0.3.7.** Prima
+revisione di un run fatto con le regole in produzione (0.4.5): 37 errori su
+100, e l'Inspector ne aveva trovati 2. Regola nuova del giro, decisa dal
+responsabile il 2026-11-18: **ogni tipo di errore diventa prima un rilevatore,
+poi una regola**. Così:
+
+* **8 rilevatori nuovi** (`errors.review_flag`, `errors.item_flags`): lingua
+  letta come livello o skill, contesto rimasto, nome con parola inutile, verbo
+  da solo, nomi rimasti in `extra`, verbi davanti all'oggetto, parola staccata
+  dal suo nome, testa incollata ai pezzi. Più `roles_in_key` (ruoli
+  alternativi rimasti insieme), dalla decisione del 2026-11-18;
+* **misurati contro le etichette della persona** con
+  `score_review_detectors.py`: sul lotto 4 trovano 29 errori su 37 (erano 2),
+  ma sono tarati lì. Fuori campione, sulle revisioni dei lotti 2 e 3: 9 su 25 e
+  17 su 41. Il numero vero lo dà la revisione del lotto 5;
+* **regole 0.4.6**: delle 37 righe sbagliate ne cambiano 23, delle 63 giuste 2
+  (lette). Ruoli alternativi: lo stesso ruolo scritto in più modi è un
+  requisito (`Azure Cloud Architect, Lead Architect or Design Architect` →
+  Cloud Architect), ruoli diversi sono requisiti separati. Gli anni della riga
+  vanno a tutti i pezzi; il CSV ha `years_raw`, `level_words`, `qualifier`,
+  `modes`;
+* **restano aperti, ma segnalati**: coppie con una coda in comune
+  (`shared_tail_lost`), verbi spezzati (`bare_verb`), località (`reside in
+  California`), traduzione cinese incomprensibile;
+* **dizionario**: la 0.3.6 è stata congelata prima della regola sui ruoli e
+  non va mai online. La 0.3.7 è la stessa rifatta con la regola. Parità
+  99,35% come prima, conteggio cieco invariato. ⚠️ Giudice: gruppi bocciati
+  11 su 150 (7,3%, era 3,3%), topic 11 su 100 (era 9). Non significativo
+  (p = 0,20), ma nella direzione sbagliata: lette una per una, 2 unioni
+  sbagliate e il resto cornici rimaste nel nucleo (`role in Machine
+  Learning`, `accompany architecture decisions`). Vanno nel giro del lotto 5.
+
+Il lotto 5 (1.000 annunci, offset 4000) misura la 0.4.6. Si resta a 1.000
+finché un lotto non è verde e la revisione sotto il 10%. Poi un lotto da 5.000
+come prova grande.
+
 ### Revisione umana e Curator (2026-11-17)
 
 * **Revisione di una persona**: l'unico numero che conta tutti gli errori,
@@ -423,6 +459,79 @@ produzione, sennò si misurano errori già corretti. Lotto 4 misura la 0.4.5.
   quelle con parola generica o versione dopo restano (`EDA tools` → `EDA`).
   Una sigla che finisce in S non è un plurale (`SAP IDM` era finito su
   `IDMS`): corretto nel Curator, e da correggere nelle regole con la 0.4.3.
+
+### Agenti e passi, tutti insieme (2026-11-19)
+
+Le sezioni sopra aggiungono un pezzo alla volta. Qui c'è il quadro intero di
+oggi. Dove le tabelle di §2 e §3 (scritte il 4-6 novembre) dicono altro, vale
+questo.
+
+**Gli agenti.**
+
+| Agente | Cosa fa | Quando | Decide il colore? |
+|---|---|---|---|
+| **Inspector** (`errors.py`) | rileva tipi di errore noti su ogni requisito: titoli di studio, code facoltative, forme dello split, i 9 rilevatori della revisione del lotto 4 | ogni run, nel job di controllo | sì, la sua quota |
+| **Giudice** (`tester.py`, Qwen3-4B locale, prompt v5) | giudica un campione delle decisioni prese per somiglianza (gruppo, topic), con coppie di controllo | ogni run | sì, la quota bocciata × quota messa per somiglianza |
+| **Curator** (`curator.py`) | propone unioni nel dizionario (alias); mai togliere il fornitore | ogni run | no |
+| **Archivista** (`archivist.py`, `error_catalogue.json`) | per ogni tipo noto: risolto, residuo atteso, tornato, aperto; per un tipo aperto scrive la bozza del test | ogni run | giallo se un tipo torna |
+| **Esploratore** (`explorer.py`, Gemini su Vertex AI UE) | legge 30 righe non segnalate e propone tipi nuovi | ogni run | no, segnala e basta |
+| **Editore** (`explore.py`) | mette nella pagina Explore i run che passano | ogni run, e lo sweep delle 6:00 | no |
+| **Controllore** (`check.py`) | mette insieme tutto: livelli 1-4, colore, `check.json` | ogni run | è lui che colora |
+| **Revisione umana** (`review.py`, pagina Metrics) | 100 righe a caso, giusta o sbagliata, con nota | un run per lotto | no: è la misura di tutti gli altri |
+
+**I passi di un giro**, con chi li fa oggi:
+
+| # | Passo | Oggi | Automatico? |
+|---|---|---|---|
+| 1 | mandare il lotto all'API come un esterno | io, con `external_job.py` | a mano |
+| 2 | controllo del run (tutti gli agenti sopra) | job `karimi-check` | ✅ |
+| 3 | revisione di 100 righe | il responsabile, su Metrics | a mano, per scelta |
+| 4 | confrontare revisione e agenti, rilevatore per rilevatore | io, con `score_review_detectors.py` | a mano |
+| 5 | scrivere i rilevatori nuovi e misurarli dentro e fuori campione | io | a mano |
+| 6 | scrivere le regole, i test, il CHANGELOG, la voce del catalogo | io | a mano |
+| 7 | rifare il dizionario (traduzione → split → gruppi → freeze → parità → qualità → giudice → Explore) | io, script locale di ~1 ora, giudice locale | semi |
+| 8 | commit e deploy | il responsabile, in PowerShell | a mano |
+| 9 | controllare `/health` e lanciare il lotto dopo | io | a mano |
+
+**Cosa manca: agenti e passi.** In ordine di quanto lavoro umano tolgono.
+
+1. **Misura dei rilevatori sul sito.** Oggi la revisione misura l'Inspector
+   solo nel suo insieme, e con i rilevatori che c'erano quando è stato
+   estratto il campione. Il punto 4 (precisione e richiamo per rilevatore,
+   rilette con l'Inspector di oggi) va nel job: quando arriva una revisione,
+   il controllore la rilegge da solo. Serve anche una regola fissa: **un
+   rilevatore entra nel colore solo con precisione ≥ 0,80 su una revisione
+   che non l'ha tarato**. Oggi lo decido io caso per caso.
+2. **Le note della revisione diventano candidati del catalogo.** Oggi le
+   leggo io. L'Esploratore può raggruppare le note delle righe segnate
+   sbagliate in tipi, come già fa con le righe non segnalate. La persona
+   conferma. È il passo che più si avvicina al "trova gli errori da solo".
+3. **Rilettura dei lotti vecchi con le regole nuove ("replay").** Per sapere
+   quante righe giuste cambia una regola, oggi ho script nella mia cartella di
+   lavoro. Deve diventare un passo fisso della catena: ogni revisione già fatta
+   viene rifatta con le regole nuove, e si contano righe sbagliate che cambiano
+   e righe giuste che cambiano. Una regola che cambia righe giuste si legge
+   prima del rilascio.
+4. **Catena del dizionario più robusta.** Questo giro ha perso una notte: la
+   catena è ripartita quando la 0.3.6 esisteva già, e il freeze, giustamente,
+   non sovrascrive. Si fermava dopo un'ora di lavoro. Poi il giudice locale si
+   è spento. Due controlli **all'inizio**: la versione è libera, il giudice
+   risponde. E più avanti: la catena gira in un Cloud Run Job in UE, così non
+   dipende dal PC acceso.
+5. **Ispettore della traduzione.** Nessun agente guarda la traduzione: `Master
+   ' s degree` (13 titoli persi nel lotto 4), `3.7.1995 years`, il cinese
+   incomprensibile li ho trovati io. Rilevatori semplici: date o numeri
+   impossibili, apostrofi staccati, parole non tradotte. Le righe segnalate si
+   rifanno con `opus-mt-mul-en` o si tengono nella lingua originale.
+6. **Regole per i rilevatori aperti**: `shared_tail_lost`, `bare_verb`,
+   località. Oggi sono segnalati, non corretti.
+7. **Lancio del lotto e controllo del deploy senza di me.** Uno script che
+   dopo il deploy legge `/health`, verifica le versioni, lancia il lotto dopo
+   e avvisa quando è pronto per la revisione.
+
+Da non automatizzare: la revisione umana (è la misura, e deve restare cieca) e
+le decisioni di convenzione (`Cloud Architect` sì, Data Engineer + Data
+Scientist separati). Quelle restano del responsabile.
 
 ### Come si migliora dopo il rilascio
 
@@ -714,11 +823,17 @@ decisa dal codice. Risultati in `New project/output/tester/eval_*.json`.
 
 ## 6. Decisioni aperte
 
-1. **Regione principale:** Belgio o Milano.
-2. **Rigenerare i requisiti con P10–P15** prima di congelare il dizionario.
-   La parità (97,8%) mostra che le differenze vengono tutte da lì.
-3. **`title_family`:** una famiglia di ruolo sopra `title_group`, come
+Aggiornate il 2026-11-19. Chiuse: la regione (europe-west1, Belgio), la
+rigenerazione con P10–P15 (fatta), l'API (riaperta il 2026-11-04 accanto alla
+libreria), le soglie del giudice (fissate il 2026-11-05).
+
+1. **`title_family`:** una famiglia di ruolo sopra `title_group`, come
    `req_topic` sopra `req_group`. Serve una lista di famiglie decisa a mano.
-4. **Linguaggio degli sviluppatori di Karimi:** se non è Python, si riattiva
-   l'API. Deciso per ora: solo libreria.
-5. **Soglie di accordo per l'agente tester**, da fissare prima della taratura.
+2. **Macro-gruppi dei requisiti** (comunicazione, leadership, cloud...):
+   progetto a parte, con una lista che il responsabile approva.
+3. **Località come requisito** (`reside in California`, `based in Berlin`): è
+   un requisito, una colonna o si scarta?
+4. **Soglia di precisione per far entrare un rilevatore nel colore**
+   (proposta: 0,80 fuori campione, vedi sopra).
+5. **Quando passare al lotto da 5.000**: proposta, un lotto verde con la
+   revisione sotto il 10%.

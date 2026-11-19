@@ -449,6 +449,168 @@
         "karimi_normalise/requirements.py",
         "New project/split_must_have.py"
       ]
+    },
+    {
+      "id": "language_as_skill",
+      "title": "A language read as its level or as a skill",
+      "stage": "normalisation",
+      "found": "2026-11-18",
+      "found_by": "review",
+      "cause": "The user's review of batch 4 (37 of 100 wrong, the inspector had flagged 2): The frame parse took the level or a word around the language for the object.",
+      "example": "Minimum English level C1 -> C1",
+      "status": "resolved",
+      "resolved_in": "0.4.6",
+      "detector": "language_as_skill",
+      "guard": "tests/test_rules_046.py::test_review_of_batch_4",
+      "rule_files": [
+        "karimi/normalise_req.py",
+        "karimi/atomise.py",
+        "karimi_normalise/errors.py"
+      ]
+    },
+    {
+      "id": "context_left",
+      "title": "Where or what for left in the requirement",
+      "stage": "normalisation",
+      "found": "2026-11-18",
+      "found_by": "review",
+      "cause": "The user's review of batch 4 (37 of 100 wrong, the inspector had flagged 2): `in a fast paced environment`, `within a mission-critical environment`, `to interact with stakeholders` stayed in the key; they are context for `extra`.",
+      "example": "leading technical projects in a fast paced environment",
+      "status": "resolved",
+      "resolved_in": "0.4.6",
+      "detector": "context_left",
+      "guard": "tests/test_rules_046.py::test_review_of_batch_4",
+      "rule_files": [
+        "karimi/normalise_req.py",
+        "karimi/atomise.py",
+        "karimi_normalise/errors.py"
+      ]
+    },
+    {
+      "id": "name_not_taken",
+      "title": "A name kept with a word that adds nothing",
+      "stage": "normalisation",
+      "found": "2026-11-18",
+      "found_by": "review",
+      "cause": "The user's review of batch 4 (37 of 100 wrong, the inspector had flagged 2): `Domain`, `Methodologies`, `software development` after a name kept it from winning.",
+      "example": "Dominio avanzado de SQL -> SQL Domain",
+      "status": "resolved",
+      "resolved_in": "0.4.6",
+      "detector": "name_not_taken",
+      "guard": "tests/test_rules_046.py::test_review_of_batch_4",
+      "rule_files": [
+        "karimi/normalise_req.py",
+        "karimi/atomise.py",
+        "karimi_normalise/errors.py"
+      ]
+    },
+    {
+      "id": "bare_verb",
+      "title": "A verb alone, its object lost",
+      "stage": "splitting",
+      "found": "2026-11-18",
+      "found_by": "review",
+      "cause": "The user's review of batch 4 (37 of 100 wrong, the inspector had flagged 2): A run of verbs over one object cut after the first verb.",
+      "example": "take on, understand and maintain legacy codebases -> take",
+      "status": "open",
+      "resolved_in": null,
+      "detector": "bare_verb",
+      "guard": null,
+      "rule_files": [
+        "karimi/normalise_req.py",
+        "karimi/atomise.py",
+        "karimi_normalise/errors.py"
+      ]
+    },
+    {
+      "id": "names_in_extra",
+      "title": "Named examples set aside while the requirement names nothing",
+      "stage": "splitting",
+      "found": "2026-11-18",
+      "found_by": "review",
+      "cause": "The user's review of batch 4 (37 of 100 wrong, the inspector had flagged 2): A bracket of names after a gerund or a vague holder (`affinity`) went to extra.",
+      "example": "orchestrating hybrid-cloud infrastructures (AWS, Azure, VMware) -> orchestrating hybrid-cloud infrastructures",
+      "status": "resolved",
+      "resolved_in": "0.4.6",
+      "detector": "names_in_extra",
+      "guard": "tests/test_rules_046.py::test_review_of_batch_4",
+      "rule_files": [
+        "karimi/normalise_req.py",
+        "karimi/atomise.py",
+        "karimi_normalise/errors.py"
+      ]
+    },
+    {
+      "id": "shared_tail_lost",
+      "title": "A word cut from the noun it shared",
+      "stage": "splitting",
+      "found": "2026-11-18",
+      "found_by": "review",
+      "cause": "The user's review of batch 4 (37 of 100 wrong, the inspector had flagged 2): `national and EU financing mechanisms` split as `national` and `EU financing mechanisms`.",
+      "example": "national",
+      "status": "open",
+      "resolved_in": null,
+      "detector": "shared_tail_lost",
+      "guard": null,
+      "rule_files": [
+        "karimi/normalise_req.py",
+        "karimi/atomise.py",
+        "karimi_normalise/errors.py"
+      ]
+    },
+    {
+      "id": "head_glued",
+      "title": "The item's first requirement glued in front of the others",
+      "stage": "splitting",
+      "found": "2026-11-18",
+      "found_by": "review",
+      "cause": "The user's review of batch 4 (37 of 100 wrong, the inspector had flagged 2): `including` over a list that is not all names distributed the head.",
+      "example": "AI literacy, including prompt engineering -> AI literacy prompt engineering",
+      "status": "resolved",
+      "resolved_in": "0.4.6",
+      "detector": "head_glued",
+      "guard": "tests/test_rules_046.py::test_review_of_batch_4",
+      "rule_files": [
+        "karimi/normalise_req.py",
+        "karimi/atomise.py",
+        "karimi_normalise/errors.py"
+      ]
+    },
+    {
+      "id": "verb_run_left",
+      "title": "Activities left in front of the object",
+      "stage": "normalisation",
+      "found": "2026-11-18",
+      "found_by": "review",
+      "cause": "The user's review of batch 4 (37 of 100 wrong, the inspector had flagged 2): Coordinated gerunds before one object are one ask and the object is what is asked (2026-10-29).",
+      "example": "training and evaluating machine learning models",
+      "status": "resolved",
+      "resolved_in": "0.4.6",
+      "detector": "verb_run_left",
+      "guard": "tests/test_rules_046.py::test_review_of_batch_4",
+      "rule_files": [
+        "karimi/normalise_req.py",
+        "karimi/atomise.py",
+        "karimi_normalise/errors.py"
+      ]
+    },
+    {
+      "id": "roles_in_key",
+      "title": "Roles in alternative left in one requirement",
+      "stage": "splitting",
+      "found": "2026-11-18",
+      "found_by": "review",
+      "cause": "The user's review of batch 4: 'working as an Azure Cloud Architect, Lead Architect or Design Architect' was one key with three roles. The user's call (2026-11-18): the same role written several ways is one requirement, that role; different roles are separate requirements.",
+      "example": "Experience as a Data Engineer or Data Scientist",
+      "status": "resolved",
+      "resolved_in": "0.4.6",
+      "detector": "roles_in_key",
+      "guard": "tests/test_rules_046.py::test_roles_in_alternative",
+      "rule_files": [
+        "karimi/atomise.py",
+        "karimi/normalise_req.py",
+        "karimi_normalise/errors.py"
+      ]
     }
   ]
 }

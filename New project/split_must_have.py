@@ -98,6 +98,9 @@ def split_export(rows: list[dict], translated: dict[str, str] | None = None) -> 
             keep = normalise_req.keep_once([normed[(item, a)] for a in atoms])
             atoms = [a for a, k in zip(atoms, keep) if k]
             counts = atom.counted(atoms)
+            # the item's years on every part it applies to (rules 0.4.6, `inherit_years`)
+            item_parts = normalise_req.inherit_years(translated.get(item, item),
+                                                     [dict(parts[normed[(item, a)]]) for a in atoms])
             for j, a in enumerate(atoms):
                 out.append({
                     "posting_id": r["_id"], "item_idx": i, "item": item,
@@ -110,7 +113,7 @@ def split_export(rows: list[dict], translated: dict[str, str] | None = None) -> 
                     "nice_to_have": atom.nice_to_have(a),
                     "counted": counts[j],
                     "atom_norm": normed[(item, a)],
-                    **{f"req_{k}": v for k, v in parts[normed[(item, a)]].items()},
+                    **{f"req_{k}": v for k, v in item_parts[j].items()},
                 })
     return pd.DataFrame(out)
 
