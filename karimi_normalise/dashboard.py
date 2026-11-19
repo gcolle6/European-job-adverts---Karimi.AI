@@ -245,13 +245,35 @@ def _pending(store, seen: set[str]) -> list[dict]:
         out.append({**{k: None for k in _RUN}, "job": job, "checked": when, "source": s.get("source"),
                     "state": s.get("state"), "postings": s.get("postings_total"), "seconds": s.get("seconds"),
                     "rules_version": s.get("rules_version"), "dict_version": s.get("dict_version"),
-                    "pending": True})
+                    "pending": True, "retest_of": s.get("retest_of")})
     return out
+
+
+def _retest(t: dict) -> dict:
+    """A retest as its original's row shows it: today's colour, and how much
+    better or worse the same postings came out, both read by today's
+    instruments (`check.retest_baseline`). `change` is in points of the share
+    of requirements estimated wrong: below zero is better."""
+    if t.get("pending"):
+        return {"job": t["job"], "pending": True, "rules_version": t.get("rules_version"),
+                "dict_version": t.get("dict_version")}
+    est, base = t.get("error_estimate") or {}, t.get("baseline") or {}
+    keep = ("share", "light", "complete")
+    change = (round(est["share"] - base["share"], 4)
+              if est.get("share") is not None and base.get("share") is not None else None)
+    return {"job": t["job"], "checked": t.get("checked"), "state": t.get("state"), "overall": t.get("overall"),
+            "requirements": t.get("requirements"), "error_estimate": {k: est.get(k) for k in keep} if est else None,
+            "baseline": {k: base.get(k) for k in keep} if base else None, "change": change,
+            "rules_version": t.get("rules_version"), "dict_version": t.get("dict_version")}
 
 
 def aggregate(store, quality: dict | None, dict_version: str, judge_reference: dict | None = None) -> dict:
     text = store.read_text("history/runs.jsonl") or ""
-    runs = [_colour_rule(_too_small(json.loads(x))) for x in text.splitlines() if x.strip()]
+    lines = [_colour_rule(_too_small(json.loads(x))) for x in text.splitlines() if x.strip()]
+    # A retest is the same postings again under today's rules (2026-11-19): it
+    # sits on its original's row, the latest one only, and counts nowhere else.
+    runs = [r for r in lines if not r.get("retest_of")]
+    retests = {r["retest_of"]: r for r in lines if r.get("retest_of")}
     done = [r for r in runs if r.get("state") == "done"]
     # Shape signals by colour; novelty signals by whether the run was unusual,
     # and on which side: they carry no colour (2026-11-16).
@@ -289,6 +311,8 @@ def aggregate(store, quality: dict | None, dict_version: str, judge_reference: d
         for k, v in (r.get("judge") or {}).items():
             if v is not None:
                 judge.setdefault(k, []).append(v)
+    pending = _pending(store, {r.get("job") for r in lines})
+    retests.update({p["retest_of"]: p for p in pending if p.get("retest_of")})
     return {
         "generated": now(),
         "versions": {"rules_version": RULES_VERSION, "dict_version": dict_version},
@@ -316,5 +340,7 @@ def aggregate(store, quality: dict | None, dict_version: str, judge_reference: d
         "agents": {"curator": _curator(store), "inspector": _inspector(runs), "publisher": _publisher(store),
                    "archivist": archivist_summary(runs, catalogue_with(store)),
                    "explorer": explorer_summary(runs, decided=latest_decisions(store))},
-        "runs": _pending(store, {r.get("job") for r in runs}) + [_run(store, r) for r in runs[-LAST:]][::-1],
+        "runs": [r for r in pending if not r.get("retest_of")]
+        + [{**_run(store, r), "retest": _retest(retests[r["job"]]) if r.get("job") in retests else None}
+           for r in runs[-LAST:]][::-1],
     }

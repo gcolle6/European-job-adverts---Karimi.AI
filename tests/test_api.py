@@ -137,6 +137,36 @@ def test_job_round_trip(api):
     assert m["totals"]["postings"] == 2 and m["runs"][0]["job"] == job
 
 
+def _run_job(c, opts: dict) -> str:
+    r = c.post("/v1/jobs", json=opts)
+    assert r.status_code == 201, r.text
+    job, up = r.json()["job"], r.json()["upload"]
+    c.put(_path(up["url"]), content="\n".join(json.dumps(p) for p in POSTINGS), headers=up["headers"])
+    assert c.post(f"/v1/jobs/{job}/start").status_code == 202
+    return job
+
+
+def test_a_retest_sits_on_its_original_row(api):
+    """2026-11-19: the same postings again under today's rules show on the
+    original's row, with the original measured again by today's inspector,
+    and are no run of their own in the table or the totals."""
+    mod, c = api
+    first = _run_job(c, {"translate": False})
+    assert c.post("/v1/jobs", json={"retest_of": "0123456789abcdef"}).status_code == 404
+    again = _run_job(c, {"translate": False, "retest_of": first})
+    assert c.post("/v1/jobs", json={"retest_of": again}).status_code == 409    # name the original
+    m = c.get("/v1/metrics").json()
+    assert [r["job"] for r in m["runs"]] == [first]
+    assert m["totals"]["runs"] == 1 and m["totals"]["postings"] == 2
+    t = m["runs"][0]["retest"]
+    assert t["job"] == again and t["rules_version"] == m["runs"][0]["rules_version"]
+    # same postings, same rules: no change, and the baseline is the original read today
+    assert t["baseline"]["share"] == t["error_estimate"]["share"] and t["change"] == 0
+    from karimi_normalise.store import jf, read_json
+
+    assert read_json(mod._store, jf(again, "check.json"))["retest_of"] == first
+
+
 def test_job_refuses_bad_input_and_unknown_ids(api):
     mod, c = api
     job = c.post("/v1/jobs", json={}).json()["job"]

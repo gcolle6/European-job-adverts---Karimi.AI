@@ -115,6 +115,10 @@ class Run(BaseModel):
 
 class JobOptions(BaseModel):
     translate: bool = True
+    # The same postings again under today's rules, to see whether a batch got
+    # better (2026-11-19, every four batches): the site shows it on the
+    # original's row, never as a run of its own.
+    retest_of: str | None = None
 
 # ---------------------------------------------------------------- access and logging
 
@@ -291,7 +295,8 @@ def admin_review_runs(request: Request, last: int = 20) -> dict:
     lines = [json.loads(x) for x in (_store.read_text(check.HISTORY) or "").splitlines() if x.strip()]
     seen, runs = set(), []
     for r in lines[::-1]:
-        if r.get("state") != "done" or not r.get("requirements") or r["job"] in seen:
+        # a retest is not reviewed: it is the original's postings, measured by the inspector against them
+        if r.get("state") != "done" or not r.get("requirements") or r["job"] in seen or r.get("retest_of"):
             continue
         seen.add(r["job"])
         s = review.score(_store, r["job"])
@@ -444,9 +449,16 @@ def _launch_check(job: str) -> None:
 @app.post("/v1/jobs", status_code=201)
 def create_job(opts: JobOptions, request: Request) -> dict:
     """Open a job. The answer says where to PUT the postings, one JSON object per line."""
+    if opts.retest_of is not None:
+        if _job(opts.retest_of).get("state") != "done":
+            raise HTTPException(409, "retest_of: that job is not done")
+        if _job(opts.retest_of).get("retest_of"):
+            raise HTTPException(409, "retest_of: that job is itself a retest; name the original")
     job = secrets.token_hex(8)
-    write_json(_store, jf(job, "status.json"), {"job": job, "source": "job", "state": "created",
-                                              "created": now(), "translate": opts.translate})
+    status = {"job": job, "source": "job", "state": "created", "created": now(), "translate": opts.translate}
+    if opts.retest_of:
+        status["retest_of"] = opts.retest_of
+    write_json(_store, jf(job, "status.json"), status)
     return {"job": job, "state": "created", "upload": _store.upload_url(jf(job, "input.jsonl"), _base(request))}
 
 

@@ -3,6 +3,10 @@
     python "New project/external_job.py" software_data_missing_from_ids_used.json \
         "New project/output/new_postings/batch_03" --n 1000 --seed 20261115 --offset 2000
     python "New project/external_job.py" ... --job <id>      # a job already run: fetch and wait for its check
+    python "New project/external_job.py" x "New project/output/new_postings/batch_01/retest_0.4.6" \n        --postings "New project/output/new_postings/batch_01/postings.jsonl" --retest-of <job of batch 1>
+
+A retest (2026-11-19, every four batches) sends a batch's own postings.jsonl
+again under today's rules; the site shows it on the original's row.
 
 Batch k is offset (k-1)*1000 of one shuffled order (seed 20261115), the
 batches of the new postings since 2026-11-15; each batch's errors are fixed
@@ -56,6 +60,8 @@ def main() -> int:
     a.add_argument("--offset", type=int, default=0)
     a.add_argument("--seed", type=int, default=20261115)
     a.add_argument("--job", help="a job already run: only fetch its files and wait for its check")
+    a.add_argument("--postings", help="send this postings.jsonl as it is, instead of sampling the export")
+    a.add_argument("--retest-of", help="the job these postings first ran as: a retest")
     a = a.parse_args()
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -64,6 +70,11 @@ def main() -> int:
         log(out, step="resumed", job=a.job)
         return fetch(out, H, a.job, time.time())
 
+    if a.postings:
+        (out / "postings.jsonl").write_bytes(Path(a.postings).read_bytes())
+        log(out, step="input", postings=sum(1 for x in open(a.postings, encoding="utf-8") if x.strip()),
+            source=a.postings, retest_of=a.retest_of)
+        return send(out, H, {"retest_of": a.retest_of} if a.retest_of else {})
     rows = [r for r in json.load(open(a.export, encoding="utf-8")) if (r.get("must_have") or "").strip()]
     random.Random(a.seed).shuffle(rows)      # one fixed order: batch k is rows[k*n:(k+1)*n]
     batch = rows[a.offset:a.offset + a.n]
@@ -75,11 +86,14 @@ def main() -> int:
             f.write(json.dumps(p, ensure_ascii=False) + "\n")
     log(out, step="input", postings=len(batch), items=sum(len(r["must_have"].split("\n")) for r in batch),
         offset=a.offset, seed=a.seed)
+    return send(out, H, {})
 
+
+def send(out: Path, H: dict, opts: dict) -> int:
     health = requests.get(f"{URL}/health", timeout=60).json()
     log(out, step="health", **health)
 
-    job = requests.post(f"{URL}/v1/jobs", headers=H, json={}, timeout=120)
+    job = requests.post(f"{URL}/v1/jobs", headers=H, json=opts, timeout=120)
     job.raise_for_status()
     job = job.json()
     jid = job["job"]

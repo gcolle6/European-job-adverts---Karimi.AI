@@ -383,6 +383,22 @@ L'obiettivo: un lotto con solo risultati corretti, oppure dove ogni errore
 viene trovato dagli agenti e la persona deve solo confermarlo. A ogni giro il
 processo diventa più automatico e l'intervento umano si riduce.
 
+**Ritest ogni 4 lotti (deciso il 2026-11-19).** Ogni 4 lotti si rimandano gli
+stessi annunci dei 4 lotti precedenti con le regole e il dizionario di oggi,
+per vedere se le correzioni hanno migliorato davvero. Il ritest è un job con
+`retest_of` = il job originale (`external_job.py --postings <lotto>/postings.jsonl
+--retest-of <job>`): nella tabella dei run di Metrics **non diventa una riga
+nuova**, compare nell'ultima colonna "Retest" della riga originale, con colore,
+quota di errori stimata, versioni e il **cambiamento in punti**.
+
+Il cambiamento non si legge contro il colore originale: l'Inspector impara tipi
+nuovi tra un lotto e l'altro, quindi il lotto 4 riletto con i rilevatori del
+lotto 5 ha più errori del suo 3,8% di allora. Il check del ritest rilegge
+l'uscita originale con l'Inspector di oggi (`check.retest_baseline`; la parte
+del giudice resta quella del giorno, perché il giudice non è cambiato) e
+confronta le due letture con lo stesso strumento. Il ritest non aggiunge annunci
+a Explore e non entra nella revisione umana.
+
 **Giro del lotto 2 → regole 0.4.3.** Errori degli agenti: 125 dell'Inspector
 (titoli di studio 56, code facoltative 24, "required" 15, "or similar" 13,
 lingue 16) e 3 tipi nuovi dell'Esploratore. Tutti corretti; i tipi
@@ -528,6 +544,17 @@ questo.
 7. **Lancio del lotto e controllo del deploy senza di me.** Uno script che
    dopo il deploy legge `/health`, verifica le versioni, lancia il lotto dopo
    e avvisa quando è pronto per la revisione.
+
+**Deciso il 2026-11-19: da 7 agenti a 4.** Inspector e Archivista diventano
+un agente solo, con un catalogo solo: ogni tipo di errore porta rilevatore,
+causa, versione che lo corregge, test e misura sulla revisione. Oggi lo stesso
+tipo è scritto in tre posti (`INSPECTOR_DETECTORS`, `CAUSES`,
+`error_catalogue.json`). Restano separati il Giudice (sì/no tarato,
+riproducibile), l'Esploratore (domanda aperta; raggrupperà anche le note della
+revisione, punto 2) e il Curator (l'unico che scrive nel dizionario). Il
+controllo e l'Editore sono passi, non agenti. La misura per rilevatore (punto
+1) diventa una funzione dell'Inspector unito. **Quando**: dopo la revisione del
+lotto 5, così i rilevatori nuovi sono misurati prima di cambiare struttura.
 
 Da non automatizzare: la revisione umana (è la misura, e deve restare cieca) e
 le decisioni di convenzione (`Cloud Architect` sì, Data Engineer + Data

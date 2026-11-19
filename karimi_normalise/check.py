@@ -288,6 +288,29 @@ def error_estimate(postings: list[dict], inspected: dict | None, judged: dict, t
             "thresholds": {"yellow": ERROR_YELLOW, "red": ERROR_RED}}
 
 
+def retest_baseline(store, original: str) -> dict | None:
+    """The original run of a retest, measured again by today's instruments.
+
+    A retest's own estimate cannot be set against the original's colour: the
+    inspector gains detectors between batches, so batch 4 read by the
+    detectors of batch 5 has more errors than it had the day it ran (882
+    against its own 3.8%, 2026-11-19). The fair comparison reads both outputs
+    with the same inspector. The judge's part is the original's own: the judge
+    and its prompt have not changed, and re-asking it about the old groups
+    would only add the noise of a second sample."""
+    try:
+        with store.open_read(jf(original, "results.jsonl")) as f:
+            postings = [json.loads(x) for x in f if x.strip()]
+    except Exception:  # noqa: BLE001 - no files, no baseline: the retest still stands
+        return None
+    c = read_json(store, jf(original, "check.json")) or {}
+    dg = errors.inspect(postings)
+    est = error_estimate(postings, {"rows": errors.table(dg)["rows"]}, c.get("judge") or {},
+                         bool((c.get("canaries") or {}).get("trusted")))
+    o = read_json(store, jf(original, "status.json")) or {}
+    return {**est, "job": original, "rules_version": o.get("rules_version"), "dict_version": o.get("dict_version")}
+
+
 def _reference_file() -> Path | None:
     p = os.environ.get("KARIMI_JUDGE_REFERENCE") or (
         str(Path(os.environ["KARIMI_DICT"]) / "judge_reference.json") if os.environ.get("KARIMI_DICT") else None)
@@ -425,6 +448,7 @@ def check(job: str, store=None, judge_url: str | None = None, reference: dict | 
                                      f"wrong (green under {ERROR_YELLOW:.0%}, red over {ERROR_RED:.0%})"
                                      + ("" if est["complete"] else "; a lower bound, the judge did not read "
                                         "the normalisation")})
+    baseline = retest_baseline(store, s["retest_of"]) if s.get("retest_of") and postings is not None else None
 
     # The explorer agent: Gemini reads a sample the inspector found nothing in
     # and groups what it sees into kinds; new kinds are candidates for a person.
@@ -462,21 +486,23 @@ def check(job: str, store=None, judge_url: str | None = None, reference: dict | 
                                "curator": cur, "archivist": archivist.public(arch),
                                "error_estimate": est, "novelty": novelty,
                                "explorer": explorer.public(expl),
-                               "rules_version": s.get("rules_version"), "dict_version": s.get("dict_version")})
+                               "rules_version": s.get("rules_version"), "dict_version": s.get("dict_version"),
+                               "retest_of": s.get("retest_of"), "baseline": baseline})
 
     overall = max((f["light"] for f in findings), key=_ORDER.get, default="green")
     out = {"job": job, "checked": now(), "overall": overall, "findings": findings, "judge": judged,
            "canaries": canaries, "errors": err, "error_examples": err_examples,
            "error_estimate": est, "novelty": novelty,
            "split_suspects": suspects, "degree_suspects": degrees, "curator": cur, "archivist": arch,
-           "explorer": expl,
+           "explorer": expl, "retest_of": s.get("retest_of"), "baseline": baseline,
            "judge_model": JUDGE_NAME if judge_url else None, "judge_prompt": JUDGE_PROMPT if judge_url else None,
            "to_check": {k: len(v) for k, v in (report or {}).get("to_check", {}).items()},
            "thresholds": {"p_red": P_RED, "p_yellow": P_YELLOW, "min_pairs": MIN_PAIRS, "ref_min_pairs": REF_MIN_PAIRS,
                           "stale_minutes": STALE_MINUTES}}
     # The explorer (`explore.py`): a run that passed adds its adverts, and the
     # explorer is rebuilt. After the check is written, and never failing it.
-    if postings is not None:
+    # A retest adds nothing: its adverts are already there, from the original.
+    if postings is not None and not s.get("retest_of"):
         out["explore"] = publish(store, job, out, judge_url if canaries and canaries["trusted"] else None)
     write_json(store, jf(job, "check.json"), out)
     _log({"red": "ERROR", "yellow": "WARNING"}.get(overall, "INFO"), event="karimi_check", job=job,
