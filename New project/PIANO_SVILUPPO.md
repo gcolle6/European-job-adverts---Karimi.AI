@@ -383,13 +383,20 @@ L'obiettivo: un lotto con solo risultati corretti, oppure dove ogni errore
 viene trovato dagli agenti e la persona deve solo confermarlo. A ogni giro il
 processo diventa più automatico e l'intervento umano si riduce.
 
-**Ritest ogni 4 lotti (deciso il 2026-11-19).** Ogni 4 lotti si rimandano gli
-stessi annunci dei 4 lotti precedenti con le regole e il dizionario di oggi,
-per vedere se le correzioni hanno migliorato davvero. Il ritest è un job con
-`retest_of` = il job originale (`external_job.py --postings <lotto>/postings.jsonl
---retest-of <job>`): nella tabella dei run di Metrics **non diventa una riga
-nuova**, compare nell'ultima colonna "Retest" della riga originale, con colore,
-quota di errori stimata, versioni e il **cambiamento in punti**.
+**Ritest ogni 4 lotti (deciso il 2026-11-19).** Ogni 4 lotti si rielaborano
+gli stessi annunci dei 4 lotti precedenti con le regole e il dizionario di
+oggi, per vedere quanto è migliorato il modello nel complesso. **Il ritest è
+nostro e non si pubblica** (deciso il 2026-11-20): gira in locale con
+`New project/retest_batches.py`, sugli stessi passi del job e del check di
+produzione e con il giudice locale, e scrive solo in
+`New project/output/retests/<versione regole>/`. Niente bucket, niente storia
+dei run, niente sito. (Il campo `retest_of` dell'API e il calcolo nel check
+restano: è il check che lo script usa; la colonna sul sito è stata tolta.)
+
+Primo ritest, 2026-11-19, regole 0.4.6 e dizionario 0.3.7: lotto 1 da 15,0% a
+7,2%, lotto 2 da 15,6% a 6,4%, lotto 3 da 14,5% a 5,1%, lotto 4 da 8,1% a 6,0%
+di requisiti stimati sbagliati. Quasi tutto il guadagno è nella parte
+dell'Inspector (circa 11–12% → 3,3–3,9%).
 
 Il cambiamento non si legge contro il colore originale: l'Inspector impara tipi
 nuovi tra un lotto e l'altro, quindi il lotto 4 riletto con i rilevatori del
