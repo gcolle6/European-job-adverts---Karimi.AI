@@ -469,6 +469,33 @@ Il lotto 5 (1.000 annunci, offset 4000) misura la 0.4.6. Si resta a 1.000
 finché un lotto non è verde e la revisione sotto il 10%. Poi un lotto da 5.000
 come prova grande.
 
+**Giro del lotto 5 → regole 0.4.7, dizionario 0.3.8 (2026-11-23).** Il lotto
+5 (regole 0.4.6) era rosso, 6,7%. In parallelo:
+
+* **errori degli agenti**, letti riga per riga: 140 titoli di studio e 520
+  altre segnalazioni (472 vere, 48 falsi allarmi: precisione stimata 0,91).
+  Due tipi nuovi trovati da noi diventano rilevatori: `object_in_extra`
+  (requisito vuoto, l'oggetto messo da parte) e `names_dropped` (nomi persi
+  prima di "like / such as"). Regole: frasi con più parti tagliate prima
+  della lista, diploma di scuola superiore come livello `school`, studenti
+  ("Currently enrolled in"), parole di livello mancanti, "Titolo: a, b, c",
+  anni in altre forme, lingue con CEFR;
+* **revisione della persona** (100 righe): **23 sbagliate** (lotto 4: 37). I
+  rilevatori della 0.4.6 ne trovavano 2. Quattro rilevatori nuovi dai suoi
+  tipi (`level_as_core`, `years_left`, `availability_lost`, `role_cut`, più
+  "with a focus on" in `context_left`): 8 su 23, misurati sulla stessa
+  revisione. Con la 0.4.7, 18 delle 23 escono come dicono le note, e nessuna
+  delle 77 giuste cambia. **Deciso dal responsabile**: un atteggiamento resta
+  intero ("Desire to", "Passion for development").
+
+Misure: segnali dell'Inspector sul lotto 5 rielaborato da 668 a 460 (dal 4,3%
+al 3,0%). Su 3.000 righe a caso dei lotti 1–5 cambia il 3,6%; lette tutte, 12
+peggioramenti trovati e corretti prima del rilascio. Domanda aperta per il
+responsabile: una parentesi di nomi comuni ("editorial skills (procedures,
+reporting, documentation)") va letta come tre requisiti, contro la
+convenzione del 2026-11-17? Restano aperte frasi complesse rimaste intere
+(`comma_in_key` 100). Il lotto 6 (offset 5000) misura la 0.4.7.
+
 ### Revisione umana e Curator (2026-11-17)
 
 * **Revisione di una persona**: l'unico numero che conta tutti gli errori,

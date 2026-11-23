@@ -18,8 +18,8 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-RULES_VERSION = "0.4.6"
-RULES_FINGERPRINT = "740a31daa1b83b44"
+RULES_VERSION = "0.4.7"
+RULES_FINGERPRINT = "5fbfe0e4ff55833a"
 
 ROOT = Path(__file__).resolve().parents[1]
 # Every file whose change can change an output. `config.py` holds analysis

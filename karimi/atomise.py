@@ -271,7 +271,8 @@ def _distribute_shared_tail(items: list[str]) -> list[str]:
     tail = items[-1].split()[-1]
     out = []
     for i in items[:-1]:
-        out.append(i if i.lower().endswith(tail.lower()) else clean(f"{i} {tail}"))
+        whole = re.search(r"-(?:solving|making)$", i)       # rules 0.4.7, review of batch 5
+        out.append(i if whole or i.lower().endswith(tail.lower()) else clean(f"{i} {tail}"))
     out.append(items[-1])
     return out
 
@@ -1529,7 +1530,8 @@ def _split_list(s: str) -> list[str]:
             word = re.sub(r"[\s,:]+", " ", intro.group(0)).strip().lower()
             examples = [e for e in _cut(rest) if e.strip()]
             named = [bool(_nr._name_runs(e)) for e in examples]
-            if re.search(r"\bone\s+of\s+(?:the\s+)?(?:following\s+)?", pre, re.I):
+            if re.search(r"\bone\s+(?:or\s+more\s+)?of\s+(?:the\s+)?(?:following\s+)?|\bone\s+or\s+more\b",
+                         pre, re.I):
                 lead_ok = False
             elif examples and all(named) and _PLATFORM_RE.search(_unmasked(pre)):
                 # the examples are parts of a platform named before them: the
@@ -1540,6 +1542,24 @@ def _split_list(s: str) -> list[str]:
                 # the category goes with the lead: `Scripting languages such as
                 # Python or Bash` is Python and Bash, the frame kept up to its
                 # preposition (`Experience with`)
+                frame = list(TRIGGER_RE.finditer(head + " "))
+                head = (head + " ")[: frame[-1].end()] if frame else ""
+            elif len(examples) >= 2 and not word and not _nr._name_runs(_unmasked(pre)) \
+                    and not all(w[:1].isupper() for w in _unmasked(pre).split()) \
+                    and (any(named) or not re.search(r"(?<![\w-])[A-Z]", _unmasked(rest))):
+                # (names the name test missed, `comfortable administering Windows
+                # and/or Linux workstations`, keep the rule as it was)
+                # `Header: a, b, c` under a header that is no name (rules 0.4.7,
+                # batch 5: the header was glued onto every item, `backend
+                # fundamentals queues`). Common nouns only: the header is the
+                # requirement, they its `extra` (`Experience building evaluation
+                # pipelines: datasets, labelling, metrics`). Some names among
+                # them: the items are the requirements, the header goes
+                # (`Strong backend fundamentals: PostgreSQL, async workflows`).
+                # A name as header stays on its items (`Palo Alto Networks: NGFW`).
+                if not any(named):
+                    return [clean(f"{pre} ({rest.strip(' .;')})")]
+                lead_ok = False
                 frame = list(TRIGGER_RE.finditer(head + " "))
                 head = (head + " ")[: frame[-1].end()] if frame else ""
             elif examples and (not any(named) or (word == "including" and not all(named))) \
@@ -2699,6 +2719,21 @@ def _review_045_split(segment: str) -> list[str] | None:
 
 def _review_045_rewrite(segment: str) -> str:
     s = re.sub(r"^Number\s+of\s+years\s*:\s*", "", segment, flags=re.I)
+    # rules 0.4.7, the review of batch 5:
+    # `as a Senior, Staff or Lead Software Engineer` is one role, the seniority goes
+    _sen = r"(?:Senior|Staff|Lead|Principal|Junior|Medior|Mid(?:-level)?|Sr\.?|Jr\.?)"
+    s = re.sub(rf"\b{_sen}(?:\s*,\s*{_sen})*\s*,?\s+(?:or|and|/)\s+{_sen}\s+(?=[A-Z])", "", s)
+    # `or have equivalent experience` is the alternative `or equivalent experience`
+    s = re.sub(r"\bor\s+(?:have|possess|with|hold)\s+(?:an?\s+)?(equivalent|comparable|relevant)\s+experience",
+               r"or \1 experience", s, flags=re.I)
+    # `bachelor's Degree or equivalent in work experience and training`: the alternative says nothing more
+    s = re.sub(r"(\b(?:degree|diploma|bachelor'?s?|master'?s?)\b)\s+or\s+equivalent\s+in\s+(?:work\s+|professional\s+)?"
+               r"experience(?:\s+and\s+training)?", r"\1", s, flags=re.I)
+    # `You think logically and analytically` (German `Du denkst logisch und analytisch`)
+    s = re.sub(r"^(?:you\s+)?think\s+logically\s+and\s+analytically\b", "logical thinking, analytical thinking",
+               s, flags=re.I)
+    # `The preparation of a Bac +4 or Bac +5 degree`: preparing a degree is studying for it
+    s = re.sub(r"^(?:the\s+)?preparation\s+of\s+(?:an?\s+)?", "", s, flags=re.I)
     # `(or Terraform, with willingness to learn)`: how open to learning, not a requirement
     s = re.sub(r",?\s*with\s+(?:a\s+)?willingness\s+to\s+learn(?=\s*\))", "", s, flags=re.I)
     # `with Bicep (or Terraform)`: an alternative in brackets is an alternative
@@ -2716,6 +2751,83 @@ def _review_045_rewrite(segment: str) -> str:
     if outside.count(" / ") >= 2:
         s = re.sub(r" / (?![^()]*\))", ", ", s)
     return s
+
+
+# Clauses, each with its own frame (rules 0.4.7, batch 5): `3+ years of experience
+# in Python, SQL and Spark, strong knowledge of Docker and Kubernetes, and
+# experience with cloud platforms (AWS, GCP, Azure)` is three asks. Split as a
+# whole, the last bracket was read as the list for everything, and the line came
+# back unsplit (route `llm`: 55 of the 109 `comma_in_key` flags of batch 5). A
+# clause opens on a frame noun followed by its object, or on a number of years.
+_CLAUSE_HEADS = r"(?:experience|knowledge|understanding|proficiency|familiarity|expertise|exposure|background|command)"
+_CLAUSE_LEVEL = (r"(?:(?:strong|solid|good|excellent|deep|proven|hands-on|working|practical|basic|advanced|"
+                 r"extensive|in-depth|sound|thorough|demonstrated|demonstrable|some|prior|previous|relevant|"
+                 r"professional|technical|very|great|broad)\s+)*")
+_CLAUSE_OPEN = (rf"(?:an?\s+)?{_CLAUSE_LEVEL}{_CLAUSE_HEADS}\s+(?:of|in|with|on|using|across)\s+\S|"
+                r"(?:at\s+least\s+|(?:a\s+)?minimum\s+(?:of\s+)?)?\d{1,2}\+?\s*(?:years?|yrs?)\b")
+_CLAUSE_SPLIT_RE = re.compile(
+    r"(?:\s*[,;]\s*(?:and\s+|as\s+well\s+as\s+|plus\s+)?|\s+(?:and|plus|as\s+well\s+as)\s+)"
+    rf"(?=(?:{_CLAUSE_OPEN}))", re.I)
+_CLAUSE_DONE_RE = re.compile(
+    rf"\b{_CLAUSE_HEADS}\s+(?:of|in|with|on|using|across)\s+\S|\d{{1,2}}\+?\s*(?:years?|yrs?)\s+(?:of\s+)?\S",
+    re.I)
+
+
+# Names listed before a category that introduces more names (rules 0.4.7, batch
+# 5): `HTML5, CSS3, JavaScript, and frameworks like Angular or React` came out
+# as Angular and React only, the names in front dropped with the category.
+# The category goes and the names join one list.
+_CATEGORY_INTRO_RE = re.compile(
+    # it opens after a comma or a space, never inside a word (`Java and` read as `ava and`)
+    r"(?:,\s*|\s+)(?:(?:and|or|as\s+well\s+as|plus)\s+)?(?:(?:other|modern|related|common|similar|relevant)\s+)?"
+    # two words of the category at most, never a preposition (`in AWS with services like`)
+    r"(?:(?!(?:with|in|on|for|of|using|via|at|to)\b)[a-z][\w-]*\s+){0,2}"
+    r"(?:frameworks?|tools?|librar(?:y|ies)|languages?|platforms?|technolog(?:y|ies)|databases?|"
+    r"stacks?|solutions?|services?)\s*,?\s*(?:such\s+as|like|including|e\.\s?g\.,?)\s+")
+
+
+def _names_before_category(segment: str) -> str:
+    m = _CATEGORY_INTRO_RE.search(segment)
+    if not m or m.start() == 0:
+        return segment
+    before = segment[:m.start()].rstrip(" ,")
+    last = before.split()[-1] if before.split() else ""
+    # only after a list of names: the word before is a name (`JavaScript`, `SQL`),
+    # or a name with its frame word (`Strong SQL skills and analytics tools like X`)
+    named_last = last[:1].isupper() or re.search(r"\d", last) or (
+        last.lower() in ("skills", "knowledge", "experience", "expertise", "proficiency")
+        and re.search(r"\b[A-Z][\w.+#/-]*\s+" + re.escape(last) + r"$", before))
+    # and a list, not one name with its kind (`Microsoft tools such as Excel` stays)
+    listy = "," in before or re.match(r"[,\s]*(?:and|or|plus|as\s+well\s+as)\b", m.group(0))
+    if not named_last or not listy or last.strip("-") in ("AI", "ML", "AI/ML", "BI", "UX", "UI", "IoT", "NLP", "QA"):
+        return segment
+    if "," not in before and not re.match(
+            r"^(?:\w+\s+){0,3}?(?:experience|knowledge|proficiency|familiarity|expertise|skills|understanding|"
+            r"command)\b", before, re.I):
+        return segment
+    return f"{before}, {segment[m.end():]}"
+
+
+def _clause_split(segment: str) -> list[str] | None:
+    """The clauses of a segment, when it has two or more; else None.
+
+    A split point must be outside brackets, and the part before it must already
+    hold a frame with its object: `Knowledge and experience of SQL` is one ask
+    (the part before `and` has no object), `Knowledge of Python and experience
+    with AWS` two.
+    """
+    parts, start = [], 0
+    for m in _CLAUSE_SPLIT_RE.finditer(segment):
+        left = segment[start:m.start()]
+        before = segment[:m.start()]
+        if before.count("(") != before.count(")") or not _CLAUSE_DONE_RE.search(left):
+            continue
+        parts.append(left.strip(" ,;"))
+        start = m.end()
+    if not parts:
+        return None
+    parts.append(segment[start:].strip(" ,;."))
+    return [x for x in parts if x] if len([x for x in parts if x]) > 1 else None
 
 
 def _atomise(segment: str) -> list[str]:
@@ -2755,6 +2867,10 @@ def _atomise(segment: str) -> list[str]:
         if _WITH_YEARS_RE.search(segment):
             first, second = _WITH_YEARS_RE.split(segment, maxsplit=1)
             return _atomise(first) + _atomise(second)
+        segment = _names_before_category(segment)
+        clauses = _clause_split(segment)
+        if clauses:
+            return [a for c in clauses for a in _atomise(c)]
     out = _atomise_once(segment)
     for _ in range(max(0, config.ATOMISE_MAX_PASSES - 1)):
         nxt: list[str] = []

@@ -407,6 +407,68 @@ Format: version · date · what changed · how it was measured.
   91,834 translated items: 46 collapse to one role, 83 split. The
   inspector reads what is left (`roles_in_key`): on the batch 4 run (rules
   0.4.5) it flags 9 requirements of 15,622, all nine roles in alternative.
+- **0.4.7** · 2026-11-23 · the agents' findings on batch 5 (rules 0.4.6, red
+  6.7%), every flagged row read: 140 degrees and 520 others (472 real, 48 false
+  alarms). Written while the user reviewed the same batch, so the review still
+  measures 0.4.6 and the detectors. *Two new detectors* for kinds we found by
+  hand: `object_in_extra` (the key left empty, what is asked in `extra`:
+  `High proficiency in Python`) and `names_dropped` (names before a category:
+  `HTML5, CSS3, JavaScript, and frameworks like Angular` gave Angular only).
+  *Detector fixes*: `context_left` no longer fires on idioms (`eye for detail`,
+  `bias for action`: its `Name for X` branch was case-blind); `degree_not_read`
+  no longer on `Scrum Master`, `Agile Master`, `master data`, `a high degree
+  of`. *Splitting*: clauses each with their own frame are split first (`3+ years
+  of experience in Python, SQL and Spark, strong knowledge of Docker and
+  Kubernetes, and experience with cloud platforms (AWS, GCP, Azure)` = 8, and a
+  clause with its own frame does not inherit the years of another); names before
+  a category are kept; `Header: a, b, c` under a header that is no name drops
+  the header when names are among the items, keeps it with the items in
+  `extra` when they are all common nouns; `one or more areas:` lists the
+  requirements. *Degrees*: a school-leaving diploma is its own level, `school`,
+  named `High school diploma`; being enrolled, holding, possessing (`Currently
+  enrolled in a`, `Hold a`, `Be a graduate of a`, `Possession of a`) are words
+  in front of a degree; `Masters’`, `post graduate`, `Engineer degree`, `STEM
+  degree` (field first), `Bac +5 en`, `Hbo`, `Relevant diploma Information
+  Technology`, `6+ years of experience with a Bachelor's degree in X`, what
+  school it is from and `or equivalent experience` say nothing of the degree.
+  *Words*: level words `high`, `perfect`, `intermediate`, `full`,
+  `foundational`, `confirmed`, `expert-level` (no longer the core, or an empty
+  key); a term that opens on one stays whole (`real estate`, `high
+  availability`); kinds of experience (`implementation`, `production`,
+  `academic`) give way to the object; attitudes (`appreciation for`, `love for`,
+  `eye for` + a field) give way to what they are for; `within <name>` gives the
+  name; languages with `CEFR`, `European`, `corresponding to`. *Years*: `3.5+`,
+  `5/7`, `two to three`, `from 4 to 7`. Measured on batch 5 processed again
+  with its own English: inspector flags 668 -> 460, 4.32% -> 2.98% of
+  requirements (with today's detectors on both sides); 3.6% of items change, a
+  random 45 read: 5 regressions found and fixed before this line. Left open, a
+  long tail: complex sentences still in one key (`comma_in_key` 100), a first
+  name copied over a list of others, context lists that over-split one ask.
+  *Then the user's review of batch 5* (same day, 100 items, 23 wrong; batch 4
+  was 37): the detectors of 0.4.6 found 2 of the 23. Four new detectors from
+  its kinds (`errors.review5_flag`: `level_as_core`, `years_left`,
+  `availability_lost`, `role_cut`; `with a focus on` under `context_left`):
+  8 of 23 on the same review, in sample. Rules, following the notes: an
+  attitude stays whole (`Passion for development`, `Desire to`: the user's
+  call, so the draft rule that stripped `appreciation for` was removed and
+  `desire` left the `frame_left` detector); `with a focus on X` goes to
+  `extra` unless X is a name; `Motivated by X` is Motivated; `work
+  independently and effectively` is autonomy, `ability to negotiate`
+  negotiation; `Senior, Staff or Lead Software Engineer` is Software
+  Engineer; `Proven record of shipping and iterating on impactful products` is
+  shipping products; `responsible AI engineering` is AI engineering (not
+  `Responsible AI`); `recent` is no core; `1 year minimum`; `is preferable`
+  marks optional; `Willingness to travel to the United States` keeps the
+  travel; experience of a sector or industry is `X sector experience`; the
+  Portuguese `Domínio em` is mastery; `You think logically and analytically`;
+  `problem-solving` takes no shared `thinking`; the French `préparation d'un
+  Bac+4 ou Bac+5 ... spécialisation en Marketing` is Master in Marketing (Bac
+  scale as before: +3 bachelor, +4/+5 master). On the review: 18 of the 23
+  wrong items now come out as the notes say, 0 of the 77 right ones change.
+  Not done: `complex, multinational organisations`, `AI evaluation methods`,
+  `Proactive in ...`, and the bracket of common nouns (`editorial skills
+  (procedures, reporting, documentation)`), which the note reads as three
+  requirements against the convention of 2026-11-17: a question for the user.
 
 ## Dictionary
 

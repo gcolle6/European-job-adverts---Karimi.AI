@@ -47,6 +47,8 @@ ERRORS = {
         "merged": "two or more requirements left in one",
         "over_split": "one requirement cut into more",
         "fragment": "a piece that is not a whole requirement",
+        # rules 0.4.7, batch 5
+        "dropped": "a requirement of the item left out",
     },
     ("normalisation", "requirement"): {
         "wrong_group": "placed in a group that is not the same requirement",
@@ -54,6 +56,8 @@ ERRORS = {
         "wrong_degree": "a degree read wrong",
         "optional_kept": "how much it is wanted left in the requirement",
         "word_kept": "a word that adds nothing left in the requirement",
+        # rules 0.4.7, batch 5
+        "object_lost": "what is asked set aside, the requirement left empty",
     },
     ("translation", "requirement"): {
         "not_translated": "a requirement left in another language",
@@ -106,6 +110,14 @@ CAUSES = {
     "head_glued": "the item's first requirement glued in front of the others ('AI literacy automation')",
     "verb_run_left": "activities left in front of the object ('training and evaluating ML models')",
     "roles_in_key": "several roles left in one requirement ('Data Engineer or Data Scientist')",
+    # rules 0.4.7, from our reading of batch 5
+    "object_in_extra": "the requirement left empty, what is asked set aside after a word the rules did not know",
+    "names_dropped": "names written before a category ('and frameworks like') left out",
+    # rules 0.4.7, from the user's review of batch 5
+    "level_as_core": "a level or kind word ('recent', 'extensive') read as what is asked",
+    "years_left": "years written in a way the rules did not read ('1 year minimum')",
+    "availability_lost": "a willingness to travel or relocate reduced to the place",
+    "role_cut": "a role cut to its job word, seniority words read as roles ('Senior, Staff or Lead')",
     "other": "no rule names it",
 }
 
@@ -373,7 +385,7 @@ _FRAME_LEFT_RE = re.compile(
     r"^(?:the\s+)?concepts?\s+of\b|"
     r"^(?:registered|enrolled|successful(?:ly)?)\s+(?:completion\s+of\s+)?stud|"
     # batch 4's review: `Spirit of analysis`, `Easy contact with colleagues`, `Wide range of knowledge`
-    r"^(?:spirit|sense|wide\s+range|breadth|desire)\s+(?:of|to)\b|^easy\s+\w+\s+with\b", re.I)
+    r"^(?:spirit|sense|wide\s+range|breadth)\s+(?:of|to)\b|^easy\s+\w+\s+with\b", re.I)
 
 
 INSPECTOR_DETECTORS = {
@@ -403,6 +415,14 @@ INSPECTOR_DETECTORS = {
     "required_left": ("normalisation", "word_kept"),
     "or_similar_left": ("normalisation", "word_kept"),
     "level_left": ("normalisation", "word_kept"),
+    # rules 0.4.7, from our reading of batch 5 (`New project/PIANO_SVILUPPO.md`)
+    "object_in_extra": ("normalisation", "object_lost"),
+    "names_dropped": ("splitting", "dropped"),
+    # rules 0.4.7, from the user's review of batch 5
+    "level_as_core": ("normalisation", "word_kept"),
+    "years_left": ("normalisation", "word_kept"),
+    "availability_lost": ("normalisation", "object_lost"),
+    "role_cut": ("normalisation", "object_lost"),
 }
 
 
@@ -419,7 +439,8 @@ _CONTEXT_RE = re.compile(
     # `testing domain, with a minimum of 3 years in test automation`: a second ask
     r",\s*with\s+(?:a\s+)?(?:minimum|at\s+least)\b|"
     # `SonarQube for CI/CD and code quality`: a name and what it is for
-    r"^\s[A-Z][\w./+#-]*\s+for\s", re.I)
+    r"(?-i:^\s(?!(?:Eye|Bias|Appetite|Desire|Passion|Love|Flair|Talent|Feel|Nose|Knack|Hunger|Drive|Taste)\b)"
+    r"[A-Z][\w./+#-]*\s+for\s)", re.I)
 # coordinated gerunds before one object, or a second activity glued on
 _VERB_RUN_RE = re.compile(r"^\w+ing\s+(?:and|or|&)\s+\w+ing\b|\sand\s+the\s+\w+(?:ion|ment|ery)$", re.I)
 _VAGUE_HOLDER_RE = re.compile(r"\b(?:affinity|savvy|literacy|exposure)\b", re.I)
@@ -454,7 +475,9 @@ def review_flag(r: dict) -> str | None:
         return None
     if _CONTEXT_RE.search(f" {core}"):
         return "context_left"
-    if re.search(r"\b(?:degree|diploma|bachelor'?s?|master'?s?|ph\.?d)\b", core, re.I):
+    if re.search(r"\b(?:degree(?!\s+of\b)|diploma|bachelor'?s?|ph\.?d)\b|"
+                 r"(?<!scrum\s)(?<!agile\s)\bmaster'?s?\b(?!\s+(?:data|production|planning|scheduling|schedules?|file|record))",
+                 core, re.I):
         return "degree_not_read"
     tail = _GENERIC_TAIL_RE.search(core)
     if tail and normalise_req._name_runs(core[: tail.start()]):
@@ -492,6 +515,23 @@ def item_flags(reqs: list[dict]) -> dict[int, str]:
                 and k.lower() not in _SOFT_SINGLE \
                 and re.search(r"(?:al|ic|ive|ary|ous|ar)$", k):
             out[i] = "shared_tail_lost"
+    # `names_dropped` (rules 0.4.7, batch 5): names written before a category that
+    # lists more (`HTML5, CSS3, JavaScript, and frameworks like Angular`) in no atom
+    item = (reqs[0].get("item_split") or reqs[0].get("item") or "") if reqs else ""
+    from karimi import atomise as _atom
+    m = _atom._CATEGORY_INTRO_RE.search(item)
+    if m and m.start() > 0:
+        said = " ".join((r.get("atom") or "") for r in reqs)
+        before = item[:m.start()]
+        names = [x.group() for x in re.finditer(r"(?<![\w-])[A-Z][\w.+#/-]*[\w+#]", before) if x.start() > 0]
+        # the name right before the category is its kind (`ML frameworks such as`),
+        # unless a comma or `and` stands between them
+        if names and not re.match(r"[,\s]*(?:,|and\b|or\b|plus\b)", m.group(0)) and before.rstrip().endswith(names[-1]):
+            names = names[:-1]
+        lost = [n for n in names if n not in said and n.lower() not in ("experience", "knowledge", "proficiency",
+                                                                          "strong", "good", "solid", "excellent")]
+        if lost:
+            out.setdefault(0, "names_dropped")
     first = keys[0] if keys else ""
     if first and len(first.split()) >= 2:
         glued = [i for i, k in enumerate(keys[1:], 1) if k.startswith(first + " ")]
@@ -517,7 +557,48 @@ def inspector_flag(r: dict) -> str | None:
     else:
         hit = None
     return translation_flag(r) or degree_flag(r) or hit or optional_flag(r) or word_kept_flag(r) \
-        or shape_flag(r) or review_flag(r)
+        or shape_flag(r) or review_flag(r) or object_flag(r) or review5_flag(r)
+
+
+_LEVEL_AS_CORE_RE = re.compile(
+    r"^(?:recent|extensive|proven|solid|deep|strong|good|basic|excellent|confirmed|specific|actual|additional|"
+    r"academic|implementation|production|significant|considerable|practical|previous|prior)$", re.I)
+_JOB_WORDS = {"engineer", "developer", "architect", "manager", "analyst", "consultant", "scientist", "designer",
+              "administrator", "specialist", "lead"}
+
+
+def review5_flag(r: dict) -> str | None:
+    """Shapes of the user's review of batch 5 (2026-11-23), read off the result alone."""
+    core = (r.get("core") or "").strip()
+    atom = r.get("atom") or ""
+    if not core or r_space(r):
+        return None
+    if _LEVEL_AS_CORE_RE.match(core):
+        return "level_as_core"
+    if re.match(r"^(?:minimum|maximum|min\.?|max\.?|at\s+least)\b", core, re.I) \
+            or re.search(r"\b\d+\+?\s*(?:years?|yrs?)\b", core, re.I):
+        return "years_left"
+    if re.search(r"\swith\s+(?:an?\s+)?(?:(?:strong|particular|special|clear)\s+)?focus\s+on\s", f" {core}", re.I):
+        return "context_left"
+    if re.match(r"^(?:willing(?:ness)?|ready|readiness|availability)\s+to\s+(?:travel|relocate)\b", atom, re.I) \
+            and not re.search(r"\b(?:travel|relocat)", core, re.I):
+        return "availability_lost"
+    if core.lower() in _JOB_WORDS and re.search(rf"\b[A-Z][\w/-]*\s+{re.escape(core)}\b", atom):
+        return "role_cut"
+    return None
+
+
+def object_flag(r: dict) -> str | None:
+    """`object_in_extra` (rules 0.4.7, batch 5): a counted requirement whose key is
+    empty while `extra` still holds what is asked (`High proficiency in Python`
+    came out empty, Python in `extra`; 50 of 137 empty keys). `equivalent
+    experience` is empty on purpose and has nothing in `extra`."""
+    if r.get("counted") is False or (r.get("core") or "").strip() or r_space(r):
+        return None
+    extra = (r.get("extra") or "").strip()
+    if re.match(r"^(?:of|in|with|on|about)\s+\S", extra, re.I) or re.search(r"(?<![\w-])[A-Z][\w.+#/-]+", extra):
+        return "object_in_extra"
+    return None
 
 
 def inspect(postings: list[dict], examples: int = 3) -> dict:

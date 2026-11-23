@@ -75,8 +75,9 @@ LEVELS = ["basic", "good", "strong", "advanced", "expert"]    # the five level w
 ASKED = {"experience": "As experience", "competence": "As a skill", "ability": "As an ability",
          "language": "As a language", "education": "As a degree", "": "Named alone"}
 # The degree an education requirement asks for (`normalise_req.DEGREES`), lowest first.
-DEGREES = ["student", "bachelor", "master", "phd", "mba", "degree"]
-DEGREE_NAME = {"student": "Student", "bachelor": "Bachelor", "master": "Master", "phd": "PhD", "mba": "MBA",
+# `school` (the school-leaving diploma) since rules 0.4.7
+DEGREES = ["school", "student", "bachelor", "master", "phd", "mba", "degree"]
+DEGREE_NAME = {"school": "High school diploma", "student": "Student", "bachelor": "Bachelor", "master": "Master", "phd": "PhD", "mba": "MBA",
                "degree": "Any degree"}
 # The export writes countries in their own language, the runs sometimes as ISO codes.
 COUNTRY_EN = {

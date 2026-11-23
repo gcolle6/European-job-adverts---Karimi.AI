@@ -46,6 +46,8 @@ MT_FIXES = [
     (r"\bafinity\b", "affinity"),
     (r"\bdominion (?:of|in)\b", "mastery of"),
     (r"^mastering\b", "mastery of"),
+    # rules 0.4.7: the Portuguese `Domínio em` came out `Domain in` (review of batch 5)
+    (r"^domain in\b", "mastery of"),
 ]
 _MT_FIXES = [(re.compile(p, re.I), r) for p, r in MT_FIXES]
 
@@ -142,9 +144,10 @@ def normalise_requirement(atom: str, translated: bool) -> str:
 _YEARS_RE = re.compile(
     r"(?:\b(?:at\s+least|minimum(?:\s+of)?|min\.?|more\s+than|over|up\s+to)\s+)?"
     # a number written out since rules 0.4.3: `At least five years of ...`
-    r"\b(?P<a>\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen)\s*(?P<plus>\+)?\s*"
-    r"(?:(?:-|–|to)\s*(?P<b>\d{1,2})\s*\+?\s*)?"
-    r"(?:years?|yrs?)(?:['’]s?)?(?:\s+or\s+more)?(?:\s+of)?(?!\w)|"
+    r"(?:\bfrom\s+)?"
+    r"\b(?P<a>\d{1,2}(?:[.,]\d)?|one|two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen)\s*(?P<plus>\+)?\s*"
+    r"(?:(?:-|–|to|/)\s*(?P<b>\d{1,2}|two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen)\s*\+?\s*)?"
+    r"(?:years?|yrs?)(?:['’]s?)?(?:\s+or\s+more)?(?:\s+(?:minimum|min\.?|at\s+least))?(?:\s+of)?(?!\w)|"
     # `equivalent years of experience` (rules 0.4.2): no number, and not the core
     r"\b(?P<vague>several|many|a\s+few|multiple|some|a\s+couple\s+of|first|equivalent|relevant|comparable)"
     r"\s+years?(?:\s+of)?\b|"
@@ -216,6 +219,10 @@ def display(space_: str, core: str) -> str:
 # Physics`, with the level also in the `degree` column. Spellings of one degree
 # are that degree (`DEGREES`).
 DEGREES = [
+    # rules 0.4.7, batch 5: the school-leaving diploma, read as no degree at
+    # all (`High School Diploma or equivalent`, `Successful middle school
+    # degree`). Its own level, below any degree, named `High school diploma`.
+    (r"(?:high|secondary|middle)\s+school(?:\s+leaving)?|(?-i:GED)", "school"),
     # `BS`, `B.E.`, `B.Tech` and the Dutch `HBO` (university of applied
     # sciences) are bachelors (rules 0.4.2, from the first batch of new
     # postings: `BA/BS Degree in STEM` and `HBO or WO degree` were read as no
@@ -223,15 +230,15 @@ DEGREES = [
     # `BS` and `MS` only in capitals: `MS Office` (`atomise._DEG_WORD`).
     # Rules 0.4.3, from batch 2: the French `L3` (third year of the licence),
     # `BSE`, the Canadian `Baccalaureate` and the Italian `triennial degree`.
-    (r"bachelor(?:'s|’s|s)?|b\.?\s?sc\.?|b\.?\s?a\.?|(?-i:B\.?S\.?)|b\.\s?e\.|b\.?\s?tech\.?|bba|b\.?\s?eng\.?|"
+    (r"bachelor(?:'s|’s|s['’]?)?|b\.?\s?sc\.?|b\.?\s?a\.?|(?-i:B\.?S\.?)|b\.\s?e\.|b[.-]?\s?tech\.?|bba|b\.?\s?eng\.?|"
      r"undergraduate|licen[cs]e|laurea triennale|hbo\+?|(?-i:L3)|bse|baccalaureate|triennial(?=\s+degree)|"
      # rules 0.4.6: the translator's Italian `Laurea triennale`
      r"three-year(?=\s+degree)|"
      # rules 0.4.4: the translator's Dutch `HBO`, `higher professional education`
      r"higher\s+professional\s+education", "bachelor"),
     # `Master 2`, the French second year of the master (rules 0.4.3)
-    (r"master\s*2(?!\d)|master(?:'s|’s|s)?|m\.?\s?sc\.?|m\.?\s?a\.?|(?-i:M\.?S\.?)|m\.?\s?tech\.?|mca|m\.?\s?eng\.?|"
-     r"postgraduate|diplom|laurea magistrale", "master"),
+    (r"master\s*2(?!\d)|master(?:'s|’s|s['’]?)?|m\.?\s?sc\.?|m\.?\s?a\.?|(?-i:M\.?S\.?)|m\.?\s?tech\.?|mca|m\.?\s?eng\.?|"
+     r"post[-\s]?graduate|diplom|laurea magistrale", "master"),
     (r"ph\.?\s?d\.?|doctorate|doctoral|doktor(?:at)?", "phd"),
     (r"mba", "mba"),
     # The French level, years after the baccalauréat (rules 0.4.1): Bac+3 is
@@ -246,10 +253,11 @@ DEGREES = [
     # (rules 0.4.2).
     # The Dutch `MBO` (vocational) too, rules 0.4.3: `Minimum completed MBO or
     # HBO training`.
-    (r"associate(?:'s|’s)?(?=\s+degree)|(?-i:WO)(?=[\s-]+(?:degree|diploma|level|niveau|in|bachelor|master|training|programme|program)\b"
+    (r"associates?(?:'s|’s)?(?=\s+degree)|(?-i:WO)(?=[\s-]+(?:degree|diploma|level|niveau|in|bachelor|master|training|programme|program)\b"
      r"|$)|(?-i:MBO)",
      "degree"),
-    (r"(?:university\s+|academic\s+|engineering\s+|technical\s+|college\s+|higher\s+)?(?:degree|diploma|"
+    (r"(?:university\s+|academic\s+|engineer(?:ing)?\s+|technical\s+|college\s+|higher\s+|national\s+|post-?secondary\s+|"
+     r"vocational\s+)?(?:degree|diploma|"
      r"studies|study|education|qualification|graduate)", "degree"),
 ]
 _DEGREE_ALT = "|".join(f"(?:{p})" for p, _ in DEGREES)
@@ -258,7 +266,8 @@ _DEGREE_ALT = "|".join(f"(?:{p})" for p, _ in DEGREES)
 _DEG_SUFFIX = (r"(?:\s+(?:degree|diploma|studies|programme|program|training|qualification|level|holder|student|"
                r"speciali[sz]ed|higher\s+education|course))*")
 _EDU_RE = re.compile(
-    rf"^(?P<pre>(?:[\w'’-]+\s+){{0,3}}?)(?P<deg>(?:{_DEGREE_ALT}){_DEG_SUFFIX})"
+    rf"^(?P<pre>(?:[\w'’/-]+,?\s+){{0,5}}?)(?P<deg>(?:{_DEGREE_ALT}){_DEG_SUFFIX})"
+    rf"(?:\s*(?:or|/)\s*(?P<deg2>(?:{_DEGREE_ALT}){_DEG_SUFFIX}))?"
     r"(?:\s*\([^)]*\))?(?:\s+(?:degree|diploma))?"
     # `Bachelor's degree required in X`, `A bachelor's degree, or equivalent
     # in X`, `Master's degree, preferably in X` (rules 0.4.2); several, and
@@ -270,28 +279,32 @@ _EDU_RE = re.compile(
     # works now, and it had been the only path to these; `towards` (0.4.3) is
     # the translator's Dutch `richting`; `within`, `with preference for`, a
     # dash before `preferably` (0.4.4)
-    r"(?:in|of|on|within|towards?|in\s+the\s+direction\s+of|with\s+(?:a\s+)?preference\s+for|"
+    r"(?:in|of|on|en|within|towards?|in\s+the\s+direction\s+of|with\s+(?:a\s+)?preference\s+for|"
     r"with\s+(?:an?\s+)?(?:speciali[sz]ation|focus|major|concentration|emphasis)\s+(?:in|on))\s+"
     r"(?:the\s+)?(?:field\s+of\s+)?(?P<field>.+)$",
     re.I)
 # A bracket after a bare degree names it again or says nothing of a field
 # (rules 0.4.3): `Bachelor's degree (Graduate)`, `Master's degree (MSc)`.
-_EDU_BARE_RE = re.compile(rf"^(?P<pre>(?:[\w'’-]+\s+){{0,3}}?)(?P<deg>(?:{_DEGREE_ALT}){_DEG_SUFFIX})"
+_EDU_BARE_RE = re.compile(rf"^(?P<pre>(?:[\w'’/-]+,?\s+){{0,5}}?)(?P<deg>(?:{_DEGREE_ALT}){_DEG_SUFFIX})"
                           r"(?:\s*\([^)]*\))?(?:\s+(?:minimum|obtained|completed|required))?$", re.I)
 # `HBO Electrical engineering`, `Completed HBO IT` (rules 0.4.3): the Dutch
 # levels before a field with no preposition, as the translator writes them.
 _EDU_HBO_RE = re.compile(
-    r"^(?P<pre>(?:[\w'’-]+\s+){0,3}?)(?P<deg>(?-i:HBO|WO|MBO)(?:[\s-]+(?:training|education|degree|diploma|level))?)"
+    r"^(?P<pre>(?:[\w'’-]+,?\s+){0,5}?)(?P<deg>(?-i:HBO|Hbo|WO|MBO|Mbo)(?:[\s-]+(?:training|education|degree|diploma|level))?)"
     r"\s+(?!(?:or|and|of|level|work|training|education)\b)(?P<field>(?-i:[A-Z])[^,;]*)$", re.I)
 # `Master's degree Signal Processing`: the field with no `in`, only after the
 # word `degree`, and not opening on a word that starts something else. 0.4.1.
 # The guard closed on a backspace, not `\b`, until rules 0.4.2, so it never
 # stopped anything: `Master's degree and 4 years` had the field `and 4 years`.
 _EDU_NOPREP_RE = re.compile(
-    rf"^(?P<pre>(?:[\w'’-]+\s+){{0,3}}?)(?P<deg>(?:{_DEGREE_ALT})\s+degree)\s+"
+    rf"^(?P<pre>(?:[\w'’/-]+,?\s+){{0,5}}?)(?P<deg>(?:{_DEGREE_ALT})\s+degree)\s+"
     r"(?!(?:with|or|and|from|at|for|to|by|as|obtained|completed|required|holder|preferably|ideally|is|are)\b)"
     r"(?P<field>[^\W\d_][^,;+]*)$", re.I)
-_STUDENT_RE = re.compile(r"\b(?:ongoing|current|currently|enrolled|pursuing|final[- ]year|following|completing)\b",
+_EDU_CAPFIELD_RE = re.compile(
+    r"^(?P<pre>(?:[\w'’/-]+,?\s+){0,5}?)(?P<deg>(?:degree|diploma|bachelor(?:'s|’s)?))\s+"
+    r"(?P<field>(?-i:[A-Z])[\w&+-]*(?:\s+(?-i:[A-Z&])[\w&+-]*){0,3})$", re.I)
+_STUDENT_RE = re.compile(r"\b(?:ongoing|current|currently|enrolled|pursuing|final[- ]year|following|completing|"
+                         r"taking|candidate|last\s+year|enrolment)\b",
                          re.I)
 _BAC_STEP = {2: "degree", 3: "bachelor", 4: "master", 5: "master", 6: "master", 7: "master", 8: "phd"}
 # `Master of Science in Physics`: `of Science` names the degree, not the field (rules 0.4.1)
@@ -320,22 +333,73 @@ def _degree(words: str, pre: str) -> str:
     return "degree"
 
 
-_SLASH_DEGREES_RE = re.compile(rf"^(?P<a>(?:{_DEGREE_ALT}))\s*/\s*(?P<b>(?:{_DEGREE_ALT}))(?=\s|$)", re.I)
+_SLASH_DEGREES_RE = re.compile(rf"^(?P<a>(?:{_DEGREE_ALT}))\s*[/,]\s*(?P<b>(?:{_DEGREE_ALT}))(?=\s|$)", re.I)
+
+
+_EDU_FIELD_FIRST_RE = re.compile(
+    r"^(?P<pre>(?:[\w'’-]+,?\s+){0,4}?)(?P<field>[A-Za-z][\w&+.-]*(?:\s+[\w&+.-]+){0,2}?)\s+(?P<deg>degree|diploma)"
+    r"(?:\s*\([^)]*\))?$", re.I)
+
+
+def _field_first(text: str):
+    """`STEM degree`, `computer science degree`: the field before the word `degree` (rules 0.4.7).
+    Only when no word of the field is a degree, level or evidence word: `relevant
+    technical degree` is the generic path's."""
+    m = _EDU_FIELD_FIRST_RE.match(text)
+    if not m:
+        return None
+    # `A computer science degree`: the evidence words in front are not the field
+    words = m.group("field").split()
+    k = 0
+    while k < len(words) - 1 and words[k].lower().strip(",") in _EDU_PRE:
+        k += 1
+    pre, field = " ".join([m.group("pre").strip()] + words[:k]).strip(), words[k:]
+    if any(w.lower() in _EDU_PRE or w.lower() in LEVEL_WORDS or _DEGREE_START_RE.match(w) for w in field):
+        return None
+    return _Found(pre=pre, field=" ".join(field), deg=m.group("deg"))
+
+
+def _pre_ok(pre: str | None) -> bool:
+    """Every word in front a degree or evidence word (`Enrolled/Fresh graduated in a`)."""
+    return all(w.lower().strip(",") in _EDU_PRE for w in re.split(r"[\s/]+", pre or "") if w)
+
+
+class _Found(dict):
+    """A match read by hand, with the two calls `_education` makes on a regex match."""
+
+    def group(self, k):
+        return self[k]
+
+    def groupdict(self):
+        return self
 
 
 def _education(text: str) -> dict | None:
     """`Completed studies in Computer Science` -> education / degree / `Computer Science`."""
+    # rules 0.4.7, batch 5: `Master's degree from a top-tier business school`,
+    # `Diploma from engineering school`, `Bachelor's Degree or acceptable
+    # combination of equivalent experience`
+    text = re.sub(r"\s+from\s+(?:an?\s+|the\s+)?(?:[\w-]+\s+){0,4}?(?:school|university|college|institution|institute)s?"
+                  r"(?:\s*,?\s*(?:or\s+)?(?:[\w-]+\s+){0,2}(?:school|university|college)s?)*\b", "", text, flags=re.I)
+    text = re.sub(r"\s*,?\s+or\s+(?:an?\s+)?(?:acceptable\s+)?(?:combination\s+of\s+)?(?:equivalent|relevant|comparable)"
+                  r"(?:\s+in)?\s+(?:(?:professional|work|practical|industry)\s+)?experience.*$", "", text, flags=re.I)
     s = _SLASH_DEGREES_RE.match(text)
     if s and _degree(s.group("a"), "") == _degree(s.group("b"), ""):
         # `BA/BS degree`: one degree written two ways. Two levels stay unread,
         # for the splitter and the inspector (rules 0.4.2).
         text = s.group("a") + text[s.end():]
-    m = _EDU_RE.match(text) or _EDU_BARE_RE.match(text) or _EDU_NOPREP_RE.match(text) or _EDU_HBO_RE.match(text)
-    if not m:
-        return None
-    pre = m.group("pre") or ""
+    m = _EDU_RE.match(text) or _EDU_BARE_RE.match(text) or _EDU_NOPREP_RE.match(text) or _EDU_HBO_RE.match(text) \
+        or _EDU_CAPFIELD_RE.match(text)
     # Only degree and evidence words in front: `Experience in a degree ...` is not one.
-    if any(w.lower() not in _EDU_PRE for w in pre.split()):
+    # Otherwise the words in front may be the field: `STEM degree` (rules 0.4.7).
+    if not m or not _pre_ok(m.group("pre")):
+        m = _field_first(text)
+        if not m or not _pre_ok(m.group("pre")):
+            return None
+    pre = m.group("pre") or ""
+    alt = m.groupdict().get("deg2")
+    if alt and _degree(alt, pre) != _degree(m.group("deg"), pre):
+        # two levels in one atom: the splitter's job, left unread for the inspector
         return None
     field = m.groupdict().get("field") or ""
     field = re.sub(r"^(?:a|an|the)\s+", "", field.strip(" ,.:-"), flags=re.I)
@@ -344,6 +408,10 @@ def _education(text: str) -> dict | None:
     field = re.sub(r"\s*,?\s+or\s+(?:an?\s+|any\s+)?(?:other\s+)?(?:related|similar|equivalent|comparable|relevant)"
                    r"(?:\s+\w+)?\s+(?:fields?|disciplines?|areas?|subjects?|studies|degrees?|qualifications?|"
                    r"education|programs?|programmes?|directions?)$", "", field, flags=re.I)
+    sp = re.match(r"^(?P<w>.+?)\s+with\s+(?:an?\s+)?(?:speciali[sz]ation|major|concentration)\s+(?:in|on)\s+(?P<f>.+)$",
+                  field, re.I)
+    if sp and re.search(r"\b(?:school|university|college|institute)s?\b", sp.group("w"), re.I):
+        field = sp.group("f")
     # `computer science with specialization in cybersecurity`: the field is the first (rules 0.4.3)
     field = re.sub(r"\s+with\s+(?:an?\s+)?(?:speciali[sz]ation|focus|major|concentration|emphasis)\s+(?:in|on)\s+.+$",
                    "", field, flags=re.I)
@@ -375,12 +443,16 @@ def _education(text: str) -> dict | None:
     # 2026-11-11): `Master in Business` and `Bachelor in Business` are two, and
     # every spelling of one degree is that degree (`MSc`, `M.Sc.`, `Master's`).
     label = DEGREE_LABEL[degree]
+    if degree == "school":
+        # one school-leaving diploma, whatever its stream (rules 0.4.7)
+        return {"head": m.group("deg").strip(), "head_group": "education", "degree": degree, "core": label,
+                "field": ""}
     return {"head": m.group("deg").strip(), "head_group": "education", "degree": degree,
             "core": f"{label} in {field}" if field else f"{label} (any field)", "field": field}
 
 
 # How each degree is written in a requirement's core and name.
-DEGREE_LABEL = {"bachelor": "Bachelor", "master": "Master", "phd": "PhD", "mba": "MBA", "degree": "Degree",
+DEGREE_LABEL = {"school": "High school diploma", "bachelor": "Bachelor", "master": "Master", "phd": "PhD", "mba": "MBA", "degree": "Degree",
                 "student": "Student"}
 
 
@@ -391,7 +463,13 @@ _EDU_PRE = {"a", "an", "the", "any", "completed", "complete", "finished", "succe
             "at", "least", "of", "or", "equivalent", "advanced", "scientific", "engineering", "college",
             "graduated", "from", "diploma",
             # rules 0.4.4: `Final-year student Master's degree in X`
-            "student", "following", "completing"}
+            "student", "following", "completing",
+            # rules 0.4.7, batch 5: `Currently enrolled in a`, `Be a graduate of a`, `Hold a`,
+            # `Possession of a`, `Students pursuing a`, `Currently a candidate for a`
+            "in", "taking", "up", "candidate", "for", "be", "hold", "holds", "holding", "possession",
+            "possess", "students", "year", "last", "final", "enrolment", "fresh", "freshly", "recent",
+            "recently", "obtained", "educated", "to", "ideally", "preferably",
+            "very", "two-year", "three-year", "four-year", "one-year", "full-time", "part-time", "majoring"}
 # Degree and evidence words in front of the head: a small closed class.
 LEVEL_WORDS = {
     "basic": "basic", "first": "basic", "some": "basic", "initial": "basic", "fundamental": "basic",
@@ -414,6 +492,12 @@ LEVEL_WORDS = {
     "ideally": "", "preferably": "", "especially": "", "particularly": "",
     # rules 0.4.4, batch 3: `Ample`, `Vast`, `Real`, `Genuine` were the core
     "ample": "strong", "vast": "strong", "real": "", "genuine": "", "highly": "strong", "high-level": "strong",
+    # rules 0.4.7, batch 5: the word in front became the core and the object went to
+    # `extra`, or the key was left empty (`High proficiency in Python`, `Perfect
+    # command of French`, `Confirmed experience in`, `Foundational knowledge of`)
+    "intermediate": "good", "upper-intermediate": "good", "high": "strong", "perfect": "expert",
+    "full": "strong", "foundational": "basic", "confirmed": "", "specific": "", "direct": "",
+    "showable": "", "actual": "", "additional": "", "recent": "", "recently": "", "expert-level": "expert", "advanced-level": "strong",
 }
 _LEVEL_RANK = {"": 0, "basic": 1, "good": 2, "strong": 3, "advanced": 3, "expert": 4}
 _HEAD_RE2 = re.compile(
@@ -422,8 +506,35 @@ _HEAD_RE2 = re.compile(
     + r")\b(?P<post>.*)$", re.I)
 
 
+def _keep_terms(words: list[str]) -> list[str]:
+    """`real estate`, `real time`, `high availability`: a level word that opens a
+    term of its own is joined to it, so it is not read as a level (rules 0.4.7)."""
+    out, i = [], 0
+    while i < len(words):
+        if i + 1 < len(words) and (words[i].lower(), words[i + 1].lower().strip(",.")) in _TERMS:
+            out.append(f"{words[i]}\u00a0{words[i + 1]}")
+            i += 2
+        else:
+            out.append(words[i])
+            i += 1
+    return out
+
+
+_TERMS = {("real", "estate"), ("real", "time"), ("high", "availability"),
+          ("high", "performance"), ("high", "frequency"), ("high", "voltage"), ("full", "stack"),
+          ("direct", "sales"), ("direct", "marketing"), ("high", "complexity"), ("high", "volume"),
+          ("high", "traffic"), ("high", "load"), ("high", "scale"), ("high", "quality"), ("high", "speed"),
+          ("high", "throughput"), ("high", "precision"), ("high", "security"), ("high", "tech")}
+
+
 _NUMBER_WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8,
                  "nine": 9, "ten": 10, "twelve": 12, "fifteen": 15}
+
+
+def _num(x: str) -> int:
+    """`3`, `3.5` (read as 3, the whole years asked), `three`."""
+    x = x.lower().replace(",", ".")
+    return _NUMBER_WORDS[x] if x in _NUMBER_WORDS else int(float(x))
 
 
 def _years(text: str) -> tuple[str, int | None, int | None, str]:
@@ -434,8 +545,8 @@ def _years(text: str) -> tuple[str, int | None, int | None, str]:
         lo = hi = None
         raw = (m.group("vague") or m.group("multi")).lower()
     else:
-        lo = int(m.group("a")) if m.group("a").isdigit() else _NUMBER_WORDS[m.group("a").lower()]
-        hi = int(m.group("b")) if m.group("b") else (None if m.group("plus") or "least" in m.group(0).lower()
+        lo, b = _num(m.group("a")), m.group("b")
+        hi = _num(b) if b else (None if m.group("plus") or "least" in m.group(0).lower()
                                                      or "minimum" in m.group(0).lower() else lo)
         raw = m.group(0).strip()
     rest = re.sub(r"\s{2,}", " ", (text[: m.start()] + " " + text[m.end():])).strip(" ,.-")
@@ -455,7 +566,7 @@ _BE = r"(?:(?:(?:this|that|it|which)\s+)?(?:is|are|would\s+be|will\s+be|being))"
 _MARK = (rf"(?:(?:{_BE}|(?:is\s+|are\s+)?(?:also\s+)?considered(?:\s+as)?|seen\s+as)\s+)"
          rf"(?:an?\s+)?(?:{_ADJ}\s+)?(?:plus|advantage|asset|bonus|benefit)|"
          rf"an?\s+(?:{_ADJ}\s+)?(?:plus|advantage|bonus)|"
-         rf"(?:{_BE}\s+)?(?:(?:very|highly|strongly|much)\s+)?(?:preferred|desirable|advantageous)|"
+         rf"(?:{_BE}\s+)?(?:(?:very|highly|strongly|much)\s+)?(?:preferred|preferable|desirable|advantageous)|"
          rf"{_BE}\s+(?:(?:very|highly|much)\s+)?(?:beneficial|appreciated|welcome|valued|desired)|"
          rf"(?:{_BE}\s+)?nice[- ]to[- ]have|"
          # Rules 0.4.3, from batch 2: how the translator writes the French
@@ -572,7 +683,10 @@ _NOT_NAMES = {"IT", "HR", "OR", "AND"}
 # words in front of a frame noun that say what kind, not what (rules 0.4.4)
 _WEAK_OBJECT = {"technical", "work", "working", "business", "professional", "practical", "industry", "field",
                 "functional", "operational", "hands-on", "coding", "programming", "scripting", "user", "computer",
-                "application"}
+                "application",
+                # rules 0.4.7, batch 5
+                "implementation", "production", "academic", "commercial", "industrial", "project",
+                "projects", "development"}
 # names that are categories: the word in front of them is part of what is asked
 # (`conversational AI`, `edge AI deployments` are not the AI skill)
 _CATEGORY_NAMES = {"AI", "ML", "AI/ML", "BI", "UX", "UI", "API", "APIs", "IoT", "NLP", "LLM", "LLMs", "OT", "QA"}
@@ -710,7 +824,8 @@ _GERUND_FRAME_RE = re.compile(r"^(?P<y>(?:(?:confidence|comfort)\s+)?(?:using|le
 _SHOW_RE = re.compile(r"^(?:exhibit|demonstrate|show|possess)\s+(?=\S)", re.I)
 _EVALUATIVE_ADJ_RE = re.compile(
     r"^(?:scalable|highly\s+available|available|robust|modern|popular|reliable|secure|large-scale|cutting-edge|"
-    r"state-of-the-art|latest|current|common|well-known|clear|accurate|actionable|prioriti[sz]ed|other)\s*,?\s+"
+    r"state-of-the-art|latest|current|common|well-known|clear|accurate|actionable|prioriti[sz]ed|other|"
+    r"(?-i:responsible)(?=\s+AI\s+[a-z])|impactful)\s*,?\s+"
     r"(?:and\s+)?(?=\S)", re.I)
 _BASED_RE = re.compile(r"^(?P<x>[A-Z][\w.+#]*)-based\s+(?P<y>.+)$")
 _CONCEPTS_RE = re.compile(r"^(?:the\s+)?(?:basic\s+|core\s+)?concepts?\s+of\s+(?=\S)", re.I)
@@ -721,6 +836,31 @@ def _review_045(core: str) -> tuple[str, str]:
     """The core with its frame taken off, and what was taken off (for `extra`)."""
     moved: list[str] = []
     c = re.sub(r"^including\s+(?=\S)", "", core, flags=re.I)
+    c = re.sub(r"^(?:an?\s+)?(?:(?:high|strong|great|good)\s+)?degree\s+of\s+(?=\S)", "", c, flags=re.I)
+    c = re.sub(r"^(?:an?\s+)?(?:high|strong|great|good|very\s+good|excellent)\s+level\s+of\s+(?=\S)", "", c, flags=re.I)
+    # An attitude in front of its object stays (the user, 2026-11-23, review of
+    # batch 5): `Passion for development`, `Desire to learn` say something the
+    # object alone does not.
+    # `High degree of resilience` is resilience; `Proven record of shipping` is shipping
+    c = re.sub(r"^(?:(?:proven|demonstrated|strong|solid)\s+)?(?:track\s+)?record\s+(?:of|in)\s+(?=\S)", "", c,
+               flags=re.I)
+    # `with a focus on application security`: what it is about, for `extra` (review of batch 5)
+    m = re.match(r"^(?P<x>.+?)\s+with\s+(?:an?\s+)?(?:(?:strong|particular|special|clear)\s+)?focus\s+on\s+"
+                 r"(?P<y>.+)$", c, re.I)
+    # a name in focus is left to the rule that a name wins (`Cloud Architecture with
+    # a strong focus on Microsoft Azure` is Azure, review of batch 3)
+    if m and not _name_runs(m.group("y")):
+        c, moved = m.group("x"), moved + [f"focus on {m.group('y')}"]
+    # `Motivated by the quality of work`: the disposition, and what moves it
+    m = re.match(r"^(?P<x>motivated|driven|inspired|energi[sz]ed)\s+by\s+(?P<y>.+)$", c, re.I)
+    if m:
+        c, moved = m.group("x"), moved + [f"by {m.group('y')}"]
+    # `to negotiate as required`
+    c = re.sub(r"\s+as\s+(?:required|needed|necessary)$", "", c, flags=re.I)
+    # `Willingness to travel to the United States for business purposes`: the
+    # availability is the requirement, where to is part of it (review of batch 5)
+    c = re.sub(r"^((?:willing(?:ness)?|ready|readiness|able|availability)\s+to\s+(?:travel|relocate)\b.*?)\s+for\s+"
+               r"(?:business|work)\s+(?:purposes|reasons|needs)$", r"\1", c, flags=re.I)
     # `Good foundations in Python` is Python (review of batch 2); `ITIL Foundations`
     # is a certificate, so only `foundations in/of`
     m = re.match(r"^foundations?\s+(?:in|of)\s+(?=\S)", c, re.I)
@@ -758,7 +898,13 @@ def _review_045(core: str) -> tuple[str, str]:
         c, moved = "writing", moved + [m.group("y")]
     # Rules 0.4.6, the user's review of batch 4: where and what for are context
     m = _CONTEXT_046_RE.match(c)
-    if m and len(m.group("x").split()) >= 2:
+    if m and not _name_runs(m.group("x")) and len(_name_runs(m.group("y"))) == 1 \
+            and m.group("y").lower().startswith("within") \
+            and _name_runs(m.group("y"))[0] not in _CATEGORY_NAMES \
+            and re.fullmatch(rf"within\s+(?:the\s+)?{re.escape(_name_runs(m.group('y'))[0])}", m.group("y").strip(), re.I):
+        # the name wins (rules 0.4.7, batch 5): `dashboards within eFront Invest` is eFront Invest
+        c, moved = _name_runs(m.group("y"))[0], moved + [m.group("x")]
+    elif m and len(m.group("x").split()) >= 2:
         # `role within IT / Data` keeps it: `role` alone would name nothing
         c, moved = m.group("x"), moved + [m.group("y")]
     m = _GENERIC_046_RE.match(c)
@@ -772,6 +918,10 @@ def _review_045(core: str) -> tuple[str, str]:
                  r"(?:the\s+(?:field|area)\s+of\s+)?(?=\S)", c, re.I)
     if m:
         c, moved = c[m.end():], moved + ["broad knowledge"]
+    m = re.match(r"^(?P<g>\w+ing)\s+(?:and|or|&)\s+\w+ing\s+(?:on|with|in|over|to|across)\s+(?P<o>.+)$", c, re.I)
+    if m:
+        obj = re.sub(r"^(?:impactful|successful|high-quality)\s+", "", m.group("o"), flags=re.I)
+        c = f"{m.group('g')} {obj}"
     m = _GERUND_PAIR_RE.match(c)
     if m:
         c, moved = c[m.end():], moved + [m.group().strip()]
@@ -785,7 +935,8 @@ _CONTEXT_046_RE = re.compile(
 # `Python software development`, `testing domain`
 _GENERIC_046_RE = re.compile(r"^(?P<x>.+?)\s+(?P<y>domain|methodolog(?:y|ies)|software\s+development)$", re.I)
 # `SonarQube for CI/CD and code quality`: the name, and what it is for
-_NAME_FOR_RE = re.compile(r"^(?P<x>[A-Z][\w./+#-]*(?:\s+[A-Z][\w./+#-]*)?)\s+(?P<y>for\s+.+)$")
+_NAME_FOR_RE = re.compile(r"^(?!(?:Eye|Bias|Appetite|Desire|Passion|Love|Flair|Talent|Feel|Nose|Knack|Hunger|Drive|"
+                          r"Taste)\b)(?P<x>[A-Z][\w./+#-]*(?:\s+[A-Z][\w./+#-]*)?)\s+(?P<y>for\s+.+)$")
 # `training and evaluating machine learning models`: the activities say how (2026-10-29)
 _GERUND_PAIR_RE = re.compile(r"^\w+ing\s+(?:and|or|&)\s+\w+ing\s+(?=\S)", re.I)
 
@@ -802,7 +953,15 @@ def _whole_language(text: str) -> bool:
 _LANG_HOW = {"understanding", "sufficient", "adequate", "either", "fluency", "excellent", "minimum"}
 
 
-def inherit_years(item: str, parts: list[dict]) -> list[dict]:
+_OWN_FRAME_RE = re.compile(
+    r"^(?:an?\s+)?(?:(?:strong|solid|good|excellent|deep|proven|hands-on|working|practical|basic|advanced|"
+    r"extensive|in-depth|sound|thorough|demonstrated|demonstrable|some|prior|previous|relevant|professional|"
+    r"technical|very|great|broad)\s+)*"
+    r"(?:experience|knowledge|understanding|proficiency|familiarity|expertise|exposure|background|command)\s+"
+    r"(?:of|in|with|on|using|across)\s", re.I)
+
+
+def inherit_years(item: str, parts: list[dict], atoms: list[str] | None = None) -> list[dict]:
     """The item's years on every part they apply to (rules 0.4.6).
 
     `5+ years of Enterprise software QA and test automation experience` is
@@ -817,7 +976,11 @@ def inherit_years(item: str, parts: list[dict]) -> list[dict]:
     if len(found) != 1 or len(_YEARS_RE.findall(item)) != 1:
         return parts
     src = next(p for p in parts if p.get("years_raw"))
-    for p in parts:
+    for i, p in enumerate(parts):
+        # a clause with its own frame in front has its own years, none here
+        # (`3+ years of experience in Python, ... and experience with AWS`, rules 0.4.7)
+        if atoms and i < len(atoms) and _OWN_FRAME_RE.match(atoms[i]):
+            continue
         if not p.get("years_raw") and p.get("space") not in ("language", "education") and p.get("core"):
             p.update(years_min=src["years_min"], years_max=src["years_max"], years_raw=src["years_raw"])
     return parts
@@ -874,6 +1037,11 @@ def decompose(text: str) -> dict:
     out = {"years_min": lo, "years_max": hi, "years_raw": years_raw, "level": "",
            "level_words": "", "head": "", "head_group": "", "degree": "", "core": rest, "extra": ""}
     edu = _education(rest)
+    if not edu and years_raw:
+        fr = re.match(r"^(?:(?:of|relevant|related|professional|work)\s+)*experience\s+(?:with|and)\s+(?:a\s+)?"
+                      r"(?:minimum\s+of\s+(?:a\s+)?)?(?P<d>.+)$", rest, re.I)
+        if fr and _DEGREE_START_RE.match(fr.group("d")):
+            edu = _education(fr.group("d"))
     if edu:
         edu.pop("field")
         out.update(edu, qualifier="", modes="")
@@ -903,6 +1071,7 @@ def decompose(text: str) -> dict:
         pre = m.group("pre").split()
         head = m.group("head").lower()
         post = m.group("post").strip()
+        pre = _keep_terms(pre)
         known = [w for w in pre if w.lower() in LEVEL_WORDS]
         # Words in front that are not degree words belong to the core:
         # `strong communication skills`, `Python programming experience`. When
@@ -960,11 +1129,19 @@ def decompose(text: str) -> dict:
     elif years_raw:
         # `5 years in software development`: years imply experience.
         core = re.sub(r"^(?:of|in|with|on|for|at|as)\s+", "", rest, flags=re.I)
+        nm = re.match(r"^(?:the\s+)?(?:management|administration|use|usage)\s+of\s+(?P<n>[A-Z].*)$", core)
+        if nm and _name_runs(nm.group("n")) == [nm.group("n").strip()]:
+            core = nm.group("n").strip()
+        w = re.match(r"^(?:within|in|at)\s+(?:an?|the)\s+(?P<x>.+?)\s+(?:company|companies|environment|organi[sz]ation|"
+                     r"firm|business|setting|scale-?up|start-?up|agency)$", core, re.I)
+        if w:
+            # rules 0.4.7, batch 5: `within an ad-tech company` is ad-tech
+            core = w.group("x")
         out.update(head="(years)", head_group="experience", core=core)
     else:
         # No frame noun: degree words in front are still the level, not the
         # demand (`Excellent written and verbal communication`).
-        words = rest.split()
+        words = _keep_terms(rest.split())
         k = 0
         while k < len(words) - 1 and words[k].lower() in LEVEL_WORDS:
             k += 1
@@ -973,6 +1150,10 @@ def decompose(text: str) -> dict:
             out.update(level=max(lv, key=lambda l: _LEVEL_RANK[l]),
                        level_words=" ".join(w for w in words[:k] if LEVEL_WORDS[w.lower()]),
                        core=" ".join(words[k:]))
+    # the terms `_keep_terms` held together are plain words again
+    for f in ("core", "extra"):
+        if isinstance(out.get(f), str):
+            out[f] = out[f].replace("\u00a0", " ")
     # A qualifier narrows the demand (PATTERNS.md P6); it gets its own column so
     # the key is the demand alone.
     q = atom._qualifier(out["core"]) if atom._use_pos() else None
@@ -1073,12 +1254,14 @@ def decompose(text: str) -> dict:
             # `IT affinity (SQL knowledge)` is SQL (review of batch 4)
             out["extra"] = " ".join(x for x in (out["core"], out["extra"].replace(held[0], "").strip()) if x)
             out["core"] = held[0]
+        if out["head_group"] == "experience" and re.search(r"\b(?:sector|industry)$", out["core"], re.I):
+            out["core"] = f"{out['core']} experience"       # review of batch 5: `health sector experience`
         if out["core"].lower() in ("work", "relevant work", "professional work") and out["head_group"] == "experience":
             out["core"] = "work experience"     # `3 years of relevant work experience` (review of batch 3)
         # Degree words after the frame (`Safe handling of especially Excel`,
         # `use of in particular Excel`): the level, not the object.
         out["core"] = re.sub(r"^(?:in particular|expert-level)\s+(?=\S)", "", out["core"], flags=re.I)
-        lead = out["core"].split()
+        lead = _keep_terms(out["core"].split())
         k = 0
         while k < len(lead) - 1 and lead[k].lower() in LEVEL_WORDS:
             k += 1
@@ -1086,7 +1269,7 @@ def decompose(text: str) -> dict:
             if not out["level"]:
                 lv = [LEVEL_WORDS[w.lower()] for w in lead[:k]]
                 out["level"] = max(lv, key=lambda l: _LEVEL_RANK[l])
-            out["core"] = " ".join(lead[k:])
+            out["core"] = " ".join(lead[k:]).replace("\u00a0", " ")
             # `a minimum of 3 years in test automation`: the `a` went, the `in` is next
             out["core"] = re.sub(r"^(?:in|of|with|on|for)\s+(?=\S)", "", out["core"], flags=re.I)
         # A named technology is the requirement, the activity or role around it
@@ -1101,6 +1284,13 @@ def decompose(text: str) -> dict:
         if len(runs) > 1 and len(named) == 1:
             runs = named
         bare = out["core"].strip(" ,.;:")
+        if re.match(r"(?:passion|desire|love|appreciation|enthusiasm|eye|affinity)\s+(?:for|to|of)\b", bare, re.I):
+            runs = []
+        elif re.match(r"(?:willing(?:ness)?|ready|readiness|availability|able)\s+to\s+(?:travel|relocate)\b", bare, re.I):
+            # `Willingness to travel to the United States` (the user's review of batch 5)
+            out["core"] = re.sub(r"\s+for\s+(?:business|work)\s+(?:purposes|reasons|needs)$", "", out["core"],
+                                 flags=re.I)
+            runs = []
         if len(runs) == 1 and runs[0].replace(".", "") != bare.replace(".", "") \
                 and not runs[0][:1].islower() \
                 and re.search(r"(?<![\w/&.+#-])[a-z]", bare) \
@@ -1108,7 +1298,9 @@ def decompose(text: str) -> dict:
                 and not re.search(r"\blicen[cs]e\s+[A-Z]\b", bare) \
                 and not _name_is_modifier(runs[0], bare) \
                 and not (runs[0] in _CATEGORY_NAMES
-                         and re.search(rf"(?<![\w-])[a-z][\w-]*\s+{re.escape(runs[0])}(?!\w)", bare)) \
+                         and re.search(rf"(?<![\w-])[a-z][\w-]*\s+{re.escape(runs[0])}(?!\w)", bare)
+                         and not re.search(rf"\bwith\s+(?:[A-Z][\w./+#-]*\s+(?:and|or)\s+)?{re.escape(runs[0])}$",
+                                           bare)) \
                 and not re.fullmatch(rf"{re.escape(runs[0])}\s+(?:certifications?|certificates?|licen[cs]es?)",
                                      bare, re.I):
             rest = re.sub(rf"\s*{re.escape(runs[0])}\s*", " ", out["core"]).strip(" ,.:;-")
@@ -1117,7 +1309,8 @@ def decompose(text: str) -> dict:
         # Product names written several ways (`Golang`, `PowerBI`, `MS Office`):
         # one spelling, from a closed list (`ALIASES`). Then what names nothing.
         out["core"] = ALIASES.get(canon(out["core"]), out["core"])
-        if canon(out["core"]) in JUNK or all(w.lower() in LEVEL_WORDS for w in out["core"].split()):
+        if canon(out["core"]) in JUNK or all(w.lower() in LEVEL_WORDS and not (len(w) > 1 and w.isupper())
+                                                             for w in out["core"].split()):
             out["core"] = ""
     if tail_level and not out["level"]:
         out["level"] = _TAIL_LEVEL.get(re.sub(r"\s+", " ", tail_level), "")
@@ -1144,7 +1337,11 @@ _LANG_FILLER = {
     "or", "equivalent", "certified", "certification", "nice",
     # the translator's Chinese `听说读写` (listen, speak, read, write) came out
     # `I hear English is very fluent in reading and writing` (rules 0.4.3)
-    "i", "hear", "hearing", "listen", "listening"}
+    "i", "hear", "hearing", "listen", "listening",
+    # rules 0.4.7, batch 5: `Control of Dutch at European CEFR level C2`, `French
+    # language corresponding to a minimum C1 level`, `Intermediate English`
+    "european", "cefr", "corresponding", "intermediate", "upper-intermediate", "lower-intermediate", "niveau",
+    "nivel"}
 _LANG_NOISE_RE = re.compile(
     r"\b(?:is\s+(?:a\s+(?:strong\s+|big\s+)?plus|an?\s+(?:asset|advantage)|desirable|preferred|required|mandatory)|"
     r"required|mandatory|preferred|essential|"
@@ -1192,6 +1389,11 @@ ALIASES = {
     # rules 0.4.6, the review of batch 4
     "easy contact with colleague": "teamwork", "desire to learn": "willingness to learn",
     "desire to grow": "willingness to grow", "analysi": "analysis",
+    # rules 0.4.7, the review of batch 5
+    "work independently and effectively": "autonomy", "work independently and autonomously": "autonomy",
+    "negotiate": "negotiation", "prioritize": "prioritization", "prioritise": "prioritization",
+    "multitask": "multitasking", "ability to negotiate": "negotiation",
+    "problem-solving thinking": "problem-solving", "problem solving thinking": "problem-solving",
 }
 # Cores that name nothing once the frame and level are out: debris of a split.
 JUNK = {"of", "one", "you have", "ideally", "preferably", "minimum", "confirmed", "consolidated", "successful",

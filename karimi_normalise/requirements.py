@@ -197,7 +197,7 @@ def split_posting(items: list[str], dictionary=None, translate: bool = True,
         atoms = [a for a, k in zip(atoms, keep) if k]
         counts = atom.counted(atoms)
         norms = [normalise_req.normalise_requirement(a, was) for a in atoms]
-        parts = normalise_req.inherit_years(text, [normalise_req.decompose(n) for n in norms])
+        parts = normalise_req.inherit_years(text, [normalise_req.decompose(n) for n in norms], atoms=norms)
         for j, (a, norm, part) in enumerate(zip(atoms, norms, parts)):
             out.append(Requirement(item_idx=i, item=item, item_split=text, translated=was,
                                    translated_by=by if was else "", route=how,

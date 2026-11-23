@@ -1,6 +1,6 @@
 {
   "about": "The archivist's catalogue: every kind of error found so far, why it happened, what fixed it and what guards it. Edited by a person; the archivist reads it on every run (archivist.py). No requirement text from Karimi's postings except the short examples a person chose.",
-  "updated": "2026-11-18",
+  "updated": "2026-11-23",
   "entries": [
     {
       "id": "degree_not_read",
@@ -611,6 +611,156 @@
         "karimi/normalise_req.py",
         "karimi_normalise/errors.py"
       ]
+    },
+    {
+      "id": "object_in_extra",
+      "title": "The requirement left empty, what is asked set aside",
+      "stage": "normalisation",
+      "found": "2026-11-23",
+      "found_by": "hand",
+      "cause": "A word in front of the frame noun the rules did not know as a level (high, perfect, confirmed, foundational, expert-level) or as a kind of experience (implementation, production) became the core; the junk filter then emptied it, and the object stayed in extra.",
+      "example": "High proficiency in Python -> '' (Python in extra) instead of Python, level strong",
+      "status": "resolved",
+      "resolved_in": "0.4.7",
+      "detector": "object_in_extra",
+      "guard": "tests/test_rules_047.py::test_cores_047",
+      "rule_files": [
+        "karimi/normalise_req.py"
+      ]
+    },
+    {
+      "id": "names_dropped",
+      "title": "Names before a category dropped",
+      "stage": "splitting",
+      "found": "2026-11-23",
+      "found_by": "hand",
+      "cause": "When every example after 'such as / like' was a name, the lead before the category was discarded, with the names it listed.",
+      "example": "HTML5, CSS3, JavaScript, and frameworks like Angular or React -> Angular, React only",
+      "status": "resolved",
+      "resolved_in": "0.4.7",
+      "detector": "names_dropped",
+      "guard": "tests/test_rules_047.py::test_split_047",
+      "rule_files": [
+        "karimi/atomise.py"
+      ]
+    },
+    {
+      "id": "clauses_unsplit",
+      "title": "Several clauses, each with its own frame, left in one",
+      "stage": "splitting",
+      "found": "2026-11-23",
+      "found_by": "hand",
+      "cause": "A line of several asks ('3+ years of experience in A, B, strong knowledge of C, and experience with D (E, F)') was split as one list: the last bracket was read as the list for everything and the line came back whole (route llm). 55 of the 109 comma_in_key flags of batch 5.",
+      "example": "3+ years of experience in Python, SQL and Spark, strong knowledge of Docker ... -> one requirement",
+      "status": "resolved",
+      "resolved_in": "0.4.7",
+      "detector": "comma_in_key",
+      "guard": "tests/test_rules_047.py::test_split_047",
+      "rule_files": [
+        "karimi/atomise.py",
+        "karimi/normalise_req.py"
+      ]
+    },
+    {
+      "id": "header_list",
+      "title": "A 'Header: a, b, c' header glued onto its items",
+      "stage": "splitting",
+      "found": "2026-11-23",
+      "found_by": "hand",
+      "cause": "After a colon under a header that is no name, with a mix of names and common nouns, the header was put in front of every item and kept as an atom of its own.",
+      "example": "Strong backend fundamentals: PostgreSQL, async workflows, queues -> 'backend fundamentals queues'",
+      "status": "resolved",
+      "resolved_in": "0.4.7",
+      "detector": "head_glued",
+      "guard": "tests/test_rules_047.py::test_split_047",
+      "rule_files": [
+        "karimi/atomise.py"
+      ]
+    },
+    {
+      "id": "school_and_student_degrees",
+      "title": "School diplomas and student status not read as education",
+      "stage": "normalisation",
+      "found": "2026-11-23",
+      "found_by": "hand",
+      "cause": "No level for the school-leaving diploma; 'Currently enrolled in a', 'Hold a', 'Be a graduate of a' were not words the rules accept in front of a degree; 'Masters’', 'STEM degree', 'Bac +5 en', 'Hbo', a degree after years of experience.",
+      "example": "Currently enrolled in a bachelor’s degree program in business -> not education",
+      "status": "resolved",
+      "resolved_in": "0.4.7",
+      "detector": "degree_not_read",
+      "guard": "tests/test_rules_047.py::test_degrees_047",
+      "rule_files": [
+        "karimi/normalise_req.py",
+        "karimi_normalise/explore.py"
+      ]
+    },
+    {
+      "stage": "normalisation",
+      "found": "2026-11-23",
+      "found_by": "review",
+      "status": "resolved",
+      "resolved_in": "0.4.7",
+      "guard": "tests/test_rules_047.py::test_review_of_batch_5",
+      "rule_files": [
+        "karimi/normalise_req.py",
+        "karimi/atomise.py"
+      ],
+      "id": "level_as_core",
+      "detector": "level_as_core",
+      "title": "A level or kind word read as what is asked",
+      "cause": "A word in front of the frame the rules did not know as a level ('recent'): it became the core, the object went to extra.",
+      "example": "Recent hands-on experience with Braze is preferable -> 'Recent' instead of Braze"
+    },
+    {
+      "stage": "normalisation",
+      "found": "2026-11-23",
+      "found_by": "review",
+      "status": "resolved",
+      "resolved_in": "0.4.7",
+      "guard": "tests/test_rules_047.py::test_review_of_batch_5",
+      "rule_files": [
+        "karimi/normalise_req.py",
+        "karimi/atomise.py"
+      ],
+      "id": "years_left",
+      "detector": "years_left",
+      "title": "Years the rules did not read",
+      "cause": "Years written after the number in a way the rules did not know ('1 year minimum').",
+      "example": "1 year minimum with Boomi -> 'minimum with Boomi' instead of Boomi, 1 year"
+    },
+    {
+      "stage": "normalisation",
+      "found": "2026-11-23",
+      "found_by": "review",
+      "status": "resolved",
+      "resolved_in": "0.4.7",
+      "guard": "tests/test_rules_047.py::test_review_of_batch_5",
+      "rule_files": [
+        "karimi/normalise_req.py",
+        "karimi/atomise.py"
+      ],
+      "id": "availability_lost",
+      "detector": "availability_lost",
+      "title": "A willingness to travel reduced to the place",
+      "cause": "The rule that a name wins over the words around it took the country out of 'Willingness to travel to the United States'.",
+      "example": "Willingness to travel to the United States -> 'United States'"
+    },
+    {
+      "stage": "normalisation",
+      "found": "2026-11-23",
+      "found_by": "review",
+      "status": "resolved",
+      "resolved_in": "0.4.7",
+      "guard": "tests/test_rules_047.py::test_review_of_batch_5",
+      "rule_files": [
+        "karimi/normalise_req.py",
+        "karimi/atomise.py"
+      ],
+      "id": "role_cut",
+      "detector": "role_cut",
+      "title": "A role cut to its job word",
+      "cause": "Seniority words in alternative ('Senior, Staff or Lead') were read as roles, and the shared role was cut to its last word.",
+      "example": "Extensive experience as a Senior, Staff or Lead Software Engineer -> 'Engineer'"
     }
   ]
 }
