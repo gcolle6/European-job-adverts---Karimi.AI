@@ -66,7 +66,9 @@ from .metrics import NOVELTY
 from .store import jf, now, open_store, read_json, write_json
 
 STALE_MINUTES = 90          # a chunk of 500 postings takes 5-15 minutes; 90 is six chunks of silence
-SAMPLE = {"group": 40, "topic": 30, "variant": 20}
+# topic 30 -> 100 (the user, 2026-11-23): at 30 pairs one run's estimate swung a colour
+# on its own (batch 7: 8 of 30 rejected made it red)
+SAMPLE = {"group": 40, "topic": 100, "variant": 20}
 REFERENCE_SAMPLE = {"group": 150, "topic": 100, "variant": 60}
 MIN_PAIRS = 10
 REF_MIN_PAIRS = 30         # added 2026-11-05: the first reference had 14 title variants
