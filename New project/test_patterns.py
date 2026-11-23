@@ -153,7 +153,7 @@ TITLE_SAME += [("Fullstack Developer", "Full Stack Engineer"), ("Backend Java De
 NORM_CASES = [
     ("Experience building and maintaining CI/CD pipelines", False, "Experience with CI/CD pipelines"),
     ("3+ years of experience designing, building and deploying microservices", False,
-     "3+ years of experience with microservices"),
+     "3+ years of experience designing, building and deploying microservices"),  # changed 2026-11-23: verbs kept, one per verb (the user's review of batch 6)
     ("Experience working with distributed systems", False, "Experience with distributed systems"),
     ("Experience working in agile teams", False, "Experience in agile teams"),
     ("Experience leading engineering teams", False, "Experience leading engineering teams"),
@@ -188,7 +188,8 @@ KEY_CASES = [
     ("Fluent knowledge of German written and spoken", "language: German", "strong", None),
     ("Excellent written and verbal English skills", "language: English", "strong", None),
     ("Native German", "language: German", "expert", None),
-    ("Excellent written and verbal communication", "written and verbal communication", "strong", None),
+    # 2026-11-23: communication, the modes set aside (the user's review of batch 6)
+    ("Excellent written and verbal communication", "communication", "strong", None),
     ("Python", "Python", "", None),
     ("Fluency in English", "language: English", "strong", None),
     ("in English", "language: English", "", None),

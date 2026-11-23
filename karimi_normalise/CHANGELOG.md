@@ -469,6 +469,43 @@ Format: version · date · what changed · how it was measured.
   `Proactive in ...`, and the bracket of common nouns (`editorial skills
   (procedures, reporting, documentation)`), which the note reads as three
   requirements against the convention of 2026-11-17: a question for the user.
+  (Answered the same day: the bracket stays the category, `good` the level.)
+- **0.4.8** · 2026-11-23 · batch 6 (rules 0.4.7, yellow 5.8%): the agents'
+  478 flags read one by one (415 real, precision 0.87) and the user's review
+  (20 wrong of 100; batch 5 was 23). *Three conventions changed by the user's
+  call on the review's notes*: coordinated verbs over a generic object are one
+  requirement per verb and keep the verb (`designing and implementing complex
+  solutions` = 2; reverses 2026-10-29 and the batch 4 reading; with a name the
+  name still wins, `building and maintaining CI/CD pipelines` = CI/CD); a list
+  of areas after the object are requirements (`interpersonal skills and ease
+  working with Business, IT, Security` = interpersonal, Business, IT,
+  Security); an attitude goes when what follows stands alone (`keen eye for
+  spotting patterns`), and stays when it is one generic word (`Passion for
+  development`). *Rules*: unknown words in front no longer become the key and
+  then delete their siblings in `keep_once` (`Meaningful`, `Operating
+  Knowledge`, `Discrete`, `Production-level`, `Native-level`; a vendor in
+  front, `Strong Microsoft knowledge in .NET, Visual Studio`); degrees (`WO
+  Master's`, the backtick apostrophe, `Associate or Bachelor's`,
+  `Degree/Master`, `completed or currently in the final semester`,
+  `Education:`, `Studies in X, Y`); `Title: a, b` headers that are generic words;
+  `at least` / `minimum of` never a head; `especially`, `for example`,
+  `particularly` as introducers; years `Max.`, `approx.`, `experience of 5 years
+  in`, `typically N+ years` dropped; the Dutch `is een pré` read as `is a plus`;
+  `written and verbal communication` is communication; `technical and
+  transverse leadership` is leadership; `how X influences Y` is X; `X projects
+  using BI tools` is BI tools; `Sufficient technical depth in`; `make
+  independent decisions` is autonomy. *Learning* (the user's question): `Deep
+  Learning`, `Machine Learning`, `Deep Reinforcement Learning` stay whole (`deep`
+  was read as a level, `Machine` as a generic first word), the translator's
+  `in-depth learning` is deep learning, and the soft skill is `learning
+  ability`. *Detectors*: `modes_left`, `attitude_left`, `verb_run_left` widened
+  to base verbs; `context_left` no longer fires on attitudes, `names_in_extra`
+  only when most of the bracket is names, `edge_preposition` knows `across`,
+  `bare_verb` no longer fires on `design`/`support`. On the review: the
+  detectors find 7 of 20 (were 3, in sample); 15 of the 20 come out as the notes
+  say; of the 80 right, 2 change, both by the new verb convention. Batch 6
+  processed again: inspector flags 430 -> 345 (2.8% -> 2.2%). 3,000 random items
+  of batches 1-6: 6% change, all read; the regressions found were fixed.
 
 ## Dictionary
 

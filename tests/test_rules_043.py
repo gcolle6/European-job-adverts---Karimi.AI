@@ -122,7 +122,9 @@ def test_degrees_from_batch_2(item, keys):
     # the explorer's kinds, confirmed by the user's process of 2026-11-17
     ("Experience in design, deployment and support of network solutions",
      ["design, deployment and support of network solutions"]),
-    ("Experience gathering, structuring, and documenting functional requirements", ["functional requirements"]),
+    ("Experience gathering, structuring, and documenting functional requirements",
+     ["gathering functional requirements", "structuring functional requirements",
+      "documenting functional requirements"]),  # changed 2026-11-23: verbs kept, one per verb (the user's review of batch 6)
     ("Practical knowledge about microservices and REST API", ["microservices", "REST APIs"]),
     ("Qualifications/experience/knowledge of data science is a major advantage", ["data science"]),
     ("CATIA V6-Knowledge Advantageous", ["CATIA V6"]),

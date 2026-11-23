@@ -43,7 +43,7 @@ def _keys(item: str) -> list[str]:
     ("Strong understanding of industry challenges within technology, fintech, or regulated environments",
      ["industry challenges"]),
     ("Strong verbal and written communication skills to interact with stakeholders and project owners",
-     ["verbal and written communication skills"]),
+     ["communication skills"]),  # 2026-11-23: the modes set aside (review of batch 6)
     ("4-6 years of experience in testing domain, with a minimum of 3 years in test automation",
      ["testing", "test automation"]),
     # the name wins over a word that adds nothing
@@ -54,7 +54,8 @@ def _keys(item: str) -> list[str]:
     ("Experience with Jenkins and SonarQube for CI/CD and code quality", ["Jenkins", "SonarQube"]),
     ("Proficiency in orchestrating hybrid-cloud infrastructures (AWS, Azure, VMware)", ["AWS", "Azure", "VMware"]),
     # activities before one object; one soft skill, one word
-    ("Demonstrated experience training and evaluating machine learning models", ["machine learning models"]),
+    ("Demonstrated experience training and evaluating machine learning models",
+     ["training machine learning models", "evaluating machine learning models"]),  # changed 2026-11-23: verbs kept, one per verb (the user's review of batch 6)
     ("Spirit of analysis", ["analysis"]),
     ("Easy contact with colleagues", ["teamwork"]),
     ("Strong commitment and desire to learn and grow", ["commitment", "willingness to learn", "willingness to grow"]),

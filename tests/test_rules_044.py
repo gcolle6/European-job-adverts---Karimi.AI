@@ -60,7 +60,7 @@ def _keys(item: str) -> list[str]:
      "science, software engineering or a similar subject",
      ["education: Student in computer science", "education: Student in software engineering"]),
     ("Prior Fintech experience is not a requirement, but an asset", ["Fintech"]),
-    ("Experience in handling system architectures beneficial", ["system architectures"]),
+    ("Experience in handling system architectures beneficial", ["handling system architectures"]),  # changed 2026-11-23: verbs kept, one per verb (the user's review of batch 6)
 ])
 def test_degrees_and_words_from_batch_3(item, keys):
     assert _keys(item) == keys
@@ -124,7 +124,7 @@ def test_controls_stay(item, keys):
      ["organized", "manage multiple requests"]),  # `Highly` is the level column
     ("Curious, open-minded, eager to learn", ["Curious", "open-minded", "eager to learn"]),
     ("3 years or more of experience in Java", ["Java"]),
-    ("Ability to build and manage a sales pipeline", ["sales pipeline"]),
+    ("Ability to build and manage a sales pipeline", ["build a sales pipeline", "manage a sales pipeline"]),  # changed 2026-11-23: verbs kept, one per verb (the user's review of batch 6)
     ("Experience in Java is given priority", ["Java"]),
     ("WO programme in Computer Science", ["education: Degree in Computer Science"]),
     ("Student Bac+5 in engineering school or university master's degree in computer science",

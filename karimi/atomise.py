@@ -83,7 +83,10 @@ INTRODUCER_RE_V2 = re.compile(
     r"\s*(?:,\s*)?\b(?:such as|including|includes|include|like|namely|"
     r"tra cui|ad esempio|tales como|zoals|tel que|telles que|tels que|"
     r"wie z\.?\s?b\.?|z\.\s?b\.|zb\.|e\.\s?g\.|i\.\s?e\.|bspw\.|bijv\.|par ex\.|"
-    r"come|par exemple|entre autres)[\s,:]+|\s*:\s*",
+    r"come|par exemple|entre autres|"
+    # rules 0.4.8, batch 6
+    r"especially(?:\s+(?:in|with))?|particularly(?:\s+(?:in|with))?|in\s+particular|notably|"
+    r"for\s+example(?:\s*,)?(?:\s+(?:in|with))?|for\s+instance|beispielsweise(?:\s+in)?)[\s,:]+|\s*:\s*",
     re.I,
 )
 
@@ -479,6 +482,14 @@ def _is_list(items: list[str]) -> bool:
     return sum(len(i) for i in items) / len(items) <= config.MAX_ITEM_MEAN_CHARS
 
 
+def _quantity_prep(text: str, m) -> bool:
+    """`at least`, `(a) minimum of`: a quantity, never the head of a list (rules 0.4.8, batch 6:
+    `At fraud`, `minimum of Computer Vision`)."""
+    w = m.group().strip().lower()
+    return (w == "at" and bool(re.match(r"\s*least\b", text[m.end():], re.I))) or (
+        w == "of" and bool(re.search(r"\b(?:minimum|maximum)\s*$", text[: m.start()], re.I)))
+
+
 def _trim_head(head: str) -> str:
     """Cut a head back to its governing preposition.
 
@@ -497,7 +508,10 @@ def _trim_head(head: str) -> str:
         # acquire knowledge in web technologies such as Angular` was cut to
         # `Willingness to Angular` (rules 0.3.0).
         m = next((x for x in PREP_RE.finditer(head) if x.group().strip().lower() != "an"
-                  and not (x.group().strip().lower() == "to" and _infinitive(head[x.end():]))), None)
+                  and not (x.group().strip().lower() == "to" and _infinitive(head[x.end():]))
+                  and not (x.group().strip().lower() == "at" and re.match(r"\s*least\b", head[x.end():], re.I))
+                  and not (x.group().strip().lower() == "of"
+                           and re.search(r"\bminimum\s*$", head[: x.start()], re.I))), None)
         if m is None and LEAD_CATEGORY_RE.search(head):
             # `Ideally certifications such as CKA, CKS`: no preposition, and
             # the category noun is what the names replace.
@@ -625,7 +639,7 @@ def _distribute_shared_head(items: list[str]) -> list[str]:
             continue
         head = ""
         for prior in reversed(out):
-            preps = list(PREP_RE.finditer(prior))
+            preps = [x for x in PREP_RE.finditer(prior) if not _quantity_prep(prior, x)]
             if not preps:
                 continue
             cand = clean(prior[: preps[-1].end()])
@@ -1475,9 +1489,52 @@ def _degree_routes(segment: str) -> list[str] | None:
     return None
 
 
+_CONTEXT_NOUNS_RE = re.compile(r"\b(?:environments?|industr(?:y|ies)|sectors?|teams?|functions?|departments?|"
+                               r"clients?|customers?|stakeholders?|markets?|regions?|countries|settings?)\s*[.;]?$",
+                               re.I)
+
+
+def _context_list(before: str, trigger: str, rest: str) -> bool:
+    """A list after the object is already said is where or with whom, one requirement (rules 0.4.8,
+    batch 6): `stakeholder management skills across IT, Finance, Legal` was four requirements,
+    `Salesforce experience in B2B and/or B2C environments` two. Only after `across` or `within`,
+    or a list of places, teams or sectors; and only when the part before names its object: a name,
+    or `... skills` / `... management` after a word of its own (`Experience in Python, Java` is a
+    list of requirements)."""
+    from . import normalise_req as _nr     # it imports this module
+    t = trigger.strip().lower()
+    if _DEG_ANY_RE.search(before):          # a degree with an experience is two asks
+        return False
+    if not (t in ("across", "within") or (t in ("in", "with", "for") and _CONTEXT_NOUNS_RE.search(rest))):
+        return False
+    words = before.split()
+    has_object = bool(_nr._name_runs(_unmasked(before))) and not re.match(
+        r"^(?:(?:strong|solid|good|proven|hands-on|deep|excellent|extensive)\s+)*(?:experience|knowledge|"
+        r"proficiency|expertise|understanding|familiarity)$", before.strip(), re.I)
+    if len(words) < 2:
+        return False
+    has_object = has_object or bool(re.search(r"\w+\s+(?:skills|management)$", before.strip(), re.I)
+                                    and len(words) >= 2
+                                    and words[-2].lower() not in ("strong", "solid", "good", "proven", "hands-on"))
+    return has_object and bool(SPLIT_RE.search(rest))
+
+
 def _split_list(s: str) -> list[str]:
     """Split one clause, either as head + list or as a bare coordinated list."""
     if config.SPLIT_REPAIRS:
+        last = list(re.finditer(r"\s(across|within|in|with|for)\s+", s, re.I))
+        if last:
+            before, trig, rest = s[: last[-1].start()], last[-1].group(1).lower(), s[last[-1].end():]
+            eased = re.sub(r"\s+and\s+(?:ease|comfort)\s+(?:in\s+)?(?:working|interacting|collaborating|dealing)$",
+                           "", before, flags=re.I)
+            areas = [clean(x) for x in SPLIT_RE.split(rest) if clean(x)]
+            if any(re.match(r"(?:multiple|various|several|different|other|all|many)\b", a, re.I) for a in areas):
+                areas = []
+            if len(areas) >= 2 and (eased != before or trig in ("across", "within")) \
+                    and _context_list(eased, "across", rest):
+                return [clean(eased)] + areas
+            if trig in ("in", "for") and not SPLIT_RE.search(before) and _context_list(before, trig, rest):
+                return [s]
         m = _DEG_WITH_EXP_RE.match(s)
         if m:
             # `Bachelor's degree in IT with Financial systems experience
@@ -1544,8 +1601,13 @@ def _split_list(s: str) -> list[str]:
                 # preposition (`Experience with`)
                 frame = list(TRIGGER_RE.finditer(head + " "))
                 head = (head + " ")[: frame[-1].end()] if frame else ""
-            elif len(examples) >= 2 and not word and not _nr._name_runs(_unmasked(pre)) \
-                    and not all(w[:1].isupper() for w in _unmasked(pre).split()) \
+            elif len(examples) >= 2 and not word \
+                    and ((not _nr._name_runs(_unmasked(pre))
+                          and not all(w[:1].isupper() for w in _unmasked(pre).split()))
+                         # a generic word heads it, capitals or not (`L2/L3 Protocols:`, rules 0.4.8)
+                         or re.search(r"\b(?:Skills?|Requirements?|Languages?|Tools?|Technolog(?:y|ies)|"
+                                      r"Protocols?|Qualifications?|Experience|Knowledge|Stack|Frameworks?|"
+                                      r"Fundamentals|Concepts)\b", _unmasked(pre))) \
                     and (any(named) or not re.search(r"(?<![\w-])[A-Z]", _unmasked(rest))):
                 # (names the name test missed, `comfortable administering Windows
                 # and/or Linux workstations`, keep the rule as it was)
@@ -1572,7 +1634,7 @@ def _split_list(s: str) -> list[str]:
         if lead_ok:
             lead = [pre]
     else:
-        matches = list(TRIGGER_RE.finditer(s))
+        matches = [x for x in TRIGGER_RE.finditer(s) if not (config.SPLIT_REPAIRS and _quantity_prep(s, x))]
         if matches:
             head, rest = s[: matches[-1].end()], s[matches[-1].end():]
 
@@ -2721,6 +2783,12 @@ def _review_045_rewrite(segment: str) -> str:
     s = re.sub(r"^Number\s+of\s+years\s*:\s*", "", segment, flags=re.I)
     # rules 0.4.7, the review of batch 5:
     # `as a Senior, Staff or Lead Software Engineer` is one role, the seniority goes
+    s = re.sub(r",?\s*\(?(?:typically|usually|ideally|preferably)\s+\d{1,2}\+?\s*(?:years?|yrs?)\)?\s*$", "", s,
+               flags=re.I)
+    s = re.sub(r"^(?:used|accustomed)\s+to\s+(?=\w)", "", s, flags=re.I)
+    s = re.sub(r"\b(with\s+an?\s+[\w-]+),\s+([\w-]+\s+(?:focus|orientation|emphasis))\b", r"\1 \2", s, flags=re.I)
+    # rules 0.4.8, batch 6: `Education: Bachelor's degree in X, Y` is the degree in X and Y
+    s = re.sub(r"^(?:Education|Qualifications?|Academic\s+background)\s*:\s*(?=\S)", "", s, flags=re.I)
     _sen = r"(?:Senior|Staff|Lead|Principal|Junior|Medior|Mid(?:-level)?|Sr\.?|Jr\.?)"
     s = re.sub(rf"\b{_sen}(?:\s*,\s*{_sen})*\s*,?\s+(?:or|and|/)\s+{_sen}\s+(?=[A-Z])", "", s)
     # `or have equivalent experience` is the alternative `or equivalent experience`
@@ -2808,6 +2876,52 @@ def _names_before_category(segment: str) -> str:
     return f"{before}, {segment[m.end():]}"
 
 
+# One requirement per verb (the user's call, 2026-11-23, review of batch 6,
+# reversing the call of 2026-10-29): `designing and implementing complex
+# solutions` is `designing complex solutions` and `implementing complex
+# solutions`; the verb stays when the object is generic. With a name in the
+# object the name is what is asked, and the verbs go as before
+# (`building and maintaining CI/CD pipelines` is CI/CD).
+_BASE_VERBS = ("design|implement|develop|build|maintain|deploy|test|communicate|deliver|manage|lead|operate|"
+               "support|plan|create|review|integrate|define|document|analy[sz]e|monitor|optimi[sz]e|configure|"
+               "install|troubleshoot|evaluate|train|architect|automate|secure|scale|run|own|drive|execute|"
+               "coordinate|prioriti[sz]e|validate|migrate|model|write|propose")
+_VERB_TOKEN = rf"(?:\w+ing|{_BASE_VERBS})"
+_VERB_RUN_SPLIT_RE = re.compile(
+    rf"^(?P<pre>.*?(?:^|\s))(?P<verbs>{_VERB_TOKEN}(?:\s*,\s*{_VERB_TOKEN})*\s*,?\s+(?:and/or|and|or|&)\s+"
+    rf"{_VERB_TOKEN})\s+(?P<obj>(?!(?:and|or|with|in|on|for|to|of|the)\b)\S.*)$", re.I)
+
+
+def _verb_split(segment: str) -> list[str] | None:
+    from . import normalise_req as _nr     # it imports this module
+    m = _VERB_RUN_SPLIT_RE.match(segment.strip())
+    if not m:
+        return None
+    verbs = [v.strip() for v in re.split(r"\s*,\s*(?:(?:and/or|and|or|&)\s+)?|\s+(?:and/or|and|or|&)\s+",
+                                         m.group("verbs")) if v.strip()]
+    obj = m.group("obj").strip()
+    # every one a verb, by the tagger or the lists; and the object no list and no name
+    # the run is the first coordination of the segment (`building X and consistently
+    # meeting or exceeding Y` is two clauses, P15), and `or` offers one ask, not two
+    # (`meeting or exceeding revenue objectives`)
+    if re.search(r",|\band\b|\bor\b|&", m.group("pre")) or (
+            re.search(r"\bor\b", m.group("verbs")) and not re.search(r"\band\b|,", m.group("verbs"))):
+        return None
+    if len(verbs) < 2 or not all(_verb(v) or re.fullmatch(_BASE_VERBS, v, re.I) for v in verbs):
+        return None
+    if _nr._name_runs(_unmasked(obj)) or SPLIT_RE.search(_unmasked(obj).split(" with ")[0]):
+        return None
+    # `marketing and sales strategies`: nouns, not verbs, when nothing in front governs them
+    if not m.group("pre").strip() and all(v.endswith("ing") for v in verbs) and not any(
+            pos.tag(v)[1] == "VBG" for v in verbs):
+        return None
+    pre = m.group("pre")
+    if pre.strip() and not re.search(r"\b(?:experience|expertise|knowledge|ability|able|capable|skills?|record|"
+                                     r"success|background|track|in|of|with|to|at|for|by|on)\s*$", pre, re.I):
+        return None
+    return [clean(f"{pre}{v} {obj}") for v in verbs]
+
+
 def _clause_split(segment: str) -> list[str] | None:
     """The clauses of a segment, when it has two or more; else None.
 
@@ -2868,6 +2982,9 @@ def _atomise(segment: str) -> list[str]:
             first, second = _WITH_YEARS_RE.split(segment, maxsplit=1)
             return _atomise(first) + _atomise(second)
         segment = _names_before_category(segment)
+        verbs = _verb_split(segment)
+        if verbs:
+            return [a for v in verbs for a in _atomise(v)]
         clauses = _clause_split(segment)
         if clauses:
             return [a for c in clauses for a in _atomise(c)]

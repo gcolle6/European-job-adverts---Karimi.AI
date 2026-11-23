@@ -761,6 +761,57 @@
       "title": "A role cut to its job word",
       "cause": "Seniority words in alternative ('Senior, Staff or Lead') were read as roles, and the shared role was cut to its last word.",
       "example": "Extensive experience as a Senior, Staff or Lead Software Engineer -> 'Engineer'"
+    },
+    {
+      "stage": "normalisation",
+      "found": "2026-11-23",
+      "found_by": "review",
+      "status": "resolved",
+      "resolved_in": "0.4.8",
+      "guard": "tests/test_rules_048.py::test_review_of_batch_6",
+      "rule_files": [
+        "karimi/normalise_req.py",
+        "karimi/atomise.py"
+      ],
+      "id": "modes_left",
+      "detector": "modes_left",
+      "title": "'Written and verbal' left in the requirement",
+      "cause": "How it is communicated was part of the key, so each pair of modes made its own requirement.",
+      "example": "Clear written and verbal communication skills -> 'written and verbal communication skills'"
+    },
+    {
+      "stage": "normalisation",
+      "found": "2026-11-23",
+      "found_by": "review",
+      "status": "resolved",
+      "resolved_in": "0.4.8",
+      "guard": "tests/test_rules_048.py::test_review_of_batch_6",
+      "rule_files": [
+        "karimi/normalise_req.py",
+        "karimi/atomise.py"
+      ],
+      "id": "attitude_left",
+      "detector": "attitude_left",
+      "title": "An attitude in front of an object that stands alone",
+      "cause": "'keen eye for', 'passionate about' kept in front of what is asked; by the user's call of 2026-11-23 they go when what follows stands alone and is not one generic word.",
+      "example": "Curiosity and a keen eye for spotting patterns in data -> 'keen eye for spotting patterns'"
+    },
+    {
+      "stage": "splitting",
+      "found": "2026-11-23",
+      "found_by": "review",
+      "status": "resolved",
+      "resolved_in": "0.4.8",
+      "guard": "tests/test_rules_048.py::test_review_of_batch_6",
+      "rule_files": [
+        "karimi/normalise_req.py",
+        "karimi/atomise.py"
+      ],
+      "id": "verbs_dropped",
+      "detector": "verb_run_left",
+      "title": "Coordinated verbs read as one requirement, or the verb dropped",
+      "cause": "Until 2026-11-23 the rule was 'building and maintaining X' = one requirement, the verbs dropped; the user reversed it: with a generic object each verb is a requirement and keeps its object.",
+      "example": "designing and implementing complex solutions -> 'complex solutions' instead of two"
     }
   ]
 }

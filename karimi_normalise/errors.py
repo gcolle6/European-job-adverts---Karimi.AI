@@ -118,6 +118,9 @@ CAUSES = {
     "years_left": "years written in a way the rules did not read ('1 year minimum')",
     "availability_lost": "a willingness to travel or relocate reduced to the place",
     "role_cut": "a role cut to its job word, seniority words read as roles ('Senior, Staff or Lead')",
+    # rules 0.4.8, from the user's review of batch 6
+    "modes_left": "how it is communicated left in the requirement ('written and verbal')",
+    "attitude_left": "an attitude left in front of an object that stands alone ('keen eye for')",
     "other": "no rule names it",
 }
 
@@ -347,7 +350,8 @@ def translation_flag(r: dict) -> str | None:
 # Rules 0.4.4, from the user's review of batch 2 (25 of 100 wrong, and the
 # inspector had caught none): the SHAPES those errors had, read off the result
 # alone, so they are found without a person next time.
-_EDGE_PREP_RE = re.compile(r"^(?:on|for|with|in|of|at|as|to|by|from)\s+\S|\s(?:on|for|with|in|of|at|as|to|by|from)$",
+_EDGE_PREP_RE = re.compile(r"^(?:on|for|with|in|of|at|as|to|by|from|across)\s+\S|"
+                           r"\s(?:on|for|with|in|of|at|as|to|by|from|across)$",
                            re.I)
 
 
@@ -423,6 +427,9 @@ INSPECTOR_DETECTORS = {
     "years_left": ("normalisation", "word_kept"),
     "availability_lost": ("normalisation", "object_lost"),
     "role_cut": ("normalisation", "object_lost"),
+    # rules 0.4.8, from the user's review of batch 6
+    "modes_left": ("normalisation", "word_kept"),
+    "attitude_left": ("normalisation", "word_kept"),
 }
 
 
@@ -442,13 +449,16 @@ _CONTEXT_RE = re.compile(
     r"(?-i:^\s(?!(?:Eye|Bias|Appetite|Desire|Passion|Love|Flair|Talent|Feel|Nose|Knack|Hunger|Drive|Taste)\b)"
     r"[A-Z][\w./+#-]*\s+for\s)", re.I)
 # coordinated gerunds before one object, or a second activity glued on
-_VERB_RUN_RE = re.compile(r"^\w+ing\s+(?:and|or|&)\s+\w+ing\b|\sand\s+the\s+\w+(?:ion|ment|ery)$", re.I)
+_VERB_RUN_RE = re.compile(r"^\w+ing\s+(?:and|&)\s+\w+ing\b|\sand\s+the\s+\w+(?:ion|ment|ery)$|"
+                          r"^(?:design|implement|develop|build|maintain|deploy|test|communicate|deliver|manage|"
+                          r"operate|support|plan|create|review|integrate|define|document|analy[sz]e|monitor)\s+"
+                          r"(?:and|&)\s+\w+\s+\w", re.I)
 _VAGUE_HOLDER_RE = re.compile(r"\b(?:affinity|savvy|literacy|exposure)\b", re.I)
 _GENERIC_TAIL_RE = re.compile(
     r"\s(?:domain|methodolog(?:y|ies)|affinity|software\s+development|development\s+experience|"
     r"environments?|landscape|ecosystem|stack|world|universe)$", re.I)
 _BARE_VERBS = {"take", "understand", "maintain", "evaluate", "validate", "improve", "manage", "develop", "build",
-               "design", "create", "lead", "drive", "deliver", "implement", "support", "ensure", "work",
+               "create", "lead", "drive", "deliver", "implement", "ensure", "work",
                "handle", "perform", "analyse", "analyze", "solve", "write", "train", "test", "run", "own"}
 
 
@@ -473,7 +483,11 @@ def review_flag(r: dict) -> str | None:
         return "language_as_skill"
     if not core or space == "education":
         return None
-    if _CONTEXT_RE.search(f" {core}"):
+    # an attitude keeps what it is about (the user, 2026-11-23): `able to work in a team`,
+    # `willingness to work on site` are no context left (batch 6: about 20 false of 71)
+    if _CONTEXT_RE.search(f" {core}") and not re.match(
+            r"(?:able|ability|willing(?:ness)?|ready|readiness|commitment|committed|desire|flexib\w+|thrive|"
+            r"comfortable|passion|eager(?:ness)?|motivat\w+)\b", core, re.I):
         return "context_left"
     if re.search(r"\b(?:degree(?!\s+of\b)|diploma|bachelor'?s?|ph\.?d)\b|"
                  r"(?<!scrum\s)(?<!agile\s)\bmaster'?s?\b(?!\s+(?:data|production|planning|scheduling|schedules?|file|record))",
@@ -494,7 +508,11 @@ def review_flag(r: dict) -> str | None:
     if re.search(r",|\bor\b|\band/or\b", core) and len(atom.role_alternatives(core)) > 1:
         return "roles_in_key"
     held = normalise_req._name_runs(re.sub(r"[()]", " ", extra).replace(" / ", ", "))
-    if not normalise_req._name_runs(core) and (len(held) >= 2 or (held and _VAGUE_HOLDER_RE.search(core))):
+    items = [x for x in re.split(r",|\band\b|\bor\b|/", re.sub(r"[()]", " ", extra)) if x.strip()]
+    if re.match(r"\s*\(?\s*(?:ideally|preferably)\b", extra, re.I):
+        held = []
+    if not normalise_req._name_runs(core) and (
+            (len(held) >= 2 and len(held) >= 0.6 * len(items)) or (held and _VAGUE_HOLDER_RE.search(core))):
         return "names_in_extra"
     return None
 
@@ -585,6 +603,14 @@ def review5_flag(r: dict) -> str | None:
         return "availability_lost"
     if core.lower() in _JOB_WORDS and re.search(rf"\b[A-Z][\w/-]*\s+{re.escape(core)}\b", atom):
         return "role_cut"
+    # rules 0.4.8, the user's review of batch 6
+    if re.match(r"^(?:(?:clear|excellent|strong|good|effective)\s+)?(?:written|verbal|oral|spoken)\s*(?:and|&|/|,)\s*"
+                r"(?:written|verbal|oral|spoken)\s+communication", core, re.I):
+        return "modes_left"
+    at = re.match(r"^(?:an?\s+)?(?:(?:keen|good|great|sharp)\s+)?(?:eye|appetite|appreciation|flair)\s+for\s+|"
+                  r"^passionate\s+about\s+", core, re.I)
+    if at and len(core[at.end():].split()) >= 2 and not re.match(r"details?\b", core[at.end():], re.I):
+        return "attitude_left"
     return None
 
 

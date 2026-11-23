@@ -48,6 +48,9 @@ MT_FIXES = [
     (r"^mastering\b", "mastery of"),
     # rules 0.4.7: the Portuguese `Domínio em` came out `Domain in` (review of batch 5)
     (r"^domain in\b", "mastery of"),
+    (r"\bin-depth learning\b", "deep learning"),
+    # rules 0.4.8: the Dutch `is een pré` (a plus) came out `is a preview` / `is a pré`
+    (r"\b(is|are)\s+an?\s+(?:preview|pré|pre)\b(?!-)", r"\1 a plus"),
 ]
 _MT_FIXES = [(re.compile(p, re.I), r) for p, r in MT_FIXES]
 
@@ -106,6 +109,9 @@ def experience_with(text: str) -> str:
     obj = " ".join(words[k:]).replace(" ,", ",").strip()
     if not verbs or not obj or any(v.lower() in KEEP_VERBS for v in verbs):
         return text
+    if not _name_runs(obj) and [v.lower() for v in verbs] != ["working"]:
+        # `Experience in developing urban plans` keeps `developing` (review of batch 6)
+        return text
     # The tagger must see a verb somewhere in the run, so a field name the list
     # also knows as a verb stays (`experience in marketing campaigns`). And a run
     # ending on a conjunction was a list of nouns: `marketing and sales`.
@@ -127,6 +133,11 @@ _BE_FRAME_RE = re.compile(r"^(?:be|being|are|i\s*['’]?\s*m|i\s+am)\s+(?=(?:fam
 
 def normalise_requirement(atom: str, translated: bool) -> str:
     out = fix_translation(atom) if translated else atom
+    # rules 0.4.8, review of batch 6: `Sufficient technical depth in X`, `Experiences related to X`
+    out = re.sub(r"^sufficient\s+(?:technical\s+)?depth\s+(?:in|of)\s+", "Good knowledge of ", out, flags=re.I)
+    out = re.sub(r"^((?:\w+\s+)?)(?:technical\s+)?depth\s+(?:in|of)\s+", r"\1knowledge of ", out, flags=re.I)
+    out = re.sub(r"\bexperiences?\s+related\s+to\s+", "experience in ", out, flags=re.I)
+    out = re.sub(r"^operating\s+knowledge\b", "Working knowledge", out, flags=re.I)
     # `Be familiar with Eth` (rules 0.4.4, batch 3): `Be` was the core
     out = _BE_FRAME_RE.sub("", out)
     out = out[:1].upper() + out[1:] if out != atom else out
@@ -142,7 +153,8 @@ def normalise_requirement(atom: str, translated: bool) -> str:
 # every removed part stays readable in its column.
 
 _YEARS_RE = re.compile(
-    r"(?:\b(?:at\s+least|minimum(?:\s+of)?|min\.?|more\s+than|over|up\s+to)\s+)?"
+    r"(?:\b(?:at\s+least|minimum(?:\s+of)?|min\.?|more\s+than|over|up\s+to|max\.?|maximum|approx\.?|"
+    r"approximately|around|about|typically|ca\.)\s+)?"
     # a number written out since rules 0.4.3: `At least five years of ...`
     r"(?:\bfrom\s+)?"
     r"\b(?P<a>\d{1,2}(?:[.,]\d)?|one|two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen)\s*(?P<plus>\+)?\s*"
@@ -230,14 +242,14 @@ DEGREES = [
     # `BS` and `MS` only in capitals: `MS Office` (`atomise._DEG_WORD`).
     # Rules 0.4.3, from batch 2: the French `L3` (third year of the licence),
     # `BSE`, the Canadian `Baccalaureate` and the Italian `triennial degree`.
-    (r"bachelor(?:'s|’s|s['’]?)?|b\.?\s?sc\.?|b\.?\s?a\.?|(?-i:B\.?S\.?)|b\.\s?e\.|b[.-]?\s?tech\.?|bba|b\.?\s?eng\.?|"
+    (r"bachelor(?:['’`´]s|s['’`´]?)?|b\.?\s?sc\.?|b\.?\s?a\.?|(?-i:B\.?S\.?)|b\.\s?e\.|b[.-]?\s?tech\.?|bba|b\.?\s?eng\.?|"
      r"undergraduate|licen[cs]e|laurea triennale|hbo\+?|(?-i:L3)|bse|baccalaureate|triennial(?=\s+degree)|"
      # rules 0.4.6: the translator's Italian `Laurea triennale`
      r"three-year(?=\s+degree)|"
      # rules 0.4.4: the translator's Dutch `HBO`, `higher professional education`
      r"higher\s+professional\s+education", "bachelor"),
     # `Master 2`, the French second year of the master (rules 0.4.3)
-    (r"master\s*2(?!\d)|master(?:'s|’s|s['’]?)?|m\.?\s?sc\.?|m\.?\s?a\.?|(?-i:M\.?S\.?)|m\.?\s?tech\.?|mca|m\.?\s?eng\.?|"
+    (r"master\s*2(?!\d)|master(?:['’`´]s|s['’`´]?)?|m\.?\s?sc\.?|m\.?\s?a\.?|(?-i:M\.?S\.?)|m\.?\s?tech\.?|mca|m\.?\s?eng\.?|"
      r"post[-\s]?graduate|diplom|laurea magistrale", "master"),
     (r"ph\.?\s?d\.?|doctorate|doctoral|doktor(?:at)?", "phd"),
     (r"mba", "mba"),
@@ -253,7 +265,7 @@ DEGREES = [
     # (rules 0.4.2).
     # The Dutch `MBO` (vocational) too, rules 0.4.3: `Minimum completed MBO or
     # HBO training`.
-    (r"associates?(?:'s|’s)?(?=\s+degree)|(?-i:WO)(?=[\s-]+(?:degree|diploma|level|niveau|in|bachelor|master|training|programme|program)\b"
+    (r"associates?(?:'s|’s)?(?=\s+(?:degree|or|and|/))|(?-i:WO)(?=[\s-]+(?:degree|diploma|level|niveau|in|bachelor|master|training|programme|program)\b"
      r"|$)|(?-i:MBO)",
      "degree"),
     (r"(?:university\s+|academic\s+|engineer(?:ing)?\s+|technical\s+|college\s+|higher\s+|national\s+|post-?secondary\s+|"
@@ -274,7 +286,7 @@ _EDU_RE = re.compile(
     # `minimum`, `strongly preferred` since 0.4.3 (`Bac +3 training minimum,
     # ideally in trade`, `PhD strongly preferred in Biology`)
     r"(?:\s*[,–—-]?\s+(?:minimum|required|(?:strongly\s+|highly\s+)?preferred|mandatory|preferably|ideally|"
-    r"or\s+equivalent))*\s+"
+    r"or\s+equivalent|completed\s+or\s+(?:currently\s+)?in\s+(?:the\s+)?(?:final|last)\s+(?:semester|year)))*\s+"
     # `with specialisation in` (rules 0.4.2): the guard on `_EDU_NOPREP_RE`
     # works now, and it had been the only path to these; `towards` (0.4.3) is
     # the translator's Dutch `richting`; `within`, `with preference for`, a
@@ -304,6 +316,7 @@ _EDU_CAPFIELD_RE = re.compile(
     r"^(?P<pre>(?:[\w'’/-]+,?\s+){0,5}?)(?P<deg>(?:degree|diploma|bachelor(?:'s|’s)?))\s+"
     r"(?P<field>(?-i:[A-Z])[\w&+-]*(?:\s+(?-i:[A-Z&])[\w&+-]*){0,3})$", re.I)
 _STUDENT_RE = re.compile(r"\b(?:ongoing|current|currently|enrolled|pursuing|final[- ]year|following|completing|"
+                         r"studying|entering|obtaining|"
                          r"taking|candidate|last\s+year|enrolment)\b",
                          re.I)
 _BAC_STEP = {2: "degree", 3: "bachelor", 4: "master", 5: "master", 6: "master", 7: "master", 8: "phd"}
@@ -384,6 +397,9 @@ def _education(text: str) -> dict | None:
     text = re.sub(r"\s*,?\s+or\s+(?:an?\s+)?(?:acceptable\s+)?(?:combination\s+of\s+)?(?:equivalent|relevant|comparable)"
                   r"(?:\s+in)?\s+(?:(?:professional|work|practical|industry)\s+)?experience.*$", "", text, flags=re.I)
     s = _SLASH_DEGREES_RE.match(text)
+    if s and _degree(s.group("a"), "") != _degree(s.group("b"), "") and _degree(s.group("a"), "") == "degree":
+        text = s.group("b") + text[s.end():]
+        s = None
     if s and _degree(s.group("a"), "") == _degree(s.group("b"), ""):
         # `BA/BS degree`: one degree written two ways. Two levels stay unread,
         # for the splitter and the inspector (rules 0.4.2).
@@ -412,6 +428,7 @@ def _education(text: str) -> dict | None:
                   field, re.I)
     if sp and re.search(r"\b(?:school|university|college|institute)s?\b", sp.group("w"), re.I):
         field = sp.group("f")
+    field = re.sub(r"\s+with\s+an?\s+[\w\s-]+?\s+(?:focus|orientation|emphasis)$", "", field, flags=re.I)
     # `computer science with specialization in cybersecurity`: the field is the first (rules 0.4.3)
     field = re.sub(r"\s+with\s+(?:an?\s+)?(?:speciali[sz]ation|focus|major|concentration|emphasis)\s+(?:in|on)\s+.+$",
                    "", field, flags=re.I)
@@ -469,7 +486,10 @@ _EDU_PRE = {"a", "an", "the", "any", "completed", "complete", "finished", "succe
             "in", "taking", "up", "candidate", "for", "be", "hold", "holds", "holding", "possession",
             "possess", "students", "year", "last", "final", "enrolment", "fresh", "freshly", "recent",
             "recently", "obtained", "educated", "to", "ideally", "preferably",
-            "very", "two-year", "three-year", "four-year", "one-year", "full-time", "part-time", "majoring"}
+            "very", "two-year", "three-year", "four-year", "one-year", "full-time", "part-time", "majoring",
+            # rules 0.4.8, batch 6
+            "wo", "hbo", "entering", "studying", "process", "obtaining", "holder", "typically", "requires",
+            "require", "such", "an"}
 # Degree and evidence words in front of the head: a small closed class.
 LEVEL_WORDS = {
     "basic": "basic", "first": "basic", "some": "basic", "initial": "basic", "fundamental": "basic",
@@ -497,7 +517,9 @@ LEVEL_WORDS = {
     # command of French`, `Confirmed experience in`, `Foundational knowledge of`)
     "intermediate": "good", "upper-intermediate": "good", "high": "strong", "perfect": "expert",
     "full": "strong", "foundational": "basic", "confirmed": "", "specific": "", "direct": "",
-    "showable": "", "actual": "", "additional": "", "recent": "", "recently": "", "expert-level": "expert", "advanced-level": "strong",
+    "showable": "", "actual": "", "additional": "", "recent": "", "recently": "",
+    "meaningful": "good", "discrete": "basic", "production-level": "strong",
+    "production-grade": "strong", "native-level": "expert", "consolidated": "", "well-founded": "good", "expert-level": "expert", "advanced-level": "strong",
 }
 _LEVEL_RANK = {"": 0, "basic": 1, "good": 2, "strong": 3, "advanced": 3, "expert": 4}
 _HEAD_RE2 = re.compile(
@@ -524,7 +546,10 @@ _TERMS = {("real", "estate"), ("real", "time"), ("high", "availability"),
           ("high", "performance"), ("high", "frequency"), ("high", "voltage"), ("full", "stack"),
           ("direct", "sales"), ("direct", "marketing"), ("high", "complexity"), ("high", "volume"),
           ("high", "traffic"), ("high", "load"), ("high", "scale"), ("high", "quality"), ("high", "speed"),
-          ("high", "throughput"), ("high", "precision"), ("high", "security"), ("high", "tech")}
+          ("high", "throughput"), ("high", "precision"), ("high", "security"), ("high", "tech"),
+          ("operating", "systems"), ("operating", "system"), ("operating", "model"), ("operating", "models"),
+          ("discrete", "mathematics"), ("discrete", "event"), ("deep", "learning"), ("deep", "reinforcement"),
+          ("deep", "neural"), ("deep", "tech"), ("in-depth", "learning")}
 
 
 _NUMBER_WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8,
@@ -546,10 +571,14 @@ def _years(text: str) -> tuple[str, int | None, int | None, str]:
         raw = (m.group("vague") or m.group("multi")).lower()
     else:
         lo, b = _num(m.group("a")), m.group("b")
+        if not b and re.match(r"\s*(?:max\.?|maximum)\b", m.group(0), re.I):
+            return (re.sub(r"\s{2,}", " ", (text[: m.start()] + " " + text[m.end():])).strip(" ,.-"), None, lo,
+                    m.group(0).strip())
         hi = _num(b) if b else (None if m.group("plus") or "least" in m.group(0).lower()
                                                      or "minimum" in m.group(0).lower() else lo)
         raw = m.group(0).strip()
     rest = re.sub(r"\s{2,}", " ", (text[: m.start()] + " " + text[m.end():])).strip(" ,.-")
+    rest = re.sub(r"\bof\s+(?=(?:in|with|as|on|within)\b)", "", rest)      # rules 0.4.8
     return rest, lo, hi, raw
 
 
@@ -681,6 +710,9 @@ _TECH_TAIL = {
 
 _NOT_NAMES = {"IT", "HR", "OR", "AND"}
 # words in front of a frame noun that say what kind, not what (rules 0.4.4)
+# vendors whose name in front of a frame says whose products follow (rules 0.4.8)
+_VENDORS = {"Microsoft", "SAP", "Oracle", "Google", "Amazon", "AWS", "IBM", "Atlassian", "Adobe", "Salesforce",
+            "Siemens", "Cisco", "VMware", "Autodesk", "Apple"}
 _WEAK_OBJECT = {"technical", "work", "working", "business", "professional", "practical", "industry", "field",
                 "functional", "operational", "hands-on", "coding", "programming", "scripting", "user", "computer",
                 "application",
@@ -691,7 +723,10 @@ _WEAK_OBJECT = {"technical", "work", "working", "business", "professional", "pra
 # (`conversational AI`, `edge AI deployments` are not the AI skill)
 _CATEGORY_NAMES = {"AI", "ML", "AI/ML", "BI", "UX", "UI", "API", "APIs", "IoT", "NLP", "LLM", "LLMs", "OT", "QA"}
 # names with a small word inside, whole as written
-_NAME_WITH_SMALL_WORD_RE = re.compile(r"Ruby on Rails|Infrastructure as Code|Software as a Service", re.I)
+_NAME_WITH_SMALL_WORD_RE = re.compile(r"Ruby on Rails|Infrastructure as Code|Software as a Service|"
+                                      # rules 0.4.8: `Machine Learning` was read as `Learning`
+                                      # (`Machine` opens generic phrases), written with capitals only
+                                      r"(?-i:(?:Deep Reinforcement|Deep|Machine|Reinforcement) Learning)", re.I)
 
 
 def _strong_name(tok: str) -> bool:
@@ -829,7 +864,7 @@ _EVALUATIVE_ADJ_RE = re.compile(
     r"(?:and\s+)?(?=\S)", re.I)
 _BASED_RE = re.compile(r"^(?P<x>[A-Z][\w.+#]*)-based\s+(?P<y>.+)$")
 _CONCEPTS_RE = re.compile(r"^(?:the\s+)?(?:basic\s+|core\s+)?concepts?\s+of\s+(?=\S)", re.I)
-_WRITE_RE = re.compile(r"^write\s+(?P<y>.+)$", re.I)
+_WRITE_RE = re.compile(r"^write\s+(?!and\b)(?P<y>.+)$", re.I)
 
 
 def _review_045(core: str) -> tuple[str, str]:
@@ -851,6 +886,45 @@ def _review_045(core: str) -> tuple[str, str]:
     # a strong focus on Microsoft Azure` is Azure, review of batch 3)
     if m and not _name_runs(m.group("y")):
         c, moved = m.group("x"), moved + [f"focus on {m.group('y')}"]
+    # rules 0.4.8, the user's review of batch 6:
+    # `Clear written and verbal communication skills`: communication, the modes set aside
+    m = re.match(r"^(?:(?:clear|excellent|strong|good|effective)\s+)?(?P<m>(?:written|verbal|oral|spoken)"
+                 r"(?:\s*(?:and|&|,|/)\s*(?:written|verbal|oral|spoken))+)\s+(?=communication\b)", c, re.I)
+    if m:
+        c, moved = c[m.end():], moved + [m.group("m")]
+    # `Technical and transverse leadership`: leadership, what kind set aside
+    m = re.match(r"^(?P<m>[\w-]+\s+and\s+[\w-]+)\s+(?P<x>leadership)$", c, re.I)
+    if m:
+        c, moved = m.group("x"), moved + [m.group("m")]
+    # `(consumer) electronics`
+    c = re.sub(r"^\((\w+)\)\s+", r"\1 ", c)
+    # `how data architecture influences data quality`: what is to be understood
+    m = re.match(r"^how\s+(?P<x>.+?)\s+(?:influences?|affects?|impacts?|drives?|shapes?|interacts?\s+with)\s+(?P<y>.+)$",
+                 c, re.I)
+    if m:
+        c, moved = m.group("x"), moved + [m.group("y")]
+    # `Business Intelligence projects using BI tools`: what is used, when it names something
+    m = re.match(r"^(?P<x>.+?)\s+using\s+(?P<y>.+)$", c, re.I)
+    if m and _name_runs(m.group("y")) and not _name_runs(m.group("x").split()[-1]) \
+            and re.search(r"\b(?:projects?|work|tasks?|activities)$", m.group("x"), re.I):
+        c, moved = m.group("y"), moved + [m.group("x")]
+    # an attitude in front goes when what follows stands alone and is not one generic
+    # word (the user, 2026-11-23): `keen eye for spotting patterns` is spotting patterns,
+    # `Passion for development` stays
+    m = re.match(r"^(?:an?\s+)?(?:(?:keen|good|great|sharp|real|genuine|deep|strong)\s+)?"
+                 r"(?:eye|passion|appetite|enthusiasm|love|appreciation|flair)\s+(?:for|towards?)\s+(?=\S)|"
+                 r"^passionate\s+about\s+(?=\S)", c, re.I)
+    if m and (len(c[m.end():].split()) >= 2 or _name_runs(c[m.end():])) \
+            and not re.match(r"details?\b", c[m.end():], re.I):
+        c, moved = c[m.end():], moved + [m.group().strip()]
+    # `Very good to good grades`
+    c = re.sub(r"^(?:(?:very\s+)?good\s+)?to\s+(?=good\b)", "", c, flags=re.I)
+    # `supporting production systems with high availability`: how, for `extra`
+    m = re.match(r"^(?P<x>.+?)\s+(?P<y>(?:with|for)\s+(?:high|low|large|massive)\s+(?:availability|performance|"
+                 r"scalability|load|traffic|volumes?|scale)|(?:on|across)\s+(?:multiple|various|different|several)\s+"
+                 r"(?:platforms|systems|projects|environments|devices))$", c, re.I)
+    if m:
+        c, moved = m.group("x"), moved + [m.group("y")]
     # `Motivated by the quality of work`: the disposition, and what moves it
     m = re.match(r"^(?P<x>motivated|driven|inspired|energi[sz]ed)\s+by\s+(?P<y>.+)$", c, re.I)
     if m:
@@ -904,10 +978,13 @@ def _review_045(core: str) -> tuple[str, str]:
             and re.fullmatch(rf"within\s+(?:the\s+)?{re.escape(_name_runs(m.group('y'))[0])}", m.group("y").strip(), re.I):
         # the name wins (rules 0.4.7, batch 5): `dashboards within eFront Invest` is eFront Invest
         c, moved = _name_runs(m.group("y"))[0], moved + [m.group("x")]
-    elif m and len(m.group("x").split()) >= 2:
+    elif m and (len(m.group("x").split()) >= 2 or _name_runs(m.group("x")) == [m.group("x").strip()]):
         # `role within IT / Data` keeps it: `role` alone would name nothing
         c, moved = m.group("x"), moved + [m.group("y")]
     m = _GENERIC_046_RE.match(c)
+    if m and re.match(r"(?:server\s+environments?|landscapes?|ecosystems?)$", m.group("y"), re.I) \
+            and not _name_runs(m.group("x")):
+        m = None
     if m:
         c, moved = m.group("x"), moved + [m.group("y")]
     m = _NAME_FOR_RE.match(c)
@@ -929,11 +1006,12 @@ def _review_045(core: str) -> tuple[str, str]:
 
 
 _CONTEXT_046_RE = re.compile(
-    r"^(?P<x>.+?)\s+(?P<y>in\s+(?:an?|the)\s+[\w\s/-]{0,40}?environments?|within\s+[\w\s,/-]+|"
+    r"^(?P<x>.+?)\s+(?P<y>in\s+(?:(?:an?|the)\s+)?[\w\s/-]{0,40}?environments?|within\s+[\w\s,/-]+|"
     r"to\s+interact\s+with\s+.+|with\s+large\s+projects?)\s*$", re.I)
 # a word after the thing that adds nothing: `SQL Domain`, `Data Analytics Methodologies`,
 # `Python software development`, `testing domain`
-_GENERIC_046_RE = re.compile(r"^(?P<x>.+?)\s+(?P<y>domain|methodolog(?:y|ies)|software\s+development)$", re.I)
+_GENERIC_046_RE = re.compile(r"^(?P<x>.+?)\s+(?P<y>domain|methodolog(?:y|ies)|software\s+development|"
+                             r"server\s+environments?|landscapes?|ecosystems?)$", re.I)
 # `SonarQube for CI/CD and code quality`: the name, and what it is for
 _NAME_FOR_RE = re.compile(r"^(?!(?:Eye|Bias|Appetite|Desire|Passion|Love|Flair|Talent|Feel|Nose|Knack|Hunger|Drive|"
                           r"Taste)\b)(?P<x>[A-Z][\w./+#-]*(?:\s+[A-Z][\w./+#-]*)?)\s+(?P<y>for\s+.+)$")
@@ -1025,7 +1103,7 @@ def decompose(text: str) -> dict:
     text = _GLUED_HEAD_RE.sub("", _SLASHED_HEADS_RE.sub("knowledge ", text))
     # `Seven (7) years`, `progressively responsible experience` (rules 0.4.3):
     # the number once, and how the experience grew is not its object
-    text = re.sub(r"\b([a-z]+)\s*\((\d{1,2})\)(?=\s+years?\b)", r"\2", text, flags=re.I)
+    text = re.sub(r"\b([a-z]+)\s*\((\d{1,2}\+?)\)(?=\s+years?\b)", r"\2", text, flags=re.I)
     text = re.sub(r"\b(?:progressively|increasingly)\s+(?:responsible|senior)\s+(?=experience\b)", "", text,
                   flags=re.I)
     rest, lo, hi, years_raw = _years(text)
@@ -1063,6 +1141,10 @@ def decompose(text: str) -> dict:
         # `sufficient` or `English understanding` for the object
         out["core"], m = re.sub(r"\s+to\s+(?:understand|discuss|communicate|work|read|write)\b.*$", "", rest,
                                 flags=re.I), None
+    if m and m.group("head").lower() == "awareness" and re.match(
+            r"\s*(?:campaigns?|programs?|programmes?|sessions?|trainings|initiatives?|"
+                      r"workshops?|materials?)\b", m.group("post"), re.I):
+        m = None
     if m and m.group("head").lower() in _LEAD_ONLY and (
             any(w.lower() not in LEVEL_WORDS for w in m.group("pre").split())
             or not re.match(r"\s+(?:of|in)\s", m.group("post"))):
@@ -1088,7 +1170,7 @@ def decompose(text: str) -> dict:
         # `SW development experience using INCA`: what is used is asked, even
         # beside a name in front (batch 3: `SW` three times for three tools)
         weak = all(w.lower() in _WEAK_OBJECT for w in object_words)
-        if object_words and post_obj and post_obj != post.strip() and weak:
+        if object_words and post_obj and (post_obj != post.strip() or re.match(r"\w+ing\s+\w", post)) and weak:
             # `Deep technical mastery of high-density cooling`, `work experience
             # in robotics`: `technical` and `work` say what kind, the object
             # after the preposition is what is asked (rules 0.4.4, batch 3)
@@ -1098,7 +1180,13 @@ def decompose(text: str) -> dict:
             # `Development skills Perl`: the head distributed over a list of names
             core, extra = post_obj, " ".join(object_words)
         elif object_words and post_obj != post.strip() and _name_runs(post_obj) \
+                and not (len(object_words) == 1 and object_words[0] in _VENDORS
+                         and re.search(r"\b(?:environments?|industr(?:y|ies)|sectors?|teams?|clients?|projects?|"
+                                       r"markets?)\s*$", post_obj, re.I)) \
                 and (not _name_runs(" ".join(object_words))
+                     or (len(object_words) == 1 and object_words[0] in _VENDORS
+                         and not re.search(r"\b(?:environments?|industr(?:y|ies)|sectors?|teams?|clients?|"
+                                           r"projects?|markets?)\s*$", post_obj, re.I))
                      or (re.match(r"(?:using|with)\s", post, re.I)
                          and object_words[-1].lower() in ("development", "engineering", "integration", "testing"))):
             # `Good programming knowledge in Python`: the words in front say what
@@ -1341,7 +1429,10 @@ _LANG_FILLER = {
     # rules 0.4.7, batch 5: `Control of Dutch at European CEFR level C2`, `French
     # language corresponding to a minimum C1 level`, `Intermediate English`
     "european", "cefr", "corresponding", "intermediate", "upper-intermediate", "lower-intermediate", "niveau",
-    "nivel"}
+    "nivel",
+    # rules 0.4.8, batch 6: `English language familiarity at min. B2`, `German on B2 level`, `at a desired
+    # B2 level`, `second national language`, `at communicative level`
+    "familiarity", "on", "desired", "national", "second", "communicative", "min.", "conversation"}
 _LANG_NOISE_RE = re.compile(
     r"\b(?:is\s+(?:a\s+(?:strong\s+|big\s+)?plus|an?\s+(?:asset|advantage)|desirable|preferred|required|mandatory)|"
     r"required|mandatory|preferred|essential|"
@@ -1393,6 +1484,14 @@ ALIASES = {
     "work independently and effectively": "autonomy", "work independently and autonomously": "autonomy",
     "negotiate": "negotiation", "prioritize": "prioritization", "prioritise": "prioritization",
     "multitask": "multitasking", "ability to negotiate": "negotiation",
+    "learn": "learning ability", "learning": "learning ability", "ability to learn": "learning ability",
+    "capacity to learn": "learning ability", "learning capacity": "learning ability",
+    "learning ability": "learning ability", "willingness to learn": "willingness to learn",
+    "in-depth learning": "deep learning",
+    # rules 0.4.8, the review of batch 6
+    "make independent decision": "autonomy", "independent decision-making": "autonomy",
+    "independent decision making": "autonomy", "make decisions independently": "autonomy",
+    "the ability to make independent decision": "autonomy", "identify analytical thinking": "analytical thinking",
     "problem-solving thinking": "problem-solving", "problem solving thinking": "problem-solving",
 }
 # Cores that name nothing once the frame and level are out: debris of a split.

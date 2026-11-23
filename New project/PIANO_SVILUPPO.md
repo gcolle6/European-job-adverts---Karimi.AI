@@ -497,6 +497,22 @@ reporting, documentation)") va letta come tre requisiti, contro la
 convenzione del 2026-11-17? Restano aperte frasi complesse rimaste intere
 (`comma_in_key` 100). Il lotto 6 (offset 5000) misura la 0.4.7.
 
+**Giro del lotto 6 → regole 0.4.8, dizionario 0.3.9 (2026-11-23).** Il lotto
+6 (regole 0.4.7) è il primo **giallo**: 5,8% stimato (lotto 5: 6,7%). Gli
+agenti: 478 segnalazioni, 415 vere. Revisione della persona: **20 sbagliate su
+100** (lotto 5: 23, lotto 4: 37); i rilevatori ne trovavano 3. **Decisioni del
+responsabile, stesso giorno**: (1) verbi coordinati su un oggetto generico =
+un requisito per verbo, verbo tenuto (ribalta la regola del 29/10); con un
+nome vince il nome; (2) le aree dopo l'oggetto sono requisiti; (3)
+l'atteggiamento va via se ciò che segue sta in piedi da solo, resta se è una
+parola sola troppo generica; (4) il ritest passa a ogni 5 lotti, dopo la
+revisione; (5) una parentesi di nomi comuni resta la categoria. Su sua
+domanda: "Learning" era spesso staccato da Deep/Machine Learning (letti come
+livello o parola generica): ora restano interi. Misure: rilevatori 7 su 20
+(in campione); 15 delle 20 escono come le note; 2 delle 80 giuste cambiano,
+per la convenzione nuova; Inspector sul lotto 6 rielaborato dal 2,8% al 2,2%.
+Il lotto 7 (offset 6000) misura la 0.4.8.
+
 ### Revisione umana e Curator (2026-11-17)
 
 * **Revisione di una persona**: l'unico numero che conta tutti gli errori,
