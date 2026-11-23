@@ -53,7 +53,7 @@ def _keys(item: str) -> list[str]:
     ('Very good Python knowledge as well as experience with machine learning, statistics, data analysis and Databricks/Spark',
      ['Python', 'machine learning', 'statistics', 'data analysis', 'Databricks/Spark']),
     ('Self-motivated with a passion for renewable energy and sustainability',
-     ['Self-motivated', 'renewable energy and sustainability']),
+     ['Self-motivated', 'renewable energy', 'passion for sustainability']),  # rules 0.4.10: two passions (the user, 2026-11-23)
     ("Bachelor's degree +5 in the field of Artificial Intelligence, Data Science, Computer Science or related discipline",
      ['education: Master in Artificial Intelligence', 'education: Master in Data Science', 'education: Master in Computer Science']),
     ('Technological know-how',

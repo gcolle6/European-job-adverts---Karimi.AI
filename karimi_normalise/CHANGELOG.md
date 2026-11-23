@@ -547,6 +547,10 @@ Format: version · date · what changed · how it was measured.
   the 78 right items change. Batch 7 processed again: inspector flags 501 ->
   336 (3.2% -> 2.2%, same detectors both sides). 3,000 random items of batches
   1-7: 77 change (2.6%), all read.
+- **0.4.10** · 2026-11-23 · unreleased, for the batch 8 round. `a passion for
+  X and Y` is two passions, one per object (the user, reversing the one-ask
+  reading 0.4.9 gave note [47]). The check's judge now reads 100 topic pairs
+  per run, was 30 (`check.SAMPLE`, deployed on 0.4.9 the same day).
 
 ## Dictionary
 

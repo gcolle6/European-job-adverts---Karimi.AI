@@ -2811,10 +2811,9 @@ def _review_045_split(segment: str) -> list[str] | None:
                  r"(?:for|in)\s+.+)$", s, re.I)
     if m:
         p = clean(m.group("p"))
-        return [m.group("t")] + (_review_045_split(p) or _atomise_once(p))
-    if re.match(r"^(?:an?\s+)?(?:(?:strong|real|genuine|deep)\s+)?(?:passion|curiosity|enthusiasm)\s+(?:for|about)\s+"
-                r"[^,()]+\s+and\s+[^,()]+$", s, re.I) and not re.search(r"\b[A-Z]{2,}|\b[A-Z][a-z]+[A-Z]", s[1:]):
-        return [s]
+        # `a passion for X and Y` is two passions, one per object (the user, 2026-11-23,
+        # reversing the one-ask reading of 0.4.9)
+        return [m.group("t")] + _atomise_once(p)
     m = _DEGREE_AND_YEARS_RE.match(s)
     if m:
         return [clean(m.group("d"))] + _atomise_once(clean(m.group("y")))
