@@ -1494,6 +1494,10 @@ _CONTEXT_NOUNS_RE = re.compile(r"\b(?:environments?|industr(?:y|ies)|sectors?|te
                                re.I)
 
 
+_NAME_NOUN_PAIR_RE = re.compile(
+    r"(?-i:\b(?:[A-Z]{2,}[\w.+#/-]*|[A-Z][a-z]+[A-Z][\w]*))\s+(?P<a>[a-z]+s)\s+(?:and|&)\s+(?P<b>[a-z]+s)\s*\.?$")
+
+
 def _context_list(before: str, trigger: str, rest: str) -> bool:
     """A list after the object is already said is where or with whom, one requirement (rules 0.4.8,
     batch 6): `stakeholder management skills across IT, Finance, Legal` was four requirements,
@@ -1521,6 +1525,8 @@ def _context_list(before: str, trigger: str, rest: str) -> bool:
 
 def _split_list(s: str) -> list[str]:
     """Split one clause, either as head + list or as a bare coordinated list."""
+    if config.SPLIT_REPAIRS and _NAME_NOUN_PAIR_RE.search(s) and not re.search(r",", s):
+        return [s]
     if config.SPLIT_REPAIRS:
         last = list(re.finditer(r"\s(across|within|in|with|for)\s+", s, re.I))
         if last:
@@ -1530,6 +1536,11 @@ def _split_list(s: str) -> list[str]:
             areas = [clean(x) for x in SPLIT_RE.split(rest) if clean(x)]
             if any(re.match(r"(?:multiple|various|several|different|other|all|many)\b", a, re.I) for a in areas):
                 areas = []
+            if len(areas) >= 2 and trig in ("across", "within") and all(re.fullmatch(
+                    r"(?:the\s+)?(?:teams?|domains?|functions?|departments?|levels?|regions?|cultures?|time\s*zones?|"
+                    r"borders?|boundaries|organi[sz]ations?|disciplines?|business\s+units?|countries|geographies)",
+                    a, re.I) for a in areas):
+                return [clean(f"{p} {trig} {rest}") for p in _split_list(clean(before))]
             if len(areas) >= 2 and (eased != before or trig in ("across", "within")) \
                     and _context_list(eased, "across", rest):
                 return [clean(eased)] + areas
@@ -1601,6 +1612,15 @@ def _split_list(s: str) -> list[str]:
                 # preposition (`Experience with`)
                 frame = list(TRIGGER_RE.finditer(head + " "))
                 head = (head + " ")[: frame[-1].end()] if frame else ""
+                body = pre[len(head.rstrip()):] if head.strip() and pre.startswith(head.rstrip()) else ""
+                parts = [clean(LEAD_CONJ_RE.sub("", clean(p))) for p in SPLIT_RE.split(body) if clean(p)]
+                # two categories joined are one (`big data frameworks and technologies such as`);
+                # a name, or a real list, are requirements of their own
+                if len(parts) >= 3 or (len(parts) == 2 and _nr._name_runs(_unmasked(parts[0]))):
+                    lead = [clean(f"{head} {p}") for p in parts[:-1]]
+                elif re.search(r"\b(?:role|position)s?\b", body, re.I):
+                    # `3 years in a DevOps role with cloud platforms like AWS`: the role too
+                    lead = [clean(f"{head} " + re.sub(r"(\b(?:role|position)s?)\b.*$", r"\1", body, flags=re.I))]
             elif len(examples) >= 2 and not word \
                     and ((not _nr._name_runs(_unmasked(pre))
                           and not all(w[:1].isupper() for w in _unmasked(pre).split()))
@@ -2613,7 +2633,13 @@ def _atomise_once(segment: str) -> list[str]:
             out.extend(_split_list(part))
 
     def _unmask(s: str) -> str:
-        return PLACEHOLDER_RE.sub(lambda m: store[int(m.group(1))], s)
+        # until none is left: a mask can hold another (`within ... (IAM)`, rules 0.4.9,
+        # batch 7 leaked `@@0##` into two keys)
+        for _ in range(4):
+            if not PLACEHOLDER_RE.search(s):
+                break
+            s = PLACEHOLDER_RE.sub(lambda m: store[int(m.group(1))], s)
+        return s
 
     atoms = [a for a in (clean(_unmask(x)) for x in out) if _keep_atom(a)]
     if config.SPLIT_REPAIRS and len(atoms) > 1:
@@ -2740,9 +2766,25 @@ _TRAIT_WITH_ABILITY_RE = re.compile(
 # alternative (review of batch 4); `AI/ML` and `CI/CD` are too short to touch
 _DEGREE_SLASH_FIELDS_RE = re.compile(
     r"(?<=\bin\s)[A-Za-z][\w ]{3,}?(?:/[A-Za-z][\w ]{3,}?)+(?=$|[,.;(])")
+_STUDENT_FORM_RE = re.compile(
+    r"^(?=[^,]{0,80}\b(?:students?|final[- ]year|last\s+(?:year|degree)|currently\s+in\s+the)\b)"
+    r"(?:(?:senior|current(?:ly)?)\s+(?:or\s+)?)?(?:(?:enrolled|studying)\s+)?"
+    r"(?:(?:in\s+)?(?:the\s+)?(?:final|last)[- ]year\s+(?:of\s+)?)?"
+    r"(?:students?\s+(?:pursuing|of|in|enrolled\s+in|studying)\s+)?"
+    r"(?:(?:the\s+)?(?:last|final)\s+(?:year\s+of\s+)?)?(?:an?\s+)?"
+    r"(?:(?:bachelor|master|degree|bsc|msc)(?:['’]?s)?(?:\s+degree)?\s*(?:,|or|and|/)?\s*)+"
+    r"(?:degree\s+)?(?:in|of)\s+(?=\w)", re.I)
+_ROLE_END_RE = re.compile(r"\b(?:engineer|developer|manager|analyst|architect|consultant|specialist|lead|role|"
+                          r"scientist|designer|owner|administrator|officer|advisor|adviser|partner|director|head|"
+                          r"tester|programmer|technician|coordinator|researcher)s?$", re.I)
+_YEARS_AS_ROLES_RE = re.compile(
+    r"^(?P<y>(?:(?:at\s+least|minimum(?:\s+of)?)\s+)?\d{1,2}(?:\s*[-–]\s*\d{1,2})?\+?\s*(?:years?|yrs?)"
+    r"(?:\s+of\s+(?:\w+\s+)?experience)?)\s+as\s+(?P<a>an?\s+)?"
+    r"(?P<l>[^,()]+(?:\s*,\s*[^,()]+)+)\s*\.?$", re.I)
 _INDEP_COLLAB_RE = re.compile(
     r"^(?P<h>.*?\b(?:work|working))\s+(?P<a>independently|autonomously)\s+(?:and|as\s+well\s+as|&)\s+"
-    r"(?P<b>collaboratively|in\s+(?:a\s+)?teams?|as\s+(?:part\s+of\s+)?a\s+team)\s*\.?$", re.I)
+    r"(?P<b>collaboratively|in\s+(?:a\s+)?teams?|as\s+(?:part\s+of\s+)?a\s+team|"
+    r"(?:with)?in\s+(?:a\s+)?team(?:\s+(?:environment|setting|context))?)\s*\.?$", re.I)
 _ABILITY_AND_TRAIT_RE = re.compile(
     r"^(?P<a>(?:the\s+)?abilit(?:y|ies)\s+to\s+.+?)\s+and\s+(?P<t>autonomy|independence|creativity|flexibility|"
     r"initiative|curiosity|resilience|proactivity|reliability)\s*\.?$", re.I)
@@ -2763,9 +2805,24 @@ _DEGREE_AND_YEARS_RE = re.compile(
 
 def _review_045_split(segment: str) -> list[str] | None:
     s = segment.strip()
+    # [47] `Self-motivated with a passion for renewable energy`: the trait, and the passion
+    m = re.match(r"^(?P<t>self-?motivated|motivated|driven|curious|proactive|enthusiastic|ambitious)\s+with\s+"
+                 r"(?:an?\s+)?(?P<p>(?:(?:strong|real|genuine|deep)\s+)?(?:passion|interest|curiosity|enthusiasm)\s+"
+                 r"(?:for|in)\s+.+)$", s, re.I)
+    if m:
+        p = clean(m.group("p"))
+        return [m.group("t")] + (_review_045_split(p) or _atomise_once(p))
+    if re.match(r"^(?:an?\s+)?(?:(?:strong|real|genuine|deep)\s+)?(?:passion|curiosity|enthusiasm)\s+(?:for|about)\s+"
+                r"[^,()]+\s+and\s+[^,()]+$", s, re.I) and not re.search(r"\b[A-Z]{2,}|\b[A-Z][a-z]+[A-Z]", s[1:]):
+        return [s]
     m = _DEGREE_AND_YEARS_RE.match(s)
     if m:
         return [clean(m.group("d"))] + _atomise_once(clean(m.group("y")))
+    m = _YEARS_AS_ROLES_RE.match(s)
+    if m:
+        roles = [clean(x) for x in re.split(r"\s*,\s*(?:(?:or|and)\s+)?|\s+(?:or|and)\s+", m.group("l")) if clean(x)]
+        if len(roles) >= 2 and all(len(r.split()) <= 4 and _ROLE_END_RE.search(r) for r in roles):
+            return [clean(f"{m.group('y')} as {m.group('a') or 'a '}{r}") for r in roles]
     m = _INDEP_COLLAB_RE.match(s)
     if m:
         return [clean(f"{m.group('h')} {m.group('a')}"), clean(f"{m.group('h')} {m.group('b')}")]
@@ -2786,6 +2843,55 @@ def _review_045_rewrite(segment: str) -> str:
     s = re.sub(r",?\s*\(?(?:typically|usually|ideally|preferably)\s+\d{1,2}\+?\s*(?:years?|yrs?)\)?\s*$", "", s,
                flags=re.I)
     s = re.sub(r"^(?:used|accustomed)\s+to\s+(?=\w)", "", s, flags=re.I)
+    # the user's review of batch 7:
+    # [0] `You study digital management, data science, ...`: a student in each field
+    s = re.sub(r"^(?:you\s+(?:are\s+)?(?:currently\s+)?(?:study|studying)|currently\s+studying)\s+"
+               r"(?!(?:or|and|abroad)\b)(?=\w)",
+               "Student in ", s, flags=re.I)
+    # [21] `People manager & customer focused`: two asks, the second an attitude
+    s = re.sub(r"^([\w-]+\s+[\w-]+)\s*&\s*(?=[\w-]+[\s-](?:focused|oriented|driven|minded)\s*\.?$)", r"\1, ",
+               s, flags=re.I)
+    # [47] `Self-motivated with a passion for renewable energy`: the trait, and the passion
+    # [38] `Good analytical and problem solving capabilities`: one per skill, the frame shared
+    s = re.sub(r"\b((?:(?:strong|good|very\s+good|excellent|advanced|solid|demonstrated|proven|exceptional|"
+               r"outstanding|sound)\s+)?)(analytical|organi[sz]ational|communication|interpersonal|leadership|technical|"
+               r"logical)\s+and\s+(problem[- ]solving|decision[- ]making)\s+(skills|capabilities|abilities|capacities)"
+               r"(?=\s*[.;]?\s*$)", r"\1\2 \4 and \1\3 \4", s, flags=re.I)
+    # rules 0.4.9, the agents on batch 7 (about 100 degrees not read):
+    # `Full degree`, `Professional degree`, `official Master`: the word says nothing the degree does not
+    s = re.sub(r"\b(?:full|complete|completed|official|recogni[sz]ed|accredited|professional|formal)\s+"
+               r"(?=(?:university\s+)?(?:degree|master|bachelor|diploma)\b)", "", s, flags=re.I)
+    s = re.sub(r"\bmaster[- ]of[- ]science\s+degree\b", "Master's degree", s, flags=re.I)
+    s = re.sub(r"\bmaster['’]?s?[- ]level\s+(?:studies|education|degree|qualification|diploma)\b", "Master's degree",
+               s, flags=re.I)
+    # `Diploma o Laurea a indirizzo informatico` came out `Degree at computer science address`
+    s = re.sub(r"\bat\s+((?:[\w-]+\s+){0,2}[\w-]+)\s+address\b", r"in \1", s, flags=re.I)
+    # students in their last year, written every way: `Students of last Degree or Master's degree
+    # in X`, `final year student pursuing a Bachelor's or Master degree in X`, `Currently in the
+    # final year of a Master's degree in X`: a student in X
+    s = _STUDENT_FORM_RE.sub("Student in ", s)
+    # `Bilingual in English and French`: both at the top level
+    s = re.sub(r"^bilingual\s+(?:in\s+)?([A-Z]\w+)\s*(?:and|&|/|-)\s*([A-Z]\w+)\b", r"native-level \1, native-level \2",
+               s, flags=re.I)
+    # `Upper-Intermediate+ English level`
+    s = re.sub(r"\b(upper-intermediate|intermediate|advanced|fluent|proficient)\+(?=\s)", r"\1", s, flags=re.I)
+    # `relational and non-relational databases`: the tail is shared
+    s = re.sub(r"\b([a-z][\w-]*)\s+(?:and|or|&|/)\s+(non-?\1)\s+([a-z][\w-]*)\b", r"\1 \3 and \2 \3", s, flags=re.I)
+    # `RDBMS and NoSQL datastores`, `RESTful and SOAP web services`: two names over one kind
+    s = re.sub(r"(?-i:\b([A-Z][\w.+#-]*[A-Z][\w.+#-]*|[A-Z]{2,}[\w.+#-]*))\s+(?:and|or|&)\s+"
+               r"(?-i:([A-Z][\w.+#-]*[A-Z][\w.+#-]*|[A-Z]{2,}[\w.+#-]*))\s+"
+               r"(datastores|data\s+stores|databases|web\s+services|services|APIs|environments|platforms)\b",
+               r"\1 \3 and \2 \3", s)
+    # [50] `Bachelor's degree +5` is how the translator writes `Bac +5`, a master
+    s = re.sub(r"\bbachelor['’]?s?\s+degree\s*\+\s*[45]\b", "Master's degree", s, flags=re.I)
+    s = re.sub(r"\bbachelor['’]?s?\s+degree\s*\+\s*3\b", "Bachelor's degree", s, flags=re.I)
+    # rules 0.4.9, batch 7 (19 items): `Interest or experience with LLMs`, `Interest and
+    # first experience with X`. The interest is an attitude and the object after it is not
+    # generic, so it goes (the user's call, 2026-11-23); it was read as a second head and
+    # crossed with every name (`Interest with Kubernetes`).
+    s = re.sub(r"^(?:(?:a|an|strong|genuine|real|keen)\s+)*interest(?:\s+in)?\s*(?:,|or|and|and/or|&|/)\s*"
+               r"(?=(?:(?:first|initial|some|practical|hands-on|prior|previous|an?)\s+)*"
+               r"(?:experience|knowledge|exposure|familiarity)\b)", "", s, flags=re.I)
     s = re.sub(r"\b(with\s+an?\s+[\w-]+),\s+([\w-]+\s+(?:focus|orientation|emphasis))\b", r"\1 \2", s, flags=re.I)
     # rules 0.4.8, batch 6: `Education: Bachelor's degree in X, Y` is the degree in X and Y
     s = re.sub(r"^(?:Education|Qualifications?|Academic\s+background)\s*:\s*(?=\S)", "", s, flags=re.I)
@@ -2831,13 +2937,18 @@ _CLAUSE_HEADS = r"(?:experience|knowledge|understanding|proficiency|familiarity|
 _CLAUSE_LEVEL = (r"(?:(?:strong|solid|good|excellent|deep|proven|hands-on|working|practical|basic|advanced|"
                  r"extensive|in-depth|sound|thorough|demonstrated|demonstrable|some|prior|previous|relevant|"
                  r"professional|technical|very|great|broad)\s+)*")
-_CLAUSE_OPEN = (rf"(?:an?\s+)?{_CLAUSE_LEVEL}{_CLAUSE_HEADS}\s+(?:of|in|with|on|using|across)\s+\S|"
+_CLAUSE_OPEN = (rf"(?:an?\s+)?{_CLAUSE_LEVEL}{_CLAUSE_HEADS}\s+(?:working\s+)?(?:of|in|with|on|using|across)\s+\S|"
                 r"(?:at\s+least\s+|(?:a\s+)?minimum\s+(?:of\s+)?)?\d{1,2}\+?\s*(?:years?|yrs?)\b")
 _CLAUSE_SPLIT_RE = re.compile(
     r"(?:\s*[,;]\s*(?:and\s+|as\s+well\s+as\s+|plus\s+)?|\s+(?:and|plus|as\s+well\s+as)\s+)"
     rf"(?=(?:{_CLAUSE_OPEN}))", re.I)
 _CLAUSE_DONE_RE = re.compile(
-    rf"\b{_CLAUSE_HEADS}\s+(?:of|in|with|on|using|across)\s+\S|\d{{1,2}}\+?\s*(?:years?|yrs?)\s+(?:of\s+)?\S",
+    rf"\b{_CLAUSE_HEADS}\s+(?:of|in|with|on|using|across)\s+\S|\d{{1,2}}\+?\s*(?:years?|yrs?)\s+(?:of\s+)?\S|"
+    r"(?-i:\b(?!(?i:strong|solid|good|excellent|deep|proven|hands-on|working|practical|basic|advanced|extensive|"
+    r"in-depth|sound|thorough|demonstrated|demonstrable|some|prior|previous|relevant|professional|technical|very|"
+    r"great|broad|active|general|fundamental|comprehensive|detailed|profound|wide|expert|specialist|"
+    r"specialized|specialised|necessary|required|first|initial|further|additional)\b)"
+    r"(?:[A-Z][\w.+#/-]*|[A-Z]{2,}[\w.+#/-]*))\s+(?:skills|knowledge|expertise|proficiency|experience)$",
     re.I)
 
 
@@ -2885,7 +2996,11 @@ def _names_before_category(segment: str) -> str:
 _BASE_VERBS = ("design|implement|develop|build|maintain|deploy|test|communicate|deliver|manage|lead|operate|"
                "support|plan|create|review|integrate|define|document|analy[sz]e|monitor|optimi[sz]e|configure|"
                "install|troubleshoot|evaluate|train|architect|automate|secure|scale|run|own|drive|execute|"
-               "coordinate|prioriti[sz]e|validate|migrate|model|write|propose")
+               "coordinate|prioriti[sz]e|validate|migrate|model|write|propose|"
+               # rules 0.4.9, batch 7
+               "enforce|improve|establish|identify|assess|resolve|apply|adapt|guide|mentor|coach|negotiate|"
+               "present|explain|research|prototype|ship|launch|refine|simplify|standardi[sz]e|govern|audit|"
+               "measure|track|report|forecast|estimate|solve|debug|refactor|moderni[sz]e|influence|align")
 _VERB_TOKEN = rf"(?:\w+ing|{_BASE_VERBS})"
 _VERB_RUN_SPLIT_RE = re.compile(
     rf"^(?P<pre>.*?(?:^|\s))(?P<verbs>{_VERB_TOKEN}(?:\s*,\s*{_VERB_TOKEN})*\s*,?\s+(?:and/or|and|or|&)\s+"
@@ -2909,7 +3024,8 @@ def _verb_split(segment: str) -> list[str] | None:
         return None
     if len(verbs) < 2 or not all(_verb(v) or re.fullmatch(_BASE_VERBS, v, re.I) for v in verbs):
         return None
-    if _nr._name_runs(_unmasked(obj)) or SPLIT_RE.search(_unmasked(obj).split(" with ")[0]):
+    if [r for r in _nr._name_runs(_unmasked(obj)) if r not in _nr._CATEGORY_NAMES] \
+            or SPLIT_RE.search(_unmasked(obj).split(" with ")[0]):
         return None
     # `marketing and sales strategies`: nouns, not verbs, when nothing in front governs them
     if not m.group("pre").strip() and all(v.endswith("ing") for v in verbs) and not any(

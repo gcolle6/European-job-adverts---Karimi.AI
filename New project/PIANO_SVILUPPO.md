@@ -513,6 +513,20 @@ livello o parola generica): ora restano interi. Misure: rilevatori 7 su 20
 per la convenzione nuova; Inspector sul lotto 6 rielaborato dal 2,8% al 2,2%.
 Il lotto 7 (offset 6000) misura la 0.4.8.
 
+**Giro del lotto 7 → regole 0.4.9, dizionario 0.4.0 (2026-11-23).** Il lotto
+7 (regole 0.4.8) torna **rosso**: 6,6% stimato, quasi tutto dal giudice dei
+topic (8 coppie su 30 respinte: il campione per run è piccolo). Gli agenti:
+482 segnalazioni, 443 vere; su 80 righe non segnalate, circa 17% sbagliate.
+Revisione della persona: **22 sbagliate su 100**; l'Inspector ne segnalava 1.
+**Come leggere le note** (il responsabile, stesso giorno): `/` separa i
+requisiti da tenere distinti; livello, anni, expertise restano nelle colonne
+complementari. Misure: 16 delle 22 escono come le note, 3 vicine, 3 aperte
+(due traduzioni mancate, svedese e spagnolo, e una frase verbo+artefatti);
+0 delle 78 giuste cambiano; Inspector sul lotto 7 rielaborato dal 3,2% al
+2,2%; 77 dei 3.000 elementi di controllo cambiano, tutti letti. Il lotto 8
+(offset 7000) misura la 0.4.9. Aperto: alzare il campione del giudice topic
+da 30 coppie (decisione del responsabile).
+
 ### Revisione umana e Curator (2026-11-17)
 
 * **Revisione di una persona**: l'unico numero che conta tutti gli errori,

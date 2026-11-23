@@ -51,7 +51,7 @@ CASES = [
     ("P3", "Bachelor's or Master's degree in Computer Science or Software Engineering", 4),
     # P4 coordinated verbs
     ("P4", "Ability to recruit, grow, and retain top talent", 1),
-    ("P4", "Demonstrated ability to design, run, and debug real production systems", 1),
+    ("P4", "Demonstrated ability to design, run, and debug real production systems", 3),  # 2026-11-23: one per verb (rules 0.4.9 reads `debug` as a verb)
     ("P4", "Experience designing and deploying services across Linux and Windows", 2),
     ("P4", "Ability to install, re-seat, and swap GPU/PCIe cards, NICs, PSUs, and drives", 4),
     ("P4 control", "Ability to document defects and communicate with project teams", 2),

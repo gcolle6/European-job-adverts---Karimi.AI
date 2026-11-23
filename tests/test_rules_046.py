@@ -43,7 +43,7 @@ def _keys(item: str) -> list[str]:
     ("Strong understanding of industry challenges within technology, fintech, or regulated environments",
      ["industry challenges"]),
     ("Strong verbal and written communication skills to interact with stakeholders and project owners",
-     ["communication skills"]),  # 2026-11-23: the modes set aside (review of batch 6)
+     ["communication"]),  # 2026-11-23: the modes set aside; rules 0.4.9 drops `skills` too (batch 7)
     ("4-6 years of experience in testing domain, with a minimum of 3 years in test automation",
      ["testing", "test automation"]),
     # the name wins over a word that adds nothing

@@ -506,6 +506,47 @@ Format: version · date · what changed · how it was measured.
   say; of the 80 right, 2 change, both by the new verb convention. Batch 6
   processed again: inspector flags 430 -> 345 (2.8% -> 2.2%). 3,000 random items
   of batches 1-6: 6% change, all read; the regressions found were fixed.
+- **0.4.9** · 2026-11-23 · batch 7 (rules 0.4.8, red 6.6%: inspector 3.1%,
+  judge topic 8 of 30 pairs): the agents' 482 flags read one by one (443 real)
+  and the user's review (22 wrong of 100; the inspector had flagged 1 of them).
+  *How the notes are read* (the user, same day): a `/` separates the
+  requirements wanted, and what is not the requirement (level, years, setting)
+  stays in its own column. *Review*: `You study X, Y` is a student in each
+  field; `work independently and within a team` is autonomy and teamwork;
+  `written communication` is communication (and `communication skills` after
+  the modes, 32 keys of batch 7); `SAP interfaces and integrations` is SAP; a
+  setting or the people worked with keeps its frame (`experience in
+  multinational company environment`, `experience with in-house teams and
+  external agencies`); `in collaboration with ...` and `large scope` go to
+  extra; `analytical and problem solving capabilities` is two, the level
+  shared; `Technical degree` is a degree in a technical field; `Bac +5` written
+  `Bachelor's degree +5` is a master, one per field; `Technological know-how`
+  and `scientific domain` stay whole; `3–6 years as a A, B or C role` is one
+  requirement per role; `Self-motivated with a passion for X and Y` is the trait
+  and the passion, the passion's object kept whole. *Agents*: the `@@0##`
+  placeholder leak (unmasking ran once); a Title-Case word in front of a frame
+  (`Active`, `Core`, `Mid-level`, the translator's `Invented`) is no longer the
+  key, but `Strong`/`Thorough knowledge and experience in X` stay one; a named
+  skill closes a clause (`Strong Python skills and hands-on experience with`);
+  years in months, `N years+`, `two-year`, `4-year`, `years across`; `applying`,
+  `using`, `leveraging` are light verbs; a word in front that emptied the key
+  (`A clear understanding of`, `Successful track record in`); `Interest or
+  experience with X` loses the interest; degrees with `full`, `official`,
+  `professional`, `Master-of-Science`, `Master's-level studies`, students in
+  their last year written every way, `a indirizzo` read as the field;
+  `Bilingual in A and B`; `Upper-Intermediate+`; `relational and
+  non-relational databases`; two names over one kind (`RDBMS and NoSQL
+  datastores`); the names and items before `such as` a category are kept
+  (`Python and ML frameworks such as PyTorch`); more base verbs for the verb
+  convention. *Detectors* (`errors.py`): 43 false alarms removed
+  (`shared_tail_lost` on soft words, `context_left` on availability,
+  `names_dropped` when a category is replaced by its examples, `drive`, `MAX`,
+  `360-degree`); new `communication_skills`, `student_not_read`,
+  `interest_crossed`. *Measured*: 16 of the 22 notes come out as written, 3
+  close, 3 open (two translator failures, one verb-and-artefact phrase); 0 of
+  the 78 right items change. Batch 7 processed again: inspector flags 501 ->
+  336 (3.2% -> 2.2%, same detectors both sides). 3,000 random items of batches
+  1-7: 77 change (2.6%), all read.
 
 ## Dictionary
 

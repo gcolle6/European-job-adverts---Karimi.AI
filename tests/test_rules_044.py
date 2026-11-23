@@ -46,7 +46,7 @@ def _keys(item: str) -> list[str]:
     ("Bachelor's degree or equivalent higher education qualification in Information Technology, Computer Science",
      ["education: Bachelor in Information Technology", "education: Bachelor in Computer Science"]),
     ("Bac+2 training at baccalaureate+5", ["education: Degree (any field)"]),
-    ("BS Degree - preferably in a technical discipline", ["education: Bachelor (any field)"]),
+    ("BS Degree - preferably in a technical discipline", ["education: Bachelor in technical field"]),  # rules 0.4.9: the user review of batch 7 ([42])
     ("A completed MSc or higher professional education degree in geotechnical engineering or related subjects",
      ["education: Master in geotechnical engineering", "education: Bachelor in geotechnical engineering"]),
     ("Master's degree as a statistician, physicist, mathematician or lignnde", ["education: Master (any field)"]),

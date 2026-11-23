@@ -121,6 +121,10 @@ CAUSES = {
     # rules 0.4.8, from the user's review of batch 6
     "modes_left": "how it is communicated left in the requirement ('written and verbal')",
     "attitude_left": "an attitude left in front of an object that stands alone ('keen eye for')",
+    # rules 0.4.9, from our reading of batch 7
+    "communication_skills": "'skills' left after communication, a group of its own beside 'communication'",
+    "student_not_read": "a student written as one ('Student in ...'), not read as a degree",
+    "interest_crossed": "'Interest or experience with' read as two heads, one per name",
     "other": "no rule names it",
 }
 
@@ -430,6 +434,10 @@ INSPECTOR_DETECTORS = {
     # rules 0.4.8, from the user's review of batch 6
     "modes_left": ("normalisation", "word_kept"),
     "attitude_left": ("normalisation", "word_kept"),
+    # rules 0.4.9, from our reading of batch 7
+    "communication_skills": ("normalisation", "word_kept"),
+    "student_not_read": ("normalisation", "wrong_degree"),
+    "interest_crossed": ("splitting", "over_split"),
 }
 
 
@@ -458,7 +466,7 @@ _GENERIC_TAIL_RE = re.compile(
     r"\s(?:domain|methodolog(?:y|ies)|affinity|software\s+development|development\s+experience|"
     r"environments?|landscape|ecosystem|stack|world|universe)$", re.I)
 _BARE_VERBS = {"take", "understand", "maintain", "evaluate", "validate", "improve", "manage", "develop", "build",
-               "create", "lead", "drive", "deliver", "implement", "ensure", "work",
+               "create", "lead", "deliver", "implement", "ensure", "work",
                "handle", "perform", "analyse", "analyze", "solve", "write", "train", "test", "run", "own"}
 
 
@@ -487,9 +495,10 @@ def review_flag(r: dict) -> str | None:
     # `willingness to work on site` are no context left (batch 6: about 20 false of 71)
     if _CONTEXT_RE.search(f" {core}") and not re.match(
             r"(?:able|ability|willing(?:ness)?|ready|readiness|commitment|committed|desire|flexib\w+|thrive|"
-            r"comfortable|passion|eager(?:ness)?|motivat\w+)\b", core, re.I):
+            r"comfortable|passion|eager(?:ness)?|motivat\w+|availab\w+|excite\w*|attitude|willed|"
+            r"must\s+be\s+able)\b", core, re.I):
         return "context_left"
-    if re.search(r"\b(?:degree(?!\s+of\b)|diploma|bachelor'?s?|ph\.?d)\b|"
+    if re.search(r"\b(?:(?<!-)degree(?!\s+of\b)|diploma|bachelor'?s?|ph\.?d)\b|"
                  r"(?<!scrum\s)(?<!agile\s)\bmaster'?s?\b(?!\s+(?:data|production|planning|scheduling|schedules?|file|record))",
                  core, re.I):
         return "degree_not_read"
@@ -531,7 +540,7 @@ def item_flags(reqs: list[dict]) -> dict[int, str]:
         # an adjective alone, never a noun: `documentation`, `governance` stand by themselves
         if len(k.split()) == 1 and k[:1].islower() and i + 1 < len(keys) and len(keys[i + 1].split()) >= 2 \
                 and k.lower() not in _SOFT_SINGLE \
-                and re.search(r"(?:al|ic|ive|ary|ous|ar)$", k):
+                and re.search(r"(?:al|ic|ive|ary|ous|ar)$", k) and not _soft_alone(k, reqs[i].get("atom") or ""):
             out[i] = "shared_tail_lost"
     # `names_dropped` (rules 0.4.7, batch 5): names written before a category that
     # lists more (`HTML5, CSS3, JavaScript, and frameworks like Angular`) in no atom
@@ -548,7 +557,9 @@ def item_flags(reqs: list[dict]) -> dict[int, str]:
             names = names[:-1]
         lost = [n for n in names if n not in said and n.lower() not in ("experience", "knowledge", "proficiency",
                                                                           "strong", "good", "solid", "excellent")]
-        if lost:
+        coordinated = ("," in before or m.group(0).lstrip().startswith(",") or re.search(r"\brole\b", before, re.I)
+                       or re.search(r"\b[A-Z][a-z][\w.+#-]*\s+(?:and|or)\s+\S+\s*$", before))
+        if lost and coordinated:
             out.setdefault(0, "names_dropped")
     first = keys[0] if keys else ""
     if first and len(first.split()) >= 2:
@@ -557,6 +568,17 @@ def item_flags(reqs: list[dict]) -> dict[int, str]:
             for i in glued:
                 out.setdefault(i, "head_glued")
     return out
+
+
+# rules 0.4.9, batch 7: soft words that stand alone once `skills` is taken off
+_SOFT_ADJ = {"communicative", "organizational", "organisational", "interpersonal", "innovative", "initiative",
+             "rigorous", "curious", "serious", "collateral"}
+
+
+def _soft_alone(k: str, atom: str) -> bool:
+    """A lone adjective that is whole: a soft word, its `skills` taken off, or a level and the word alone."""
+    return bool(k.lower() in _SOFT_ADJ or re.search(r"\bskills?$", atom.strip(), re.I)
+                or re.fullmatch(rf"(?:(?:very|good|strong|excellent|great)\s+)+{re.escape(k)}", atom.strip(), re.I))
 
 
 _SOFT_SINGLE = {"communication", "teamwork", "autonomy", "collaboration", "leadership", "creativity", "flexibility",
@@ -575,7 +597,7 @@ def inspector_flag(r: dict) -> str | None:
     else:
         hit = None
     return translation_flag(r) or degree_flag(r) or hit or optional_flag(r) or word_kept_flag(r) \
-        or shape_flag(r) or review_flag(r) or object_flag(r) or review5_flag(r)
+        or shape_flag(r) or review_flag(r) or review7_flag(r) or object_flag(r) or review5_flag(r)
 
 
 _LEVEL_AS_CORE_RE = re.compile(
@@ -593,7 +615,7 @@ def review5_flag(r: dict) -> str | None:
         return None
     if _LEVEL_AS_CORE_RE.match(core):
         return "level_as_core"
-    if re.match(r"^(?:minimum|maximum|min\.?|max\.?|at\s+least)\b", core, re.I) \
+    if re.match(r"^(?!(?-i:MAX|MIN)\b)(?:minimum|maximum|min\.?|max\.?|at\s+least)\b", core, re.I) \
             or re.search(r"\b\d+\+?\s*(?:years?|yrs?)\b", core, re.I):
         return "years_left"
     if re.search(r"\swith\s+(?:an?\s+)?(?:(?:strong|particular|special|clear)\s+)?focus\s+on\s", f" {core}", re.I):
@@ -601,7 +623,9 @@ def review5_flag(r: dict) -> str | None:
     if re.match(r"^(?:willing(?:ness)?|ready|readiness|availability)\s+to\s+(?:travel|relocate)\b", atom, re.I) \
             and not re.search(r"\b(?:travel|relocat)", core, re.I):
         return "availability_lost"
-    if core.lower() in _JOB_WORDS and re.search(rf"\b[A-Z][\w/-]*\s+{re.escape(core)}\b", atom):
+    if core.lower() in _JOB_WORDS and re.search(
+            rf"\b(?!(?i:strong|hands-on|proven|solid|good|excellent|deep|extensive|practical|relevant|previous|prior|"
+            rf"demonstrated|significant)\b)[A-Z][\w/-]*\s+{re.escape(core)}\b", atom):
         return "role_cut"
     # rules 0.4.8, the user's review of batch 6
     if re.match(r"^(?:(?:clear|excellent|strong|good|effective)\s+)?(?:written|verbal|oral|spoken)\s*(?:and|&|/|,)\s*"
@@ -614,6 +638,31 @@ def review5_flag(r: dict) -> str | None:
     return None
 
 
+# Rules 0.4.9, from our reading of batch 7: three kinds no detector saw.
+_STUDENT_KEY_RE = re.compile(r"^(?:(?:final|last|senior|current(?:ly)?|enrolled|graduating)[\s-]+(?:year\s+)?)*"
+                             r"(?:(?:master|bachelor|phd|university|engineering)[\s-]?)?students?\b", re.I)
+_INTEREST_CROSS_RE = re.compile(r"^interest\s+(?:(?:and|or)\s+)?(?:(?:first|some|practical|hands-on)\s+)?"
+                                r"(?:experience\s+)?with\b", re.I)
+
+
+def review7_flag(r: dict) -> str | None:
+    """`communication_skills`: the key `communication skills` beside `communication`
+    (32 rows of batch 7, none flagged); `student_not_read`: a student left out of the
+    education space (`Student in X`); `interest_crossed`: `Interest or experience with`
+    read as two heads, so `Interest with X` or an empty key per name."""
+    if r_space(r):
+        return None
+    core = (r.get("core") or "").strip()
+    atom = (r.get("atom") or "").strip()
+    if _INTEREST_CROSS_RE.match(core) or (not core and _INTEREST_CROSS_RE.match(atom)):
+        return "interest_crossed"
+    if re.fullmatch(r"communication\s+skills?", core, re.I):
+        return "communication_skills"
+    if _STUDENT_KEY_RE.match(core):
+        return "student_not_read"
+    return None
+
+
 def object_flag(r: dict) -> str | None:
     """`object_in_extra` (rules 0.4.7, batch 5): a counted requirement whose key is
     empty while `extra` still holds what is asked (`High proficiency in Python`
@@ -622,6 +671,8 @@ def object_flag(r: dict) -> str | None:
     if r.get("counted") is False or (r.get("core") or "").strip() or r_space(r):
         return None
     extra = (r.get("extra") or "").strip()
+    if re.fullmatch(r"in\s+(?:an?\s+)?similar\s+(?:position|role|job|function)s?", extra, re.I):
+        return None
     if re.match(r"^(?:of|in|with|on|about)\s+\S", extra, re.I) or re.search(r"(?<![\w-])[A-Z][\w.+#/-]+", extra):
         return "object_in_extra"
     return None

@@ -812,6 +812,151 @@
       "title": "Coordinated verbs read as one requirement, or the verb dropped",
       "cause": "Until 2026-11-23 the rule was 'building and maintaining X' = one requirement, the verbs dropped; the user reversed it: with a generic object each verb is a requirement and keeps its object.",
       "example": "designing and implementing complex solutions -> 'complex solutions' instead of two"
+    },
+    {
+      "stage": "normalisation",
+      "found": "2026-11-23",
+      "found_by": "hand",
+      "status": "resolved",
+      "resolved_in": "0.4.9",
+      "guard": "tests/test_rules_049.py::test_review_and_agents_of_batch_7",
+      "rule_files": [
+        "karimi/normalise_req.py"
+      ],
+      "id": "communication_skills",
+      "detector": "communication_skills",
+      "title": "'Communication skills' kept beside 'communication'",
+      "cause": "The rule of 0.4.8 took the modes ('written and verbal') off and left 'skills', so one requirement made two groups. No detector saw it: 32 rows of batch 7.",
+      "example": "Strong written and verbal communication skills -> 'communication skills' instead of 'communication'"
+    },
+    {
+      "stage": "normalisation",
+      "found": "2026-11-23",
+      "found_by": "hand",
+      "status": "resolved",
+      "resolved_in": "0.4.9",
+      "guard": "tests/test_rules_049.py::test_review_and_agents_of_batch_7",
+      "rule_files": [
+        "karimi/normalise_req.py"
+      ],
+      "id": "student_not_read",
+      "detector": "student_not_read",
+      "title": "A student not read as a degree",
+      "cause": "'Student in X', 'Students of X', 'University student' open the atom; the rules read 'student' only after a degree word, so the atom stayed outside the education space.",
+      "example": "Student in computer science -> 'Student in computer science' instead of education: Student in Computer Science"
+    },
+    {
+      "stage": "splitting",
+      "found": "2026-11-23",
+      "found_by": "hand",
+      "status": "resolved",
+      "resolved_in": "0.4.9",
+      "guard": "tests/test_rules_049.py::test_review_and_agents_of_batch_7",
+      "rule_files": [
+        "karimi/atomise.py"
+      ],
+      "id": "interest_crossed",
+      "detector": "interest_crossed",
+      "title": "'Interest or experience with' read as two heads",
+      "cause": "The cross-product of alternative heads took 'Interest' as a head of its own, so each name came out twice, once as 'Interest with X' or with an empty key.",
+      "example": "Interest and experience with Linux, containers -> 'Interest with Linux'"
+    },
+    {
+      "stage": "normalisation",
+      "found": "2026-11-23",
+      "found_by": "review",
+      "status": "resolved",
+      "resolved_in": "0.4.9",
+      "guard": "tests/test_rules_049.py::test_review_and_agents_of_batch_7",
+      "rule_files": [
+        "karimi/normalise_req.py"
+      ],
+      "id": "setting_without_frame",
+      "detector": null,
+      "title": "A setting or the people worked with, left without its frame",
+      "cause": "The frame was taken off as usual, but what remained is no skill: a kind of company or the people worked with. Alone it says nothing (the user's review of batch 7).",
+      "example": "7+ years of experience in a multinational company environment -> 'multinational company environment' instead of 'experience in multinational company environment'"
+    },
+    {
+      "stage": "normalisation",
+      "found": "2026-11-23",
+      "found_by": "agent",
+      "status": "resolved",
+      "resolved_in": "0.4.9",
+      "guard": "tests/test_rules_049.py::test_years_kept_in_their_column",
+      "rule_files": [
+        "karimi/normalise_req.py"
+      ],
+      "id": "years_in_months",
+      "detector": "edge_preposition",
+      "title": "Years written in months, or as 'two-year' and 'N years+', not read",
+      "cause": "The years reader knew 'N years' and 'N+ years' only, so the number stayed in the key.",
+      "example": "At least 60 months of experience in software development -> 'At least 60 months of experience in'"
+    },
+    {
+      "stage": "normalisation",
+      "found": "2026-11-23",
+      "found_by": "agent",
+      "status": "resolved",
+      "resolved_in": "0.4.9",
+      "guard": "tests/test_rules_049.py::test_review_and_agents_of_batch_7",
+      "rule_files": [
+        "karimi/normalise_req.py"
+      ],
+      "id": "light_verb_kept",
+      "detector": "frame_left",
+      "title": "'applying', 'using', 'leveraging' kept in front of the object",
+      "cause": "Only 'working' was a light verb; the others say nothing either and opened the key.",
+      "example": "Experience applying thorough testing -> 'applying thorough testing' instead of 'testing'"
+    },
+    {
+      "stage": "normalisation",
+      "found": "2026-11-23",
+      "found_by": "agent",
+      "status": "resolved",
+      "resolved_in": "0.4.9",
+      "guard": "tests/test_rules_049.py::test_review_and_agents_of_batch_7",
+      "rule_files": [
+        "karimi/atomise.py",
+        "karimi/normalise_req.py"
+      ],
+      "id": "degree_word_in_front",
+      "detector": "degree_not_read",
+      "title": "A word in front of the degree stopped the reader",
+      "cause": "'Full', 'official', 'professional', 'Master-of-Science', 'Master's-level studies' were not known to the degree reader, so the degree stayed outside the education space.",
+      "example": "Official Master in Data Science -> 'Official Master in Data Science' instead of education: Master"
+    },
+    {
+      "stage": "splitting",
+      "found": "2026-11-23",
+      "found_by": "agent",
+      "status": "resolved",
+      "resolved_in": "0.4.9",
+      "guard": "tests/test_rules_049.py::test_review_and_agents_of_batch_7",
+      "rule_files": [
+        "karimi/atomise.py"
+      ],
+      "id": "placeholder_leak",
+      "detector": null,
+      "title": "A masked bracket came back as '@@0##'",
+      "cause": "A 'within' span was masked over a bracket already masked, and unmasking ran once.",
+      "example": "in a similar role within a field (with an acronym) -> 'role within the field @@0##'"
+    },
+    {
+      "stage": "normalisation",
+      "found": "2026-11-23",
+      "found_by": "agent",
+      "status": "resolved",
+      "resolved_in": "0.4.9",
+      "guard": "tests/test_rules_049.py::test_review_and_agents_of_batch_7",
+      "rule_files": [
+        "karimi/normalise_req.py"
+      ],
+      "id": "frame_emptied_key",
+      "detector": "object_in_extra",
+      "title": "A word in front of the frame emptied the key",
+      "cause": "'A clear', 'Successful', 'A first successful' took the core, then went as a level word, and the object after the preposition was left in extra.",
+      "example": "A clear understanding of data structures -> empty key, 'of data structures' in extra"
     }
   ]
 }

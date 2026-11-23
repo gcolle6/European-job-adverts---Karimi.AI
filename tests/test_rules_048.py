@@ -48,7 +48,7 @@ def _keys(item: str) -> list[str]:
     ("Strong interpersonal skills and ease working with Business, IT, Security, Risk, Legal, Finance",
      ["interpersonal", "Business", "IT", "Security", "Risk", "Legal", "Finance"]),
     # the rest of the notes
-    ("Clear written and verbal communication skills", ["communication skills"]),
+    ("Clear written and verbal communication skills", ["communication"]),  # rules 0.4.9: `skills` goes too (batch 7)
     ("Technical and transverse leadership", ["leadership"]),
     ("Experience with Business Intelligence projects using BI tools", ["BI tools"]),
     ("Strong understanding of how data architecture influences data quality", ["data architecture"]),
