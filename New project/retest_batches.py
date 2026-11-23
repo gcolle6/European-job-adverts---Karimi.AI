@@ -1,6 +1,7 @@
 """Retest: earlier batches run again under today's rules, ON THIS MACHINE, never published.
 
-Decided 2026-11-19/20: every four batches, the postings of the previous four
+Decided 2026-11-19/20 (every four batches), five since 2026-11-23, after the person's
+review: the postings of those batches
 are run again with the current rules and dictionary, to see how much the
 model improved overall. The results are ours: they go to no bucket, no
 history and no page of the site.

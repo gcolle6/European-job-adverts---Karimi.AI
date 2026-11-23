@@ -383,8 +383,9 @@ L'obiettivo: un lotto con solo risultati corretti, oppure dove ogni errore
 viene trovato dagli agenti e la persona deve solo confermarlo. A ogni giro il
 processo diventa più automatico e l'intervento umano si riduce.
 
-**Ritest ogni 4 lotti (deciso il 2026-11-19).** Ogni 4 lotti si rielaborano
-gli stessi annunci dei 4 lotti precedenti con le regole e il dizionario di
+**Ritest ogni 5 lotti (deciso il 2026-11-19 ogni 4, portato a 5 il
+2026-11-23, dopo la revisione umana).** Ogni 5 lotti si rielaborano
+gli stessi annunci dei 5 lotti precedenti con le regole e il dizionario di
 oggi, per vedere quanto è migliorato il modello nel complesso. **Il ritest è
 nostro e non si pubblica** (deciso il 2026-11-20): gira in locale con
 `New project/retest_batches.py`, sugli stessi passi del job e del check di
