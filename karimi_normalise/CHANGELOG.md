@@ -547,7 +547,34 @@ Format: version · date · what changed · how it was measured.
   the 78 right items change. Batch 7 processed again: inspector flags 501 ->
   336 (3.2% -> 2.2%, same detectors both sides). 3,000 random items of batches
   1-7: 77 change (2.6%), all read.
-- **0.4.10** · 2026-11-23 · unreleased, for the batch 8 round. `a passion for
+- **0.4.10** · 2026-11-24 · batch 8 (rules 0.4.9, yellow 3.9%): the agents'
+  364 flags read one by one (326 real, precision 0.90; unflagged rows about
+  10% clearly wrong, batch 7 about 20%) and the user's review (14 wrong of 100;
+  batch 7: 22; the inspector had flagged 1). *Review*: `SQL with experience in
+  BigQuery and MariaDB` is three; `C++/Python`, `Databricks/Spark` are two (a
+  slash between two names of a closed list of languages and tools; `CI/CD`,
+  `PL/SQL` stay); `engineering practices including Git, CI/CD, ...` lists the
+  requirements when names are among them; `data structuring for ...` keeps
+  what it is for aside; `Master's program at an engineering school` is a master
+  in engineering; `the primary interface with ... customers` is interface with
+  clients; `how component-based sites are built` is component-based sites;
+  adaptability and problem solving join the soft-skill groups; `appreciation of
+  collaboration` is teamwork; `LLM-powered or agentic applications` shares the
+  kind; `Certification for TOGAF` is TOGAF; `business analysis and
+  communication skills` is two. *Agents*: `Doctor's degree` is a PhD;
+  `enrolled (full time) in a Masters program`; `, with a solid experience of X`
+  is a second requirement; verbs before a list of objects split on each atom;
+  a named header over common nouns keeps them aside (`JVM internals: memory
+  model, ...`); `academic track record`; `to support ...` aside; a key never
+  opens on `across`/`within`/`with`; `Detail-oriented with a structured
+  approach` is two traits; the translator's `is a pre-requisite` from Dutch
+  `pré` is a plus. *Detectors*: `soft_skill_ungrouped`, `names_slashed`,
+  `named_tail_left`, `certification_key`. *Measured*: the 14 notes come out as
+  written (`experience in industry` as `industry experience`, the form of batch
+  5); of the 86 right, 5 change, only by the soft-skill group names. Batch 8
+  processed again: inspector 741 -> 321 flags with the new detectors (4.7% ->
+  2.0%), 361 -> 317 on the detectors of 0.4.9. 3,000 random items of batches
+  1-8: 162 change, all read. Earlier the same round (2026-11-23): `a passion for
   X and Y` is two passions, one per object (the user, reversing the one-ask
   reading 0.4.9 gave note [47]). The check's judge now reads 100 topic pairs
   per run, was 30 (`check.SAMPLE`, deployed on 0.4.9 the same day).

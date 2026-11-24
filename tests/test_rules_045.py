@@ -34,7 +34,7 @@ def _keys(item: str) -> list[str]:
     # the frame around a name goes
     ("Experienced in programming with Java", ["Java"]),
     ("Experience programming in Python, Java, JavaScript/TypeScript, or similar languages",
-     ["Python", "Java", "JavaScript/TypeScript"]),
+     ["Python", "Java", "JavaScript", "TypeScript"]),  # rules 0.4.10, the user's review of batch 8: names split at the slash
     ("Experience leveraging AI agents as a force multiplier", ["AI agents"]),
     ("Confidence using AI coding tools as part of daily workflow", ["AI coding tools"]),
     ("Several years of professional experience in Cloud Architecture with a strong focus on Microsoft Azure",

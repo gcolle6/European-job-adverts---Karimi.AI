@@ -1605,7 +1605,8 @@ def _split_list(s: str) -> list[str]:
                 # the examples are parts of a platform named before them: the
                 # platform is asked, its services kept for `extra` (review of batch 3)
                 return [clean(f"{pre} ({rest.strip(' .;')})")]
-            elif examples and all(named):
+            elif examples and (all(named) or (word.startswith("including") and sum(named) >= 2
+                                              and len(examples) >= 3)):
                 lead_ok = False
                 # the category goes with the lead: `Scripting languages such as
                 # Python or Bash` is Python and Bash, the frame kept up to its
@@ -1621,6 +1622,11 @@ def _split_list(s: str) -> list[str]:
                 elif re.search(r"\b(?:role|position)s?\b", body, re.I):
                     # `3 years in a DevOps role with cloud platforms like AWS`: the role too
                     lead = [clean(f"{head} " + re.sub(r"(\b(?:role|position)s?)\b.*$", r"\1", body, flags=re.I))]
+            elif len(examples) >= 2 and not word and sum(named) * 2 < len(examples) \
+                    and _nr._name_runs(_unmasked(pre)) and len(pre.split()) <= 4 \
+                    and not re.search(r"\b(?:Skills?|Requirements?|Languages?|Tools?|Technolog(?:y|ies)|Stack|"
+                                      r"Frameworks?|Protocols?|Qualifications?)\b", _unmasked(pre)):
+                return [clean(f"{pre} ({rest.strip(' .;')})")]
             elif len(examples) >= 2 and not word \
                     and ((not _nr._name_runs(_unmasked(pre))
                           and not all(w[:1].isupper() for w in _unmasked(pre).split()))
@@ -2642,6 +2648,9 @@ def _atomise_once(segment: str) -> list[str]:
         return s
 
     atoms = [a for a in (clean(_unmask(x)) for x in out) if _keep_atom(a)]
+    if config.SPLIT_REPAIRS:
+        atoms = [b for a in atoms for b in _expand_name_slash(a)]
+        atoms = [b for a in atoms for b in ((_verb_split(a) if not _atom_has_name(a) else None) or [a])]
     if config.SPLIT_REPAIRS and len(atoms) > 1:
         # The bracket path abstains on a head that is itself a list, so the
         # list is split here — and its last piece still carries the bracket:
@@ -2744,7 +2753,7 @@ def _drop_or_similar(segment: str) -> str:
 # after another experience is a second one.
 _CATEGORY_EG_RE = re.compile(r"\s+in\s+an?\s+(?:technical|relevant|related|similar)\s+(?:direction|field|area|discipline)"
                              r",?\s+(?:e\.g\.|such\s+as|for\s+example|like)\s+", re.I)
-_WITH_YEARS_RE = re.compile(r",\s*with\s+(?=(?:at\s+least\s+|(?:a\s+)?minimum\s+(?:of\s+)?)?\d{1,2}\s*\+?\s*years?\s+(?:as|in|of)\b)",
+_WITH_YEARS_RE = re.compile(r",\s*with\s+(?=(?:at\s+least\s+|(?:a\s+)?minimum\s+(?:of\s+)?)?\d{1,2}\s*\+?\s*years?\s+(?:as|in|of|at)\b)",
                             re.I)
 # `3 years or more of experience` (rules 0.4.4): `or more` is not an alternative
 _YEARS_OR_MORE_RE = re.compile(r"\b(\d{1,2})\s*(years?|yrs?)\s+or\s+more\b", re.I)
@@ -2766,6 +2775,29 @@ _TRAIT_WITH_ABILITY_RE = re.compile(
 # alternative (review of batch 4); `AI/ML` and `CI/CD` are too short to touch
 _DEGREE_SLASH_FIELDS_RE = re.compile(
     r"(?<=\bin\s)[A-Za-z][\w ]{3,}?(?:/[A-Za-z][\w ]{3,}?)+(?=$|[,.;(])")
+_NAMES_SLASHED = (r"C\+\+|C#|C|Python|Java|JavaScript|TypeScript|Go|Golang|Rust|Scala|Kotlin|Ruby|PHP|R|SQL|Bash|Perl|"
+                  r"Swift|MATLAB|Matlab|Spark|Databricks|Kafka|Docker|Kubernetes|Terraform|Ansible|AWS|Azure|GCP|"
+                  r"Snowflake|Tableau|Excel|React|Angular|Vue|Node\.js|Django|Flask|PyTorch|TensorFlow")
+_NAME_SLASH_RE = re.compile(rf"(?<![\w+#./-])({_NAMES_SLASHED})\s*/\s*({_NAMES_SLASHED})(?![\w+#/-])")
+def _atom_has_name(atom: str) -> bool:
+    """A name in the atom, a category name aside: with a name the name wins and the verbs go."""
+    from . import normalise_req as _nr     # it imports this module
+    return any(r not in _nr._CATEGORY_NAMES for r in _nr._name_runs(atom))
+
+
+def _expand_name_slash(atom: str) -> list[str]:
+    """`proficient in C++/Python`: two languages or tools, two requirements (the user's review
+    of batch 8, [17]; batch 7, `Databricks/Spark`). Only between names of the closed list,
+    so `CI/CD`, `PL/SQL`, `KYC/KYB` stay whole."""
+    m = _NAME_SLASH_RE.search(atom)
+    if not m:
+        return [atom]
+    out = []
+    for name in (m.group(1), m.group(2)):
+        out += _expand_name_slash(atom[:m.start()] + name + atom[m.end():])
+    return out
+
+
 _STUDENT_FORM_RE = re.compile(
     r"^(?=[^,]{0,80}\b(?:students?|final[- ]year|last\s+(?:year|degree)|currently\s+in\s+the)\b)"
     r"(?:(?:senior|current(?:ly)?)\s+(?:or\s+)?)?(?:(?:enrolled|studying)\s+)?"
@@ -2803,8 +2835,27 @@ _DEGREE_AND_YEARS_RE = re.compile(
     r"(?P<y>(?:at\s+least\s+|minimum\s+(?:of\s+)?)?\d{1,2}\s*\+?\s*(?:years?|yrs?)\b.*)$", re.I)
 
 
+_WITH_FRAME_TAIL_RE = re.compile(
+    r"^(?P<a>.+?),\s*with\s+(?:an?\s+)?(?P<b>(?:(?:strong|solid|good|deep|proven|hands-on|extensive|excellent|"
+    r"some|practical)\s+)?(?:[\w/+#.-]+\s+){0,3}(?:experience|expertise|knowledge|skills|understanding|background)"
+    r"(?:\s+(?:of|in|with|on)\s+.+)?)\s*\.?$", re.I)
+_TRAIT_WITH_RE = re.compile(
+    r"^(?P<t>[\w-]+-(?:oriented|minded|driven)|detail[- ]oriented|self-?motivated|proactive|curious|organi[sz]ed|"
+    r"structured|rigorous|autonomous)\s+with\s+(?:an?\s+)?(?P<p>(?:[\w-]+\s+){0,2}(?:approach|mindset|attitude|"
+    r"sense|eye)\b.*)$", re.I)
+
+
 def _review_045_split(segment: str) -> list[str] | None:
     s = segment.strip()
+    # batch 8: `About 5 years as a Product Owner, with a solid experience of eCommerce`:
+    # the second frame is a requirement of its own (13 rows)
+    m = _WITH_FRAME_TAIL_RE.match(s)
+    if m and (_CLAUSE_DONE_RE.search(m.group("a")) or re.search(r"\d\s*\+?\s*(?:years?|yrs?)\b", m.group("a"), re.I)):
+        return _atomise_once(clean(m.group("a"))) + _atomise_once(clean(m.group("b")))
+    # `Detail-oriented with a structured approach to work`: two traits (8 rows)
+    m = _TRAIT_WITH_RE.match(s)
+    if m:
+        return [m.group("t"), clean(m.group("p"))]
     # [47] `Self-motivated with a passion for renewable energy`: the trait, and the passion
     m = re.match(r"^(?P<t>self-?motivated|motivated|driven|curious|proactive|enthusiastic|ambitious)\s+with\s+"
                  r"(?:an?\s+)?(?P<p>(?:(?:strong|real|genuine|deep)\s+)?(?:passion|interest|curiosity|enthusiasm)\s+"
@@ -2831,6 +2882,11 @@ def _review_045_split(segment: str) -> list[str] | None:
     for rx, part in ((_SKILL_CONTEXT_RE, "c"), (_SKILL_PURPOSE_RE, "p")):
         m = rx.match(s)
         if m and "(" not in m.group(part):
+            skills = _review_045_rewrite(m.group("s"))
+            if re.search(r"\s(?:and|&)\s", skills):
+                # [96] `Strong business analysis and communication skills with 4+ years`:
+                # the skills split, each keeps the context (the user's review of batch 8)
+                return [clean(f"{a} ({m.group(part)})") for a in _atomise_once(skills)]
             return [clean(f"{m.group('s')} ({m.group(part)})")]
     return None
 
@@ -2884,6 +2940,33 @@ def _review_045_rewrite(segment: str) -> str:
                r"(?-i:([A-Z][\w.+#-]*[A-Z][\w.+#-]*|[A-Z]{2,}[\w.+#-]*))\s+"
                r"(datastores|data\s+stores|databases|web\s+services|services|APIs|environments|platforms)\b",
                r"\1 \3 and \2 \3", s)
+    # the user's review of batch 8 (rules 0.4.10):
+    # [1] `Expert-level SQL with experience in BigQuery and MariaDB`: the language, and the tools
+    s = re.sub(r"^((?:[\w-]+\s+){0,2}(?-i:[A-Z][\w.+#/-]*))\s+with\s+(?:(?:hands-on|practical|some|solid|good)\s+)?"
+               r"(experience|knowledge|exposure)\s+(in|of|with)\s+(?=\S)", r"\1; \2 \3 ", s, flags=re.I)
+    # [45] `An understanding of how modern, component-based sites are built, so you design ...`
+    s = re.sub(r"\bhow\s+(?:modern\s*,?\s*)?((?:[\w-]+\s+){0,3}?[\w-]+)\s+(?:are|is)\s+(?:built|designed|developed|made|"
+               r"structured)\b[^,;]*", r"\1", s, flags=re.I)
+    s = re.sub(r",\s*so\s+(?:that\s+)?you\b.*$", "", s, flags=re.I)
+    # [78] `LLM-powered or agentic applications`: the kind is shared
+    s = re.sub(r"\b([\w-]+-(?:powered|based|driven|enabled|native|first))\s+(or|and)\s+([\w-]+)\s+"
+               r"(applications?|apps?|systems?|solutions?|products?|services?|tools?|platforms?|agents?)\b",
+               r"\1 \4 \2 \3 \4", s, flags=re.I)
+    # [96] `Strong business analysis and communication skills`: one per skill, the level shared
+    s = re.sub(r"^((?:(?:strong|good|very\s+good|excellent|solid|proven|demonstrated|outstanding|exceptional)\s+)?)"
+               r"(?!(?:strong|good|very|excellent|solid|proven|demonstrated|outstanding|exceptional)\b)"
+               r"([a-z]+\s+[a-z]+)\s+and\s+"
+               r"(communication|interpersonal|leadership|organi[sz]ational|presentation|analytical|problem[- ]solving|"
+               r"stakeholder\s+management)\s+(skills|abilities|capabilities)\b", r"\1\2 \4 and \1\3 \4", s, flags=re.I)
+    # [23] `Currently enrolled in a Master's program at an engineering school`: a master in engineering
+    s = re.sub(r"\b(master|bachelor)['’]?s?\s+program(?:me)?\b", r"\1's degree", s, flags=re.I)
+    s = re.sub(r"^(?:currently\s+)?enrolled\s+in\s+an?\s+(?=(?:master|bachelor)'s\s+degree)", "", s, flags=re.I)
+    s = re.sub(r"\s+(?:at|from|in)\s+an?\s+engineering\s+school\b", " in Engineering", s, flags=re.I)
+    # the agents on batch 8: `Doctor's degree` (17 rows) is a PhD
+    s = re.sub(r"\bdoctor['’]?s?\s+degree\b|\bdoctoral\s+degree\b|\bdoctorate(?:\s+degree)?\b", "PhD", s, flags=re.I)
+    s = re.sub(r"^(?:currently\s+)?enrolled\s+(?:\(\s*(?:full|part)[- ]time\s*\)\s+|(?:full|part)[- ]time\s+)?in\s+an?\s+"
+               r"(?=(?:master|bachelor)['’]?s?\s+(?:degree|program))", "", s, flags=re.I)
+    s = re.sub(r"\b(master|bachelor)s\s+(?=degree|program)", r"\1's ", s, flags=re.I)
     # [50] `Bachelor's degree +5` is how the translator writes `Bac +5`, a master
     s = re.sub(r"\bbachelor['’]?s?\s+degree\s*\+\s*[45]\b", "Master's degree", s, flags=re.I)
     s = re.sub(r"\bbachelor['’]?s?\s+degree\s*\+\s*3\b", "Bachelor's degree", s, flags=re.I)

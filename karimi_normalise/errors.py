@@ -125,6 +125,11 @@ CAUSES = {
     "communication_skills": "'skills' left after communication, a group of its own beside 'communication'",
     "student_not_read": "a student written as one ('Student in ...'), not read as a degree",
     "interest_crossed": "'Interest or experience with' read as two heads, one per name",
+    # rules 0.4.10, from the user's review of batch 8
+    "soft_skill_ungrouped": "a soft skill written another way, outside its group ('team spirit', 'analytical mindset')",
+    "names_slashed": "two languages or tools joined by a slash, one requirement instead of two",
+    "named_tail_left": "a second frame with its own names kept after the first ('X with experience in Y')",
+    "certification_key": "'certification' as the requirement, the certified name left aside",
     "other": "no rule names it",
 }
 
@@ -438,6 +443,11 @@ INSPECTOR_DETECTORS = {
     "communication_skills": ("normalisation", "word_kept"),
     "student_not_read": ("normalisation", "wrong_degree"),
     "interest_crossed": ("splitting", "over_split"),
+    # rules 0.4.10, from the user's review of batch 8
+    "soft_skill_ungrouped": ("normalisation", "wrong_group"),
+    "names_slashed": ("splitting", "merged"),
+    "named_tail_left": ("splitting", "merged"),
+    "certification_key": ("normalisation", "object_lost"),
 }
 
 
@@ -597,7 +607,8 @@ def inspector_flag(r: dict) -> str | None:
     else:
         hit = None
     return translation_flag(r) or degree_flag(r) or hit or optional_flag(r) or word_kept_flag(r) \
-        or shape_flag(r) or review_flag(r) or review7_flag(r) or object_flag(r) or review5_flag(r)
+        or shape_flag(r) or review_flag(r) or review7_flag(r) or review8_flag(r) or object_flag(r) \
+        or review5_flag(r)
 
 
 _LEVEL_AS_CORE_RE = re.compile(
@@ -660,6 +671,39 @@ def review7_flag(r: dict) -> str | None:
         return "communication_skills"
     if _STUDENT_KEY_RE.match(core):
         return "student_not_read"
+    return None
+
+
+_NAMES_SLASHED_RE = re.compile(
+    r"(?<![\w+#./-])(?:C\+\+|C#|C|Python|Java|JavaScript|TypeScript|Go|Rust|Scala|Kotlin|Ruby|PHP|R|SQL|Bash|"
+    r"Spark|Databricks|Kafka|Docker|Kubernetes|Terraform|AWS|Azure|GCP|Snowflake|Tableau|React|Angular|PyTorch|"
+    r"TensorFlow)\s*/\s*(?:C\+\+|C#|C|Python|Java|JavaScript|TypeScript|Go|Rust|Scala|Kotlin|Ruby|PHP|R|SQL|Bash|"
+    r"Spark|Databricks|Kafka|Docker|Kubernetes|Terraform|AWS|Azure|GCP|Snowflake|Tableau|React|Angular|PyTorch|"
+    r"TensorFlow)(?![\w+#/-])")
+_NAMED_TAIL_RE = re.compile(r"\bwith\s+(?:\w+\s+){0,2}(?:experience|knowledge|exposure)\s+(?:in|of|with)\s+"
+                            r"(?-i:[A-Z])", re.I)
+
+
+def review8_flag(r: dict) -> str | None:
+    """The kinds of the user's review of batch 8 (14 of 100 wrong; the inspector saw 1):
+    `soft_skill_ungrouped` a soft skill outside its group, by the rules' own table;
+    `names_slashed` `C++/Python` kept as one; `named_tail_left` `SQL with experience in
+    BigQuery` as one key; `certification_key` `Certification` as the key, the name aside."""
+    if r_space(r):
+        return None
+    core = (r.get("core") or "").strip()
+    if not core:
+        return None
+    from karimi.normalise_req import soft_group     # the rules' table, read only
+    if soft_group(core) != core and soft_group(core).lower() != core.lower():
+        return "soft_skill_ungrouped"
+    if _NAMES_SLASHED_RE.search(core):
+        return "names_slashed"
+    if _NAMED_TAIL_RE.search(core):
+        return "named_tail_left"
+    if re.fullmatch(r"certifications?|certificates?", core, re.I) and re.search(r"(?<![\w-])[A-Z][\w.+#/-]+",
+                                                                              r.get("extra") or ""):
+        return "certification_key"
     return None
 
 

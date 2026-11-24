@@ -193,7 +193,7 @@ KEY_CASES = [
     ("Python", "Python", "", None),
     ("Fluency in English", "language: English", "strong", None),
     ("in English", "language: English", "", None),
-    ("Strong problem-solving skills with excellent attention to detail", "problem-solving", "strong", None),
+    ("Strong problem-solving skills with excellent attention to detail", "problem solving", "strong", None),  # rules 0.4.10, the user's review of batch 8: one group
     ("Analytical mindset with the ability to structure", "Analytical mindset with the ability to structure", "", None),
 ]
 

@@ -524,8 +524,20 @@ complementari. Misure: 16 delle 22 escono come le note, 3 vicine, 3 aperte
 (due traduzioni mancate, svedese e spagnolo, e una frase verbo+artefatti);
 0 delle 78 giuste cambiano; Inspector sul lotto 7 rielaborato dal 3,2% al
 2,2%; 77 dei 3.000 elementi di controllo cambiano, tutti letti. Il lotto 8
-(offset 7000) misura la 0.4.9. Aperto: alzare il campione del giudice topic
-da 30 coppie (decisione del responsabile).
+(offset 7000) misura la 0.4.9. Il giudice topic passa da 30 a 100 coppie per
+run (decisione del responsabile, 23/11).
+
+**Giro del lotto 8 → regole 0.4.10, dizionario 0.4.1 (2026-11-24).** Il lotto
+8 (regole 0.4.9) è **giallo**: 3,9% stimato. Gli agenti: 364 segnalazioni, 326
+vere; sulle righe non segnalate circa 10% sbagliate (lotto 7: circa 20%).
+Revisione della persona: **14 sbagliate su 100** (lotto 7: 22). Decisioni del
+responsabile: "passion for X and Y" sono due requisiti; un solo gruppo per soft
+skill (autonomy, teamwork, analytical skills; poi adaptability e problem
+solving dalla revisione); il ritest dei lotti 1-5 è fatto, il prossimo è sui
+lotti 6-10. Misure: le 14 note escono come scritte; delle 86 giuste cambiano
+solo i nomi dei gruppi; Inspector sul lotto 8 rielaborato dal 4,7% al 2,0% (con
+i rilevatori nuovi); 162 dei 3.000 elementi di controllo cambiano, tutti letti.
+Il lotto 9 (offset 8000) misura la 0.4.10, primo con il giudice a 100 coppie.
 
 ### Revisione umana e Curator (2026-11-17)
 

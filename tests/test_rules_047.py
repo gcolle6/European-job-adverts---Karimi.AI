@@ -115,7 +115,7 @@ def test_cores_047(atom_, core, level):
     ("Practical experience building applications with Generative AI and LLMs", ["Generative AI", "LLMs"]),
     ("Strong experience in software development with a focus on application security", ["software development"]),
     ("Passion for development", ["Passion for development"]),
-    ("Strong problem-solving and critical thinking skills", ["problem-solving", "critical thinking"]),
+    ("Strong problem-solving and critical thinking skills", ["problem solving", "critical thinking"]),  # rules 0.4.10, the user's review of batch 8: one group
     ("Willingness to travel to the United States for business purposes",
      ["Willingness to travel to the United States"]),
     ("1 year minimum with Boomi", ["Boomi"]),

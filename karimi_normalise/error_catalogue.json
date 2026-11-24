@@ -1,6 +1,6 @@
 {
   "about": "The archivist's catalogue: every kind of error found so far, why it happened, what fixed it and what guards it. Edited by a person; the archivist reads it on every run (archivist.py). No requirement text from Karimi's postings except the short examples a person chose.",
-  "updated": "2026-11-23",
+  "updated": "2026-11-24",
   "entries": [
     {
       "id": "degree_not_read",
@@ -957,6 +957,118 @@
       "title": "A word in front of the frame emptied the key",
       "cause": "'A clear', 'Successful', 'A first successful' took the core, then went as a level word, and the object after the preposition was left in extra.",
       "example": "A clear understanding of data structures -> empty key, 'of data structures' in extra"
+    },
+    {
+      "stage": "normalisation",
+      "found": "2026-11-24",
+      "found_by": "review",
+      "status": "resolved",
+      "resolved_in": "0.4.10",
+      "guard": "tests/test_rules_0410.py::test_review_and_agents_of_batch_8",
+      "rule_files": [
+        "karimi/normalise_req.py"
+      ],
+      "id": "soft_skill_ungrouped",
+      "detector": "soft_skill_ungrouped",
+      "title": "One soft skill spread over several groups",
+      "cause": "Each spelling of a soft skill made a group of its own; the user asked for one group each (2026-11-24).",
+      "example": "team spirit, collaborative mindset, work in a team -> three groups instead of teamwork"
+    },
+    {
+      "stage": "splitting",
+      "found": "2026-11-24",
+      "found_by": "review",
+      "status": "resolved",
+      "resolved_in": "0.4.10",
+      "guard": "tests/test_rules_0410.py::test_review_and_agents_of_batch_8",
+      "rule_files": [
+        "karimi/atomise.py"
+      ],
+      "id": "names_slashed",
+      "detector": "names_slashed",
+      "title": "Two languages or tools joined by a slash kept as one",
+      "cause": "A slash was read as one name written two ways; between two different languages or tools it is two requirements. Product pairs such as CI/CD stay whole.",
+      "example": "proficient in C++/Python -> one key instead of C++ and Python"
+    },
+    {
+      "stage": "splitting",
+      "found": "2026-11-24",
+      "found_by": "review",
+      "status": "resolved",
+      "resolved_in": "0.4.10",
+      "guard": "tests/test_rules_0410.py::test_review_and_agents_of_batch_8",
+      "rule_files": [
+        "karimi/atomise.py"
+      ],
+      "id": "named_tail_left",
+      "detector": "named_tail_left",
+      "title": "A second frame with its own names kept in the first requirement",
+      "cause": "'X with experience in Y and Z' was read as one requirement about X, the tools after it glued on.",
+      "example": "Expert-level SQL with experience in two databases -> one key instead of three"
+    },
+    {
+      "stage": "normalisation",
+      "found": "2026-11-24",
+      "found_by": "review",
+      "status": "resolved",
+      "resolved_in": "0.4.10",
+      "guard": "tests/test_rules_0410.py::test_review_and_agents_of_batch_8",
+      "rule_files": [
+        "karimi/normalise_req.py"
+      ],
+      "id": "certification_key",
+      "detector": "certification_key",
+      "title": "'Certification' as the requirement, the certified name aside",
+      "cause": "'Certification for' a name was read as a name and what it is for; the name is what is asked.",
+      "example": "Certification for an architecture framework -> 'Certification' instead of the framework"
+    },
+    {
+      "stage": "normalisation",
+      "found": "2026-11-24",
+      "found_by": "agent",
+      "status": "resolved",
+      "resolved_in": "0.4.10",
+      "guard": "tests/test_rules_0410.py::test_review_and_agents_of_batch_8",
+      "rule_files": [
+        "karimi/atomise.py"
+      ],
+      "id": "doctor_degree",
+      "detector": "degree_not_read",
+      "title": "A doctorate written 'Doctor's degree' not read",
+      "cause": "The degree reader knew PhD and doctorate but not the translator's 'Doctor's degree' (17 rows of batch 8).",
+      "example": "Doctor's degree in a field -> left outside the education space"
+    },
+    {
+      "stage": "splitting",
+      "found": "2026-11-24",
+      "found_by": "agent",
+      "status": "resolved",
+      "resolved_in": "0.4.10",
+      "guard": "tests/test_rules_0410.py::test_review_and_agents_of_batch_8",
+      "rule_files": [
+        "karimi/atomise.py"
+      ],
+      "id": "verbs_before_list",
+      "detector": "verb_run_left",
+      "title": "Verbs before a list of objects kept together",
+      "cause": "The verb split ran on the segment only; once the list was split, each atom still held both verbs.",
+      "example": "monitor and manage availability, performance -> 'monitor and manage availability'"
+    },
+    {
+      "stage": "splitting",
+      "found": "2026-11-24",
+      "found_by": "agent",
+      "status": "resolved",
+      "resolved_in": "0.4.10",
+      "guard": "tests/test_rules_0410.py::test_review_and_agents_of_batch_8",
+      "rule_files": [
+        "karimi/atomise.py"
+      ],
+      "id": "header_glued",
+      "detector": "comma_in_key",
+      "title": "A named header glued onto each of its common-noun items",
+      "cause": "'Header: a, b, c' under a named header was distributed like a frame; the items are its sub-topics.",
+      "example": "Deep JVM internals: memory model, garbage collection -> 'JVM internals memory model'"
     }
   ]
 }

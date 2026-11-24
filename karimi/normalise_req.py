@@ -51,6 +51,7 @@ MT_FIXES = [
     (r"\bin-depth learning\b", "deep learning"),
     # rules 0.4.8: the Dutch `is een pré` (a plus) came out `is a preview` / `is a pré`
     (r"\b(is|are)\s+an?\s+(?:preview|pré|pre)\b(?!-)", r"\1 a plus"),
+    (r"\b(is|are)\s+an?\s+pre-requisite\b", r"\1 a plus"),
 ]
 _MT_FIXES = [(re.compile(p, re.I), r) for p, r in MT_FIXES]
 
@@ -986,11 +987,36 @@ def _review_045(core: str) -> tuple[str, str]:
     # word (the user, 2026-11-23): `keen eye for spotting patterns` is spotting patterns,
     # `Passion for development` stays
     m = re.match(r"^(?:an?\s+)?(?:(?:keen|good|great|sharp|real|genuine|deep|strong)\s+)?"
-                 r"(?:eye|passion|appetite|enthusiasm|love|appreciation|flair)\s+(?:for|towards?)\s+(?=\S)|"
+                 r"(?:eye|passion|appetite|enthusiasm|love|appreciation|flair)\s+(?:for|towards?|of)\s+(?=\S)|"
                  r"^passionate\s+about\s+(?=\S)", c, re.I)
-    if m and (len(c[m.end():].split()) >= 2 or _name_runs(c[m.end():])) \
+    if m and (len(c[m.end():].split()) >= 2 or _name_runs(c[m.end():])
+              or soft_group(c[m.end():]) != c[m.end():]) \
             and not re.match(r"details?\b", c[m.end():], re.I):
         c, moved = c[m.end():], moved + [m.group().strip()]
+    # [2] `data structuring for real-time business evaluation`: what it is for, aside
+    m = re.match(r"^(?P<x>(?:[\w-]+\s+){0,2}[\w-]+(?:ing|ion|ment|sis))\s+(?P<y>for\s+.+)$", c, re.I)
+    # not an attitude (`passion for sustainability` keeps its object)
+    if m and not _name_runs(m.group("x")) and not _name_runs(m.group("y")) and not re.search(
+            r"\b(?:passion|affection|ambition|motivation|dedication|commitment|attention|devotion|"
+            r"inclination|predisposition|disposition|fascination|admiration|appreciation|training|education|"
+            r"apprenticeship|qualification|preparation|certification)$", m.group("x"), re.I) \
+            and not re.fullmatch(r"[\w-]+ing", m.group("x")):
+        c, moved = m.group("x"), moved + [m.group("y")]
+    # [30] `being the primary interface with technical or public-sector customers`
+    m = re.match(r"^(?:being|act(?:ing)?\s+as|serv(?:e|ing)\s+as)\s+(?:the\s+|a\s+)?(?:(?:primary|main|first|single|key)\s+)?"
+                 r"(?:interface|point\s+of\s+contact|contact\s+person)\s+(?:with|for)\s+(?P<y>.*?)\s*(?:customers|clients)$",
+                 c, re.I)
+    if m:
+        c, moved = "interface with clients", moved + ([m.group("y").strip(" ,")] if m.group("y").strip(" ,") else [])
+    # [95] `Certification for TOGAF`: the name is what is asked
+    m = re.match(r"^(?:certifications?|certificates?|certified)\s+(?:for|in|of|on)\s+(?P<y>.+)$", c, re.I)
+    if m and _name_runs(m.group("y")):
+        c, moved = m.group("y"), moved + ["certification"]
+    c = re.sub(r"^(?:across|within|with)\s+(?=\S)", "", c, flags=re.I)
+    # `predictive modeling to support demand planning`: what it is for, aside (9 rows)
+    m = re.match(r"^(?P<x>.+?)\s+(?P<y>to\s+(?:support|enable|drive|improve|inform|deliver|help|power)\s+.+)$", c, re.I)
+    if m and len(m.group("x").split()) <= 4 and not _name_runs(m.group("y")):
+        c, moved = m.group("x"), moved + [m.group("y")]
     # `Very good to good grades`
     c = re.sub(r"^(?:(?:very\s+)?good\s+)?to\s+(?=good\b)", "", c, flags=re.I)
     # `supporting production systems with high availability`: how, for `extra`
@@ -1093,6 +1119,8 @@ _GENERIC_046_RE = re.compile(r"^(?P<x>.+?)\s+(?P<y>domain|methodolog(?:y|ies)|so
                              r"server\s+environments?|landscapes?|ecosystems?)$", re.I)
 # `SonarQube for CI/CD and code quality`: the name, and what it is for
 _NAME_FOR_RE = re.compile(r"^(?!(?:Eye|Bias|Appetite|Desire|Passion|Love|Flair|Talent|Feel|Nose|Knack|Hunger|Drive|"
+                          r"Certifications?|Certificates?|Certified|Enthusiasm|Interest|Curiosity|Affinity|"
+                          r"Appreciation|Motivation|Commitment|"
                           r"Taste)\b)(?P<x>[A-Z][\w./+#-]*(?:\s+[A-Z][\w./+#-]*)?)\s+(?P<y>for\s+.+)$")
 # `training and evaluating machine learning models`: the activities say how (2026-10-29)
 _GERUND_PAIR_RE = re.compile(r"^\w+ing\s+(?:and|or|&)\s+\w+ing\s+(?=\S)", re.I)
@@ -1430,7 +1458,12 @@ def decompose(text: str) -> dict:
             # `IT affinity (SQL knowledge)` is SQL (review of batch 4)
             out["extra"] = " ".join(x for x in (out["core"], out["extra"].replace(held[0], "").strip()) if x)
             out["core"] = held[0]
-        if out["head_group"] == "experience" and re.search(r"\b(?:sector|industry)$", out["core"], re.I):
+        m = re.match(r"^(?P<x>.+?\s+in\s+.+?)\s+(?P<y>or\s+(?:an?\s+|any\s+)?other\s+.+)$", out["core"], re.I)
+        if m and out["head_group"] == "experience":
+            out["core"] = m.group("x")
+            out["extra"] = " ".join(x for x in (out["extra"], m.group("y")) if x)
+        if out["head_group"] == "experience" and re.search(r"\b(?:sector|industry)$", out["core"], re.I) \
+                and not re.search(r"\s(?:in|at)\s", out["core"]):
             out["core"] = f"{out['core']} experience"       # review of batch 5: `health sector experience`
         if out["core"].lower() in ("work", "relevant work", "professional work") and out["head_group"] == "experience":
             out["core"] = "work experience"     # `3 years of relevant work experience` (review of batch 3)
@@ -1488,6 +1521,11 @@ def decompose(text: str) -> dict:
         if canon(out["core"]) in JUNK or all(w.lower() in LEVEL_WORDS and not (len(w) > 1 and w.isupper())
                                                              for w in out["core"].split()):
             out["core"] = ""
+        # `Exceptional academic track record` was `academic` (7 rows, batch 8)
+        if out["head"] == "track record" and out["core"].lower() == "academic":
+            out["core"] = "academic track record"
+        # a key never opens on a preposition (batch 8: `Comfortable working across IT` gave `across IT`)
+        out["core"] = re.sub(r"^(?:across|within|with)\s+(?=\S)", "", out["core"], flags=re.I)
         # [55] the people worked with: `experience with in-house teams and external agencies`
         if out["head_group"] == "experience" and _SETTING_ONLY_RE.match(out["core"]) \
                 and not _PEOPLE_ONLY_RE.match(out["core"]) and not out["core"].startswith("experience"):
@@ -1645,6 +1683,16 @@ _SOFT_GROUPS = [
         r"thinker|profile))?|analytic\s+thinking|(?:ability\s+to\s+)?think\s+analytically|analytical\s+and\s+logical"
         r"(?:\s+thinking)?|analytically\s+minded"),
      "analytical skills"),
+    (re.compile(
+        r"(?:(?:the\s+)?ability\s+to\s+)?adapt(?:ing)?(?:\s+(?:quickly|easily|well))?\s+to\s+(?:an?\s+|the\s+)?"
+        r"(?:(?:rapidly|fast|constantly|quickly|continuously)\s+)?(?:chang(?:ing|e)|evolving|new|different)"
+        r"(?:\s+(?:environment|priorit(?:y|ie)|requirement|context|situation|circumstance|technolog(?:y|ie)|need))?|"
+        r"adaptab(?:ility|le)|adaptiveness|(?:the\s+)?ability\s+to\s+adapt|adapt\s+quickly"),
+     "adaptability"),
+    (re.compile(
+        r"(?:(?:pleasure|joy|fun|enjoyment|passion|love|delight)\s+(?:to|in|of|for|at)\s+)?solv(?:e|ing)\s+problem|"
+        r"problem\s+solving(?:\s+skill)?|problem\s+solver"),
+     "problem solving"),
 ]
 
 
