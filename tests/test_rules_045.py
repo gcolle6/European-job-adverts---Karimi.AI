@@ -57,10 +57,10 @@ def _keys(item: str) -> list[str]:
     ("Excellent communication skills targeted towards engineering, product, or other stakeholders",
      ["communication"]),
     # one soft skill, one word
-    ("Ability to work independently and collaboratively", ["autonomy", "collaboration"]),
-    ("Ability to solve problems and autonomy", ["problem solving", "Autonomy"]),
+    ("Ability to work independently and collaboratively", ["autonomy", "teamwork"]),  # rules 0.4.10: one group per soft skill (the user, 2026-11-24)
+    ("Ability to solve problems and autonomy", ["problem solving", "autonomy"]),  # rules 0.4.10: one group per soft skill (the user, 2026-11-24)
     ("Ability to work as a team", ["teamwork"]),
-    ("Teamwork & Communication Strength", ["Teamwork", "Communication"]),
+    ("Teamwork & Communication Strength", ["teamwork", "Communication"]),  # rules 0.4.10: one group per soft skill (the user, 2026-11-24)
     ("Ability to write clear, accurate, and actionable product specifications", ["writing"]),
     ("Minimum 3 years of relevant work experience", ["work experience"]),
     ("Proven experience in leading CoE / practice / large delivery teams",

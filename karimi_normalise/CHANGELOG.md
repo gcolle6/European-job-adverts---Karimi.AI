@@ -551,6 +551,15 @@ Format: version · date · what changed · how it was measured.
   X and Y` is two passions, one per object (the user, reversing the one-ask
   reading 0.4.9 gave note [47]). The check's judge now reads 100 topic pairs
   per run, was 30 (`check.SAMPLE`, deployed on 0.4.9 the same day).
+  2026-11-24, the user: one group per soft skill (`normalise_req.soft_group`,
+  on the `canon` form). Working independently, independent working methods,
+  autonomous are `autonomy`; collaboration, collaborative mindset, team spirit,
+  team player, working in a team are `teamwork`; analytical, analytical
+  thinking, mindset, spirit, working methods are `analytical skills`. Leading
+  or managing a team, `Microsoft Teams`, `analytics` and `analytical
+  problem-solving` stay as they are. `analytical and problem-solving` with no
+  frame is two skills too. Measured on the keys of batches 1-8: 1,023 rows join
+  analytical skills, 601 teamwork, 133 autonomy.
 
 ## Dictionary
 

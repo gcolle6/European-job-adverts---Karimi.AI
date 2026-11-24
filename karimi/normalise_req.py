@@ -1484,7 +1484,7 @@ def decompose(text: str) -> dict:
             out["extra"] = " ".join(x for x in (out["extra"], rest) if x)
         # Product names written several ways (`Golang`, `PowerBI`, `MS Office`):
         # one spelling, from a closed list (`ALIASES`). Then what names nothing.
-        out["core"] = ALIASES.get(canon(out["core"]), out["core"])
+        out["core"] = soft_group(ALIASES.get(canon(out["core"]), out["core"]))
         if canon(out["core"]) in JUNK or all(w.lower() in LEVEL_WORDS and not (len(w) > 1 and w.isupper())
                                                              for w in out["core"].split()):
             out["core"] = ""
@@ -1593,7 +1593,7 @@ ALIASES = {
     "team work": "teamwork", "work independently": "autonomy", "work autonomously": "autonomy",
     "work within a team": "teamwork", "work within a team environment": "teamwork",
     "work in a team environment": "teamwork", "working within a team environment": "teamwork",
-    "working independently": "autonomy", "work collaboratively": "collaboration",
+    "working independently": "autonomy", "work collaboratively": "teamwork",
     "solve problem": "problem solving", "problem solving skill": "problem solving",
     # rules 0.4.6, the review of batch 4
     "easy contact with colleague": "teamwork", "desire to learn": "willingness to learn",
@@ -1612,6 +1612,51 @@ ALIASES = {
     "the ability to make independent decision": "autonomy", "identify analytical thinking": "analytical thinking",
     "problem-solving thinking": "problem-solving", "problem solving thinking": "problem-solving",
 }
+# One group per soft skill, however it is written (the user, 2026-11-24): working
+# independently is autonomy; collaborative, team spirit, team player and working in a
+# team are teamwork; an analytical spirit, mindset or way of thinking is analytical
+# skills. Matched on the `canon` form (lower case, a hyphen as a space, the last word
+# singular). Leading or managing a team is not teamwork, analytics is a field.
+_SOFT_GROUPS = [
+    (re.compile(
+        r"(?:(?:a\s+)?high\s+(?:level\s+of\s+|degree\s+of\s+)?|thrive\s+on\s+a\s+high\s+level\s+of\s+)?autonomy|"
+        r"autonomou(?:s|sly)|independen(?:t|ce|tly)|independent\s+(?:work|working|working\s+method|working\s+style)|"
+        r"(?:(?:be\s+)?able\s+to\s+|ability\s+to\s+|comfortable\s+|capable\s+of\s+)?"
+        r"work(?:ing)?\s+(?:independently|autonomously)(?:\s+and)?|self\s+directed|self\s+reliant|self\s+reliance"),
+     "autonomy"),
+    (re.compile(
+        r"team\s*work|teamwork|team\s*player|teamlayer|collaborative\s+team\s+player|team\s+spirit|"
+        r"team\s+collaboration|team\s+orient(?:ed|ation)|team\s+minded|"
+        r"(?:effective\s+|good\s+|strong\s+)?(?:collaboration|teamwork|cooperation)(?:\s+skill)?|"
+        r"collaborative(?:\s+(?:mindset|spirit|approach|attitude|work|nature|personality))?|cooperative|"
+        r"spirit\s+of\s+(?:collaboration|cooperation|teamwork)|sense\s+of\s+teamwork|"
+        r"cross\s+functional\s+collaboration|(?:attitude|predisposition|aptitude|willingness|inclination)\s+"
+        r"(?:to|for|towards)\s+(?:teamwork|team\s+work|collaboration)|attitudine\s+al\s+lavoro\s+in\s+team|"
+        r"taste\s+for\s+collaborative\s+work|joy\s+of\s+(?:interdisciplinary\s+)?cooperation|"
+        r"collaborate(?:\s+effectively)?|work(?:ing)?\s+collaboratively(?:\s+in\s+a\s+team(?:\s+environment)?)?|"
+        r"(?:(?:be\s+)?able\s+to\s+|ability\s+to\s+)?work(?:ing)?(?:\s+(?:well|effectively))?\s+(?:as|in|within)\s+"
+        r"(?:a\s+|part\s+of\s+a\s+)?team(?:\s+(?:environment|setting))?|work\s+as\s+part\s+of\s+a\s+team|"
+        r"(?:collaborat(?:e|ing)|work(?:ing)?)(?:\s+(?:effectively|closely|well))?\s+(?:with|across|in)\s+"
+        r"(?:(?:cross\s+functional|multidisciplinary|interdisciplinary|remote|global|distributed|international)\s+)?team"),
+     "teamwork"),
+    (re.compile(
+        r"analytical(?:\s+(?:thinking|mindset|mind|spirit|working\s+method|power|reasoning|judgment|judgement|skill|"
+        r"capability|capabilitie|ability|abilitie|capacity|capacitie|approach|sense|aptitude|competence|competencie|"
+        r"thinker|profile))?|analytic\s+thinking|(?:ability\s+to\s+)?think\s+analytically|analytical\s+and\s+logical"
+        r"(?:\s+thinking)?|analytically\s+minded"),
+     "analytical skills"),
+]
+
+
+def soft_group(core: str) -> str:
+    """The group's one name for a soft skill written another way, else the core."""
+    c = canon(core)
+    for rx, name in _SOFT_GROUPS:
+        if rx.fullmatch(c):
+            return name
+    return core
+
+
 # Cores that name nothing once the frame and level are out: debris of a split.
 JUNK = {"of", "one", "you have", "ideally", "preferably", "minimum", "confirmed", "consolidated", "successful",
         "specific", "direct", "clear", "full", "high", "foundational", "general", "expert level", "senior level",

@@ -47,7 +47,7 @@ def _keys(item: str) -> list[str]:
     ('Experience leading and shipping large scope technical projects in collaboration with multiple experienced engineers',
      ['leading technical projects', 'shipping technical projects']),
     ('Good analytical and problem solving capabilities',
-     ['analytical', 'problem solving']),
+     ['analytical skills', 'problem solving']),  # rules 0.4.10: one group per soft skill (the user, 2026-11-24)
     ('Technical degree (preference in network system administration)',
      ['education: Degree in technical field']),
     ('Very good Python knowledge as well as experience with machine learning, statistics, data analysis and Databricks/Spark',
@@ -61,7 +61,7 @@ def _keys(item: str) -> list[str]:
     ('Hands-on experience working with both in-house teams and external agencies',
      ['experience with in-house teams and external agencies']),
     ('Strong stakeholder management and collaboration skills across teams and domains',
-     ['stakeholder management', 'collaboration']),
+     ['stakeholder management', 'teamwork']),  # rules 0.4.10: one group per soft skill (the user, 2026-11-24)
     ('3–6 years as a software engineer, solutions engineer, or technical partner/integration role',
      ['software engineer', 'solutions engineer', 'technical partner/integration role']),
     ('5+ years of experience as a Product Owner or in a similar role within Identity & Access Management (IAM)',
@@ -129,3 +129,17 @@ def test_placeholder_never_leaks():
     pos.prime([s])
     atoms, _ = atom.route(s)
     assert not any("@@" in a for a in atoms)
+
+
+@pytest.mark.parametrize("core, group", [
+    # one group per soft skill (the user, 2026-11-24, rules 0.4.10)
+    ("Independent working methods", "autonomy"), ("work independently", "autonomy"), ("autonomous", "autonomy"),
+    ("Collaborative mindset", "teamwork"), ("Team spirit", "teamwork"), ("team player", "teamwork"),
+    ("collaboration", "teamwork"), ("work in multidisciplinary teams", "teamwork"),
+    ("Analytical spirit", "analytical skills"), ("analytical thinking", "analytical skills"),
+    # not the same thing: leading a team, a product, a field
+    ("leading teams", "leading teams"), ("team management", "team management"), ("Microsoft Teams", "Microsoft Teams"),
+    ("analytics", "analytics"), ("analytical problem-solving", "analytical problem-solving"),
+])
+def test_soft_skill_groups(core, group):
+    assert normalise_req.soft_group(core) == group

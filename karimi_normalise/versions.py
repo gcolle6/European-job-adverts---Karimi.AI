@@ -19,7 +19,7 @@ import hashlib
 from pathlib import Path
 
 RULES_VERSION = "0.4.10"
-RULES_FINGERPRINT = "1dec360301644b6f"
+RULES_FINGERPRINT = "d676b1dee6562311"
 
 ROOT = Path(__file__).resolve().parents[1]
 # Every file whose change can change an output. `config.py` holds analysis

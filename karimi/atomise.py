@@ -2856,6 +2856,9 @@ def _review_045_rewrite(segment: str) -> str:
                r"outstanding|sound)\s+)?)(analytical|organi[sz]ational|communication|interpersonal|leadership|technical|"
                r"logical)\s+and\s+(problem[- ]solving|decision[- ]making)\s+(skills|capabilities|abilities|capacities)"
                r"(?=\s*[.;]?\s*$)", r"\1\2 \4 and \1\3 \4", s, flags=re.I)
+    s = re.sub(r"^((?:(?:strong|good|very\s+good|excellent|advanced|solid|demonstrated|proven|exceptional|outstanding|"
+               r"sound)\s+)?)(analytical)\s+and\s+(problem[- ]solving|decision[- ]making)\s*[.;]?$", r"\1\2 skills and \1\3 skills", s,
+               flags=re.I)
     # rules 0.4.9, the agents on batch 7 (about 100 degrees not read):
     # `Full degree`, `Professional degree`, `official Master`: the word says nothing the degree does not
     s = re.sub(r"\b(?:full|complete|completed|official|recogni[sz]ed|accredited|professional|formal)\s+"
