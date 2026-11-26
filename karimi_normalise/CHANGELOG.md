@@ -623,6 +623,30 @@ Format: version · date · what changed · how it was measured.
   output); of the 80 right, 6 change, all by the approved merges. Batch 9
   processed again: inspector 500 -> 328 flags (3.3% -> 2.1%). 3,000 random
   items of batches 1-9: 191 change, all read; the regressions found were fixed.
+- **0.4.12** · 2026-11-26 · batch 10 (rules 0.4.11, yellow 3.5%) and the user's
+  review (26 wrong of 100; the inspector flagged 5). *Review*: a run of praise
+  (`stable, scalable`, `horizontally scalable, mission-critical`) is one run and
+  goes aside, also after a verb of making; `write ... code` is programming; `work
+  independently and take ownership` is two; `think high-level about X and build
+  Y` is two clauses; `SQL for databases such as PostgreSQL` keeps SQL; `X
+  management on Y tools` is two; `Exemplary`; the Dutch `Teamspeler` is
+  teamwork; the activity before `using ... such as` is a requirement beside the
+  names; a concept in Title Case (`Object-Oriented Programming`) yields to the
+  names after it; `skills to investigate, reproduce, resolve` keeps what for
+  aside; `Independent and analytical approach` is autonomy and analytical skills;
+  channels after `across` are where; `ideally X or Y` keeps `ideally` on each;
+  `ECC` is not the Italian `ecc.`; `English level with ...` is English;
+  languages in a bracket are requirements; `Seven or more years`; `similar
+  positions` is prior experience; `eye for detail` is Detail oriented; `various`
+  and a closing `concepts` go aside. *Review page*: the head, level, years and
+  extra show beside each key. *Explorer*: Europe only, in the counts and on the
+  page (the user): a European country, or no country from the European export.
+  *Measured*: 22 of the 26 notes come out as written, one was already right in
+  its columns, 3 not (a long translated Chinese item, the Dutch `hbo- of
+  wo-opleiding` translated as vocational training, one too structured to rule);
+  of the 74 right, 1 changes (an empty key written as ''). Batch 10 processed
+  again: inspector 2.2% -> 2.1%. 3,000 random items of batches 1-10: 59 change,
+  all read; the regressions found were fixed.
 
 ## Dictionary
 

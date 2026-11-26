@@ -77,7 +77,7 @@ def _keys(item: str) -> list[str]:
     ('Deep JVM internals: memory model, garbage collection, JIT',
      ['JVM internals']),
     ('Detail-oriented with a structured approach to work',
-     ['Detail-oriented', 'structured approach to work']),
+     ['Detail oriented', 'structured approach to work']),  # rules 0.4.12: the user's review of batch 10 ([81])
     ('Experience designing and deploying services across Linux and Windows',
      ['services across Linux', 'services across Windows']),
     ('Self-motivated with a passion for renewable energy and sustainability',

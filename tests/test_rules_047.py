@@ -104,7 +104,7 @@ def test_cores_047(atom_, core, level):
 
 # The user's review of batch 5 (2026-11-23, 23 of 100 wrong): what the notes asked for
 @pytest.mark.parametrize("item, keys", [
-    ("Detail-oriented with a focus on design iteration", ["Detail-oriented"]),
+    ("Detail-oriented with a focus on design iteration", ["Detail oriented"]),  # rules 0.4.12: the user's review of batch 10 ([81])
     ("Ability to work independently and effectively in a dynamic environment", ["autonomy"]),
     ("Extensive experience as a Senior, Staff or Lead Software Engineer", ["Software engineering"]),  # rules 0.4.11: the merges of 2026-11-26
     ("Proven record of shipping and iterating on impactful products", ["shipping products"]),

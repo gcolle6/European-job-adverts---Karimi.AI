@@ -61,8 +61,13 @@ def draw(postings: list[dict], job: str, n: int = SIZE) -> list[dict]:
         for idx, rs in sorted(by_item.items()):
             items.append({"posting": str(p.get("id", "")), "item_idx": idx, "item": rs[0].get("item", ""),
                           "english": rs[0].get("item_split") if rs[0].get("translated") else None,
+                          # the complementary columns beside the key, so the person sees the
+                          # context the key leaves out (the user, 2026-11-26: `understanding`)
                           "made": [{"atom": r.get("atom", ""), "key": r.get("key", ""),
-                                    "counted": bool(r.get("counted", True))} for r in rs],
+                                    "counted": bool(r.get("counted", True)),
+                                    "head": r.get("head") or "", "level": r.get("level") or "",
+                                    "years": r.get("years_raw") or "", "extra": r.get("extra") or ""}
+                                   for r in rs],
                           "inspector": sorted({f for f in (inspector_flag(r) for r in rs) if f})})
     rnd = random.Random(f"review:{job}")
     picked = rnd.sample(items, min(n, len(items)))

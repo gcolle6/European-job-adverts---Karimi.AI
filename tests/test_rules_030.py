@@ -38,7 +38,7 @@ def _split(item: str) -> tuple[list[str], str]:
      ["Very good knowledge of German", "good knowledge of English"]),
     ("Very good knowledge of German and English", ["Very good knowledge of German", "Very good knowledge of English"]),
     ("Experience developing firmware using RTOS frameworks such as FreeRTOS or Zephyr",
-     ["Experience developing firmware using FreeRTOS", "Experience developing firmware using Zephyr"]),
+     ["Experience developing firmware", "Experience with FreeRTOS", "Experience with Zephyr"]),  # rules 0.4.12: the user's review of batch 10 ([36])
     ("Proficient with both Windows and Linux OS", ["Proficient with Windows OS", "Proficient with Linux OS"]),
     ("Reliable, proactive, and self-motivated", ["Reliable", "proactive", "self-motivated"]),
     ("2+ years of related experience as a Machine Learning or Software engineer",

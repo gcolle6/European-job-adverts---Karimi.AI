@@ -118,7 +118,7 @@ LEAD_CONJ_RE = re.compile(rf"^(?:{_CONJ})\s+", re.I)
 # guide is explicit that `or similar` is not a demand signal; the code kept it
 # and produced `Strong programming skills in languages such as similar`.
 STOP_RE = re.compile(
-    r"^(?:and|or|etc\.?|ecc\.?|usw\.?|others?|altri|more|(?:the\s+)?like|"
+    r"^(?:and|or|etc\.?|(?-i:ecc)\.?|usw\.?|others?|altri|more|(?:the\s+)?like|"
     r"(?:a|an|the|another|any|other)?\s*(?:closely\s+)?(?:related|similar|equivalent|relevant|comparable)"
     # any one word before the field since rules 0.4.3: `a closely related life-sciences field`
     r"(?:\s+(?:technical|scientific|academic|professional|[\w-]+(?=\s+(?:field|fields|area|areas|discipline|"
@@ -1538,7 +1538,8 @@ def _split_list(s: str) -> list[str]:
                 areas = []
             if len(areas) >= 2 and trig in ("across", "within") and all(re.fullmatch(
                     r"(?:the\s+)?(?:teams?|domains?|functions?|departments?|levels?|regions?|cultures?|time\s*zones?|"
-                    r"borders?|boundaries|organi[sz]ations?|disciplines?|business\s+units?|countries|geographies)",
+                    r"borders?|boundaries|organi[sz]ations?|disciplines?|business\s+units?|countries|geographies|"
+                    r"email|e-mail|push|sms|in-app|web|mobile|social|channels?)",
                     a, re.I) for a in areas):
                 return [clean(f"{p} {trig} {rest}") for p in _split_list(clean(before))]
             if len(areas) >= 2 and (eased != before or trig in ("across", "within")) \
@@ -1614,12 +1615,23 @@ def _split_list(s: str) -> list[str]:
                 # preposition (`Experience with`)
                 frame = list(TRIGGER_RE.finditer(head + " "))
                 head = (head + " ")[: frame[-1].end()] if frame else ""
+                use = re.match(r"^(?P<f>.*?\b(?:experience|knowledge|proficiency|expertise|familiarity|skills?)\b)\s+"
+                               r"(?P<a>.+?)\s+using\s*$", head.strip(), re.I)
+                if use:
+                    lead = [clean(f"{use.group('f')} {use.group('a')}")]
+                    head = f"{use.group('f')} with "
                 body = pre[len(head.rstrip()):] if head.strip() and pre.startswith(head.rstrip()) else ""
                 parts = [clean(LEAD_CONJ_RE.sub("", clean(p))) for p in SPLIT_RE.split(body) if clean(p)]
                 # two categories joined are one (`big data frameworks and technologies such as`);
                 # a name, or a real list, are requirements of their own
                 if len(parts) >= 3 or (len(parts) == 2 and _nr._name_runs(_unmasked(parts[0]))):
                     lead = [clean(f"{head} {p}") for p in parts[:-1]]
+                elif re.search(r"(?-i:[A-Z][\w.+#/-]*)\s+for\s+\S", body) or re.search(r"\s+using\s+\S", body):
+                    m_for = re.search(r"(?:^|\s)((?-i:[A-Z][\w.+#/-]*))\s+for\s+\S", body)
+                    m_use = re.match(r"^\s*(.+?)\s+using\s+\S", body)
+                    first = m_for.group(1) if m_for else (m_use.group(1) if m_use else "")
+                    if first:
+                        lead = [clean(f"{head} {first}")]
                 elif re.search(r"\b(?:role|position)s?\b", body, re.I):
                     # `3 years in a DevOps role with cloud platforms like AWS`: the role too
                     lead = [clean(f"{head} " + re.sub(r"(\b(?:role|position)s?)\b.*$", r"\1", body, flags=re.I))]
@@ -2828,6 +2840,62 @@ def _share_tail(s: str) -> str:
     return _SHARE_TAIL_RE.sub(one, s)
 
 
+_EVAL = (r"(?:stable|(?:horizontally\s+)?scalable|robust|reliable|secure|resilient|mission-critical|high-quality|"
+         r"high\s+quality|well-tested|well\s+tested|maintainable|performant|efficient|modern|production-grade|"
+         r"enterprise-grade|high-performance|fault-tolerant|highly\s+available)")
+_LANGS_0412 = (r"(?:English|German|French|Dutch|Spanish|Italian|Polish|Portuguese|Swedish|Danish|Norwegian|Finnish|Czech|"
+          r"Slovak|Hungarian|Romanian|Greek|Arabic|Chinese|Japanese|Russian|Ukrainian|Turkish|Flemish|Luxembourgish)")
+_CLAUSE_VERBS = r"(?:build|create|run|lead|manage|design|develop|deliver|drive|launch|own|execute|implement|define|ship)"
+
+
+def _review_0412(s: str) -> str:
+    """The user's review of batch 10 (rules 0.4.12), in the segment before it is split."""
+    s = s.replace("\u2011", "-").replace("\u2010", "-")
+    # [12] `stable, scalable system architectures`: praise in a list is one run of praise
+    for _ in range(3):
+        s = re.sub(rf"\b({_EVAL})\s*,\s*(?:and\s+)?(?={_EVAL}\b)", r"\1 ", s, flags=re.I)
+    # [28] `building horizontally scalable, mission-critical enterprise software and services`:
+    # after a verb the praise says how, not what
+    s = re.sub(rf"\b((?:build|develop|design|deliver|creat|implement|deploy|maintain|architect|engineer|ship|operat|"
+               rf"runn|scal)ing)\s+(?:{_EVAL}(?:\s*,\s*(?:and\s+)?|\s+and\s+|\s+))+(?=\S)", r"\1 ", s, flags=re.I)
+    # [19] `write high quality, well tested code` is programming
+    s = re.sub(r"\bto\s+writ(?:e|ing)\s+(?:[\w-]+,?\s+){0,4}?code\b", "in programming", s, flags=re.I)
+    s = re.sub(r"\bwrit(?:e|ing)\s+(?:[\w-]+,?\s+){0,4}?code\b", "programming", s, flags=re.I)
+    # [21] `work independently and take end-to-end ownership`: two asks
+    s = re.sub(r"\b(work(?:ing)?\s+(?:independently|autonomously))\s+and\s+(?!(?:collaboratively|effectively|"
+               r"efficiently|independently|autonomously|in\s|as\s|with|within)\b)(?=[a-z])", r"\1; ", s, flags=re.I)
+    # [24] `think high-level about user journeys and build campaigns`: a verb after `and`
+    # opens a clause of its own once an object is said
+    def clause(m: re.Match) -> str:
+        before = s[:m.start()]
+        last = before.split()[-1].lower() if before.split() else ""
+        if re.search(r"\b(?:think|thinking|reason|reasoning)\b.*\s(?:about|on)\s", before) and not (
+                last.endswith("ing") or re.fullmatch(_BASE_VERBS, last, re.I)):
+            return "; "
+        return m.group(0)
+    s = re.sub(rf"\s+and\s+(?={_CLAUSE_VERBS}\s+[a-z])", clause, s, flags=re.I)
+    # [26] `product management on developer tools`: the practice, and what it is on
+    s = re.sub(r"\b((?:[\w-]+\s+)?(?:management|engineering|development|marketing|design|sales|support))\s+on\s+"
+               r"((?:[\w-]+\s+){0,2}(?:tools|platforms|products|systems|applications))\b", r"\1, \2", s, flags=re.I)
+    # [48] `Independent and analytical approach to work`: two traits
+    _tr = r"(?:independent|analytical|structured|proactive|pragmatic|methodical|systematic|creative|rigorous|"\
+          r"autonomous|collaborative|organi[sz]ed)"
+    s = re.sub(rf"^({_tr})\s+and\s+({_tr})\s+(approach|mindset|way\s+of\s+working)(?:\s+to\s+work)?\s*\.?$",
+               r"\1 \3, \2 \3", s, flags=re.I)
+    # [72] `, ideally ECC or S/4HANA`: the names are asked too
+    # (each keeps its `ideally`: optional, not counted, as decided before)
+    s = re.sub(r",\s*(ideally|preferably)\s+((?-i:[A-Z])[\w./+#-]*)\s+or\s+(?=(?-i:[A-Z]))", r", \1 \2, \1 ", s,
+               flags=re.I)
+    # [75] `Advanced English level with excellent grammatical skills`: the language
+    s = re.sub(rf"\b({_LANGS_0412}\s+level)\s+with\s+.+$", r"\1", s)
+    # [84] `(English required, Dutch or French desired)`: languages in a bracket are asked
+    s = re.sub(rf"\s*\(([^()]*\b{_LANGS_0412}\b[^()]*)\)", r"; \1", s)
+    # [95] `Seven or more years`
+    s = re.sub(r"\b(one|two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen|\d{1,2})\s+or\s+more\s+(years?|yrs?)\b",
+               r"\1+ \2", s, flags=re.I)
+    return s
+
+
 def _single_example(atom: str) -> list[str]:
     """`GPU acceleration technologies (e.g., NVIDIA CUDA)`: one named example after `e.g.` is a
     requirement beside its category (the user's review of batch 9, [49]); a list of names
@@ -2868,7 +2936,8 @@ _SKILL_CONTEXT_RE = re.compile(
     r"to\s+(?:interact|communicate|work)\s+with)\s+.+?)\s*\.?$", re.I)
 # what a skill is for: `Basic programming skills to support scripting and configuration tasks`
 _SKILL_PURPOSE_RE = re.compile(
-    r"^(?P<s>.*?\bskills?)\s+(?P<p>to\s+(?:support|help|enable|perform|handle|automate)\b.+?)\s*\.?$", re.I)
+    r"^(?P<s>.*?\bskills?)\s+(?P<p>to\s+(?:support|help|enable|perform|handle|automate|investigate|reproduce|resolve|"
+    r"analy[sz]e|diagnose|identify|solve|tackle|address|troubleshoot)\b.+?)\s*\.?$", re.I)
 
 
 # `Any degree and 8+ years' relevant experience`: a degree and an experience (batch 4)
@@ -3019,6 +3088,7 @@ def _review_045_rewrite(segment: str) -> str:
     # two items only: after a longer list the tail is the last item's (`banking, insurance and
     # financial services`)
     s = _share_tail(s)
+    s = _review_0412(s)
     # [10] `Subject matter expertise in AML and compliance`
     s = re.sub(r"\bsubject[- ]matter\s+(?=expert)", "", s, flags=re.I)
     # [81] `passed test of RWTH Aachen`: the name

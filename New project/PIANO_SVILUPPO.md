@@ -552,6 +552,16 @@ Misure: 17 note su 20 escono come scritte; delle 80 giuste cambiano solo i nomi
 uniti; Inspector sul lotto 9 rielaborato dal 3,3% al 2,1%. Il lotto 10 (offset
 9000) misura la 0.4.11; dopo la sua revisione, il ritest dei lotti 6-10.
 
+**Giro del lotto 10 → regole 0.4.12, dizionario 0.4.3 (2026-11-26).** Il lotto
+10 (regole 0.4.11) è **giallo**: 3,5%, vicino al verde. Revisione della persona:
+**26 sbagliate su 100**; l'Inspector ne segnalava 5. Explore dal vivo
+ricostruito con le unioni anche sulle runs passate (1.144 → 1.074 requisiti).
+**Decisioni del responsabile**: Explore conta solo annunci europei (le runs
+contengono Stati Uniti, India, Cina...); la pagina di revisione mostra accanto
+alla chiave la cornice, il livello, gli anni e l'extra. Misure: 22 note su 26
+escono come scritte; Inspector sul lotto 10 dal 2,2% al 2,1%. Il lotto 11
+(offset 10000) misura la 0.4.12; ritest dei lotti 6-10 con la 0.4.12.
+
 ### Revisione umana e Curator (2026-11-17)
 
 * **Revisione di una persona**: l'unico numero che conta tutti gli errori,

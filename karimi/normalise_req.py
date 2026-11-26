@@ -545,7 +545,7 @@ LEVEL_WORDS = {
     "full": "strong", "foundational": "basic", "confirmed": "", "specific": "", "direct": "",
     "showable": "", "actual": "", "additional": "", "recent": "", "recently": "",
     "meaningful": "good",
-    "highest": "expert",
+    "highest": "expert", "exemplary": "strong",
     # rules 0.4.9, batch 7
     "mid-level": "good", "entry-level": "basic", "senior-level": "strong", "likely": "", "active": "good", "discrete": "basic", "production-level": "strong",
     "production-grade": "strong", "native-level": "expert", "consolidated": "", "well-founded": "good", "expert-level": "expert", "advanced-level": "strong",
@@ -854,6 +854,7 @@ _NAME_FOLLOWERS = _TECH_TAIL | {"software", "systems", "system", "workflows", "w
                                  "interfaces", "interface", "modules", "module",
                                  "solution", "solutions", "configuration", "implementation", "administration",
                                  "customization", "customisation", "migration", "maintenance", "support",
+                                 "rollouts", "rollout", "upgrades", "upgrade",
                                  "datastores", "databases", "web", "services",
                                  "models", "concepts", "methodology", "methodologies", "language", "languages"}
 _NAME_PREPS = {"as", "in", "for", "with", "on", "of", "to", "at", "from", "using", "and", "or", "within", "across"}
@@ -916,6 +917,7 @@ _GERUND_FRAME_RE = re.compile(r"^(?P<y>(?:(?:confidence|comfort)\s+)?(?:using|le
 _SHOW_RE = re.compile(r"^(?:exhibit|demonstrate|show|possess)\s+(?=\S)", re.I)
 _EVALUATIVE_ADJ_RE = re.compile(
     r"^(?:scalable|highly\s+available|available|robust|modern|popular|reliable|secure|large-scale|cutting-edge|"
+    r"stable|mission-critical|horizontally\s+scalable|maintainable|performant|high-quality|well-tested|"
     r"state-of-the-art|latest|current|common|well-known|clear|accurate|actionable|prioriti[sz]ed|other|"
     r"(?-i:responsible)(?=\s+AI\s+[a-z])|impactful)\s*,?\s+"
     r"(?:and\s+)?(?=\S)", re.I)
@@ -1023,6 +1025,30 @@ def _review_045(core: str) -> tuple[str, str]:
     m = re.match(r"^(?P<x>.+?)\s+(?P<y>to\s+(?:support|enable|drive|improve|inform|deliver|help|power)\s+.+)$", c, re.I)
     if m and len(m.group("x").split()) <= 4 and not _name_runs(m.group("y")):
         c, moved = m.group("x"), moved + [m.group("y")]
+    # the user's review of batch 10 (rules 0.4.12):
+    c = re.sub(r"^various\s+(?=\S)", "", c, flags=re.I)                               # [82]
+    for _ in range(3):                                                               # [12] a run of praise
+        m = _EVALUATIVE_ADJ_RE.match(c)
+        if not m or not c[m.end():].strip():
+            break
+        c, moved = c[m.end():], moved + [m.group(0).strip(" ,")]
+    # [24] `think high-level about user journeys`
+    m = re.match(r"^(?P<y>think\s+(?:high-level|strategically|critically|big\s+picture)?\s*(?:about|on)\s+)(?P<x>\S.*)$",
+                 c, re.I)
+    if m:
+        c, moved = m.group("x"), moved + [m.group("y").strip()]
+    # [15] `conducting research projects using both qualitative and quantitative methodologies`
+    c = re.sub(r"^conducting\s+(?=\S)", "", c, flags=re.I)
+    m = re.match(r"^(?P<x>.+?)\s+(?P<y>using\s+(?:both\s+)?[\w\s-]+?(?:methodologies|methods|approaches|techniques))$",
+                 c, re.I)
+    if m and not _name_runs(m.group("y")):
+        c, moved = m.group("x"), moved + [m.group("y")]
+    # [70] channels after `across` are where
+    m = re.match(r"^(?P<x>.+?)\s+(?P<y>across\s+(?:email|e-mail|push|sms|in-app|web|mobile|social)"
+                 r"(?:\s*,?\s*(?:and\s+|or\s+)?(?:email|e-mail|push|sms|in-app|web|mobile|social))*(?:\s+channels?)?)$",
+                 c, re.I)
+    if m:
+        c, moved = m.group("x"), moved + [m.group("y")]
     # the user's review of batch 9 (rules 0.4.11):
     # [71] `Highest level of technical expertise in` is the frame
     c = re.sub(r"^(?:the\s+)?highest\s+level\s+of\s+(?=\S)", "", c, flags=re.I)
@@ -1117,6 +1143,9 @@ def _review_045(core: str) -> tuple[str, str]:
         # `role within IT / Data` keeps it: `role` alone would name nothing
         c, moved = m.group("x"), moved + [m.group("y")]
     m = _GENERIC_046_RE.match(c)
+    if m and m.group("y").lower() == "concepts" and re.search(
+            r"\b(?:prove|explain|understand|learn|master|teach|test|validate|apply|develop|design|new)$", m.group("x"), re.I):
+        m = None
     if m and re.match(r"(?:server\s+environments?|landscapes?|ecosystems?)$", m.group("y"), re.I) \
             and not _name_runs(m.group("x")):
         m = None
@@ -1150,7 +1179,7 @@ _CONTEXT_046_RE = re.compile(
     r"to\s+interact\s+with\s+.+|with\s+large\s+projects?)\s*$", re.I)
 # a word after the thing that adds nothing: `SQL Domain`, `Data Analytics Methodologies`,
 # `Python software development`, `testing domain`
-_GENERIC_046_RE = re.compile(r"^(?P<x>.+?)\s+(?P<y>domain|methodolog(?:y|ies)|software\s+development|"
+_GENERIC_046_RE = re.compile(r"^(?P<x>.+?)\s+(?P<y>domain|methodolog(?:y|ies)|software\s+development|concepts|"
                              r"server\s+environments?|landscapes?|ecosystems?)$", re.I)
 # `SonarQube for CI/CD and code quality`: the name, and what it is for
 _NAME_FOR_RE = re.compile(r"^(?!(?:Eye|Bias|Appetite|Desire|Passion|Love|Flair|Talent|Feel|Nose|Knack|Hunger|Drive|"
@@ -1327,6 +1356,8 @@ def decompose(text: str) -> dict:
                          and re.search(r"\b(?:environments?|industr(?:y|ies)|sectors?|teams?|clients?|projects?|"
                                        r"markets?)\s*$", post_obj, re.I)) \
                 and (not _name_runs(" ".join(object_words))
+                     or (len(object_words) >= 2
+                         and all(re.search(r"(?:ing|ion|ed|ment|ity|ics|ure|ance|ence)$", w.lower()) for w in object_words))
                      or (len(object_words) == 1 and pre and pre[0] == object_words[0]
                          and re.match(r"(?:of|in|with|on)\s", post, re.I)
                          and re.fullmatch(r"[A-Z][a-z]+(?:-[a-z]+)*", object_words[0])
@@ -1374,9 +1405,10 @@ def decompose(text: str) -> dict:
             core = w.group("x")
         elif _SETTING_ONLY_RE.match(core):
             core = f"experience in {core}"
-        if re.fullmatch(r"(?:an?\s+|the\s+)?(?:relevant|similar|comparable|related|equivalent)\s+"
-                        r"(?:roles?|positions?|capacity|capacities|functions?)", core, re.I):
-            core = ""
+        if re.fullmatch(r"(?:in\s+)?(?:an?\s+|the\s+)?(?:relevant|similar|comparable|related|equivalent)\s+"
+                        r"(?:roles?|positions?|capacity|capacities|functions?|jobs?)", core, re.I) \
+                or (not core.strip() and re.search(r"\b(?:similar|comparable)\s+(?:roles?|positions?|jobs?)\b", text, re.I)):
+            core = "prior experience"
         out.update(head="(years)", head_group="experience", core=core)
     else:
         # No frame noun: degree words in front are still the level, not the
@@ -1564,6 +1596,10 @@ def decompose(text: str) -> dict:
         # `Exceptional academic track record` was `academic` (7 rows, batch 8)
         if out["head"] == "track record" and out["core"].lower() == "academic":
             out["core"] = "academic track record"
+        if out["head_group"] == "experience" and re.fullmatch(r"(?:positions?|roles?|jobs?|functions?)", out["core"],
+                                                                  re.I) and re.search(r"\b(?:similar|comparable|equivalent|"
+                                                                                      r"relevant)\b", text, re.I):
+            out["core"] = "prior experience"
         # a key never opens on a preposition (batch 8: `Comfortable working across IT` gave `across IT`)
         out["core"] = re.sub(r"^(?:across|within|with)\s+(?=\S)", "", out["core"], flags=re.I)
         # [55] the people worked with: `experience with in-house teams and external agencies`
@@ -1776,7 +1812,11 @@ _MERGES = [(re.compile(p), name) for p, name in [
     (r"curiosity(?:\s+for\s+new\s+technologie)?", "Curiosity"),
     (r"fun\s+with\s+teamwork", "teamwork"),
     (r"(?:thrive\s+in\s+a\s+)?fast\s+paced\s+environment", "Fast-paced environment"),
-    (r"eye(?:\s+for\s+detail)?", "Eye for detail"),
+    (r"(?:(?:an?\s+)?(?:sharp|keen|good|great|strong)\s+)?eye(?:\s+for\s+details?)?|detail\s+oriented",
+     "Detail oriented"),
+    (r"teamspeler(?:\s+in\s+.+)?|team\s*player(?:\s+in\s+an?\s+[\w\s-]+team)?", "teamwork"),
+    (r"independent\s+(?:approach|mindset|way\s+of\s+working)", "autonomy"),
+    (r"microservices?(?:\s+environment)?", "Microservices"),
     (r"mentoring(?:\s+engineer)?", "Mentoring"),
     (r"coordination(?:\s+of\s+interdisciplinary\s+team)?", "Coordination"),
     (r"international(?:\s+environment)?", "International environment"),

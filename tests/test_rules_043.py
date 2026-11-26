@@ -125,7 +125,7 @@ def test_degrees_from_batch_2(item, keys):
     ("Experience gathering, structuring, and documenting functional requirements",
      ["gathering functional requirements", "structuring functional requirements",
       "documenting functional requirements"]),  # changed 2026-11-23: verbs kept, one per verb (the user's review of batch 6)
-    ("Practical knowledge about microservices and REST API", ["microservices", "REST APIs"]),
+    ("Practical knowledge about microservices and REST API", ["Microservices", "REST APIs"]),  # rules 0.4.12: the user's review of batch 10 ([36])
     ("Qualifications/experience/knowledge of data science is a major advantage", ["Data science"]),  # rules 0.4.11: the merges of 2026-11-26
     ("CATIA V6-Knowledge Advantageous", ["CATIA V6"]),
     ("At least five years of progressively responsible experience in software analysis, design, development and "

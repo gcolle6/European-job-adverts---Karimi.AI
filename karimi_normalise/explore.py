@@ -94,7 +94,29 @@ COUNTRY_EN = {
     "LU": "Luxembourg", "LT": "Lithuania", "US": "United States", "USA": "United States", "IN": "India",
     "CA": "Canada", "BR": "Brazil", "JP": "Japan", "KE": "Kenya", "NG": "Nigeria", "MX": "Mexico",
     "CN": "China", "SG": "Singapore", "AU": "Australia",
+    "HR": "Croatia", "EE": "Estonia", "LV": "Latvia", "SI": "Slovenia", "MT": "Malta", "CY": "Cyprus",
+    "RS": "Serbia", "IS": "Iceland", "AE": "United Arab Emirates", "Hrvatska": "Croatia", "Suisse": "Switzerland",
+    "Svizzera": "Switzerland", "Belgique": "Belgium", "Österreich ": "Austria", "Lietuva": "Lithuania",
 }
+
+# The explorer counts European adverts only (the user, 2026-11-26): the new postings sent
+# through the API come from everywhere (the United States, India, China ...). Geographic
+# Europe: the EU, the EEA, the United Kingdom, Switzerland, the Western Balkans, Moldova,
+# Ukraine and the microstates; not Turkey, the Caucasus or Russia. An advert with no
+# country counts only when it comes from the European export.
+EUROPE = {
+    "Austria", "Belgium", "Bulgaria", "Croatia", "Cyprus", "Czechia", "Denmark", "Estonia", "Finland", "France",
+    "Germany", "Greece", "Hungary", "Ireland", "Italy", "Latvia", "Lithuania", "Luxembourg", "Malta", "Netherlands",
+    "Poland", "Portugal", "Romania", "Slovakia", "Slovenia", "Spain", "Sweden",
+    "Iceland", "Liechtenstein", "Norway", "Switzerland", "United Kingdom",
+    "Albania", "Bosnia and Herzegovina", "Kosovo", "Montenegro", "North Macedonia", "Serbia", "Moldova", "Ukraine",
+    "Andorra", "Monaco", "San Marino", "Vatican City",
+}
+
+
+def in_europe(rows: list[dict]) -> list[dict]:
+    """The adverts the explorer counts: a European country, or no country from the export."""
+    return [r for r in rows if r.get("country") in EUROPE or (not r.get("country") and r.get("src") == "export")]
 
 # Objects that name no requirement on their own: fragments of the frame.
 GENERIC = {
@@ -312,7 +334,7 @@ def aggregate(rows: list[dict], categorise, source: dict, _named_once: bool = Fa
     """
     from karimi import normalise_req
 
-    rows = unique(rows)
+    rows = in_europe(unique(rows))
     rows = [{**r, "r": [_merge_q(q) for q in r["r"]]} for r in rows]
     ads = pd.DataFrame([{"posting_id": r["k"], "company": r["c"] or None, "country": r["country"],
                          "seniority": r["sen"], "title_name": r["role"]} for r in rows])
@@ -464,7 +486,7 @@ def rebuild(store, judge_url: str | None = None) -> dict:
             rows = _jsonl(store, f"{RUNS}{d['job']}.jsonl")
             run_rows_all += rows
             used.append(d["job"])
-    rows = unique(base + run_rows_all)
+    rows = in_europe(unique(base + run_rows_all))
     n_runs = sum(1 for r in rows if r["src"] in used)
     n_export = len(rows) - n_runs
     asked = read_json(store, CATEGORIES) or {}
