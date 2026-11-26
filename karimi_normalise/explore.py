@@ -56,6 +56,7 @@ import hashlib
 import json
 import os
 from collections import Counter
+from functools import lru_cache
 from pathlib import Path
 
 import pandas as pd
@@ -156,6 +157,7 @@ def keep(r: dict) -> str | None:
     return None
 
 
+@lru_cache(maxsize=None)
 def _merged(obj: str) -> str:
     """The user's merges and soft-skill groups (2026-11-24, 2026-11-26), on runs made
     before them too: `team spirit` and `teamwork` are one requirement in the explorer."""
@@ -163,6 +165,19 @@ def _merged(obj: str) -> str:
 
     g = normalise_req.soft_group(obj)
     return g.lower() if g != obj else obj
+
+
+@lru_cache(maxsize=None)
+def _merged_core(core: str) -> str:
+    from karimi import normalise_req
+
+    return normalise_req.soft_group(core)
+
+
+def _merge_q(q: list) -> list:
+    """One stored requirement with today's merges: the rows of past runs are kept as
+    they were made, so the merges are applied when the explorer is built (2026-11-26)."""
+    return [_merged(q[0]), q[1], q[2], q[3], q[4] if q[2] == "education" else _merged_core(q[4]), *q[5:]]
 
 
 def _req(r: dict) -> list:
@@ -298,6 +313,7 @@ def aggregate(rows: list[dict], categorise, source: dict, _named_once: bool = Fa
     from karimi import normalise_req
 
     rows = unique(rows)
+    rows = [{**r, "r": [_merge_q(q) for q in r["r"]]} for r in rows]
     ads = pd.DataFrame([{"posting_id": r["k"], "company": r["c"] or None, "country": r["country"],
                          "seniority": r["sen"], "title_name": r["role"]} for r in rows])
     a = pd.DataFrame([{"posting_id": r["k"], "obj": q[0], "req_group": q[1], "req_space": q[2],
