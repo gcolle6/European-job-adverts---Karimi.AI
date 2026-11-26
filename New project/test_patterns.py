@@ -182,7 +182,7 @@ KEY_CASES = [
     ("Proficiency in SQL", "SQL", "advanced", None),
     ("Familiarity with SQL", "SQL", "basic", None),
     ("SQL skills", "SQL", "", None),
-    ("Minimum of 3 years' experience in data engineering", "data engineering", "", 3),
+    ("Minimum of 3 years' experience in data engineering", "Data engineering", "", 3),  # rules 0.4.11: the merges of 2026-11-26
     ("5 years in software development", "software development", "", 5),
     ("Expertise in Power BI, particularly in complex data modeling", "Power BI", "expert", None),
     ("Fluent knowledge of German written and spoken", "language: German", "strong", None),

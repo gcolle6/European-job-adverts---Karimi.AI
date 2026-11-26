@@ -40,7 +40,7 @@ def _keys(item: str) -> list[str]:
     ("Higher education within business, finance, data science or a related field",
      ["education: Degree in business", "education: Degree in finance", "education: Degree in data science"]),
     ("Hbo work and think level and at least 5 years experience within cybersecurity",
-     ["education: Bachelor (any field)", "cybersecurity"]),
+     ["education: Bachelor (any field)", "Cybersecurity"]),  # rules 0.4.11: the merges of 2026-11-26
     ("Bachelor’s degree with preference for Information Systems or Computer Science",
      ["education: Bachelor in Information Systems", "education: Bachelor in Computer Science"]),
     ("Bachelor's degree or equivalent higher education qualification in Information Technology, Computer Science",
@@ -55,7 +55,7 @@ def _keys(item: str) -> list[str]:
       "education: Master in Computer Science", "education: Master in Electrical Engineering"]),
     ("Good Bachelor's or Master's degree, ideally with economic relevance",
      ["education: Bachelor (any field)", "education: Master (any field)", "economic relevance"]),
-    ("HBO+/WO work and thinking level within IT", ["education: Bachelor in IT", "education: Degree in IT"]),
+    ("HBO+/WO work and thinking level within IT", ["education: Bachelor in Information Technology", "education: Degree in Information Technology"]),  # rules 0.4.11: the merges of 2026-11-26
     ("Current studies at the University of Applied Sciences Upper Austria Campus Hagenberg in the fields of computer "
      "science, software engineering or a similar subject",
      ["education: Student in computer science", "education: Student in software engineering"]),

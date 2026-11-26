@@ -43,7 +43,7 @@ def _keys(item: str) -> list[str]:
     # names before a category that lists more
     ("Proficiency in HTML5, CSS3, JavaScript, and frameworks like Angular or React",
      ["HTML", "CSS", "JavaScript", "Angular", "React"]),
-    ("Knowledge of Java and frameworks like Spring", ["Java", "Spring"]),
+    ("Knowledge of Java and frameworks like Spring", ["Java", "Spring Framework"]),  # rules 0.4.11: the merges of 2026-11-26
     # `Header: a, b, c`
     ("Strong backend fundamentals: PostgreSQL, async workflows, queues, observability, CI/CD",
      ["PostgreSQL", "async workflows", "queues", "observability", "CI/CD"]),
@@ -56,7 +56,7 @@ def test_split_047(item, keys):
 
 @pytest.mark.parametrize("atom_, core, degree", [
     ("Currently enrolled in a bachelor’s degree program in business", "Student in business", "student"),
-    ("Currently pursuing a degree or diploma in IT", "Student in IT", "student"),
+    ("Currently pursuing a degree or diploma in IT", "Student in Information Technology", "student"),  # rules 0.4.11: the merges of 2026-11-26
     ("Currently a candidate for a Master’s or PhD in Computer Science", "Student in Computer Science", "student"),
     ("Be a graduate of a Master's degree in Computer Science", "Master in Computer Science", "master"),
     ("Hold a PhD in Artificial Intelligence", "PhD in Artificial Intelligence", "phd"),
@@ -106,7 +106,7 @@ def test_cores_047(atom_, core, level):
 @pytest.mark.parametrize("item, keys", [
     ("Detail-oriented with a focus on design iteration", ["Detail-oriented"]),
     ("Ability to work independently and effectively in a dynamic environment", ["autonomy"]),
-    ("Extensive experience as a Senior, Staff or Lead Software Engineer", ["Software Engineer"]),
+    ("Extensive experience as a Senior, Staff or Lead Software Engineer", ["Software engineering"]),  # rules 0.4.11: the merges of 2026-11-26
     ("Proven record of shipping and iterating on impactful products", ["shipping products"]),
     ("Knowledge of responsible AI engineering", ["AI engineering"]),
     ("Motivated by the quality of work", ["Motivated"]),

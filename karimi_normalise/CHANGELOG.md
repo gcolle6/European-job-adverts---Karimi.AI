@@ -587,6 +587,42 @@ Format: version · date · what changed · how it was measured.
   problem-solving` stay as they are. `analytical and problem-solving` with no
   frame is two skills too. Measured on the keys of batches 1-8: 1,023 rows join
   analytical skills, 601 teamwork, 133 autonomy.
+- **0.4.11** · 2026-11-26 · batch 9 (rules 0.4.10, yellow 5.5%, the first with
+  100 topic pairs: 15% rejected, as on our own data) and the user's review (20
+  wrong of 100; the inspector flagged 4). *Merges* the user approved from the
+  explorer's near-duplicates (`_MERGES`, on the `canon` form, applied in
+  `soft_group` and to past runs in the explorer): the same thing written
+  another way takes the name that says it best (`Cyber Security`, `ISO27001`,
+  `Unix/Linux`, `IA`, `Datacenter`, `Spring`, `Testing`, `Analytics`, …); a soft
+  skill keeps its first spelling (`Take initiative` is Initiative, `Eye` is Eye
+  for detail, communication across non-technical stakeholders is communication,
+  who with aside); a role is read as its field (`Data Engineer` is Data
+  engineering); a degree's field keeps its full name (`AI`, `IT`, `ICT`,
+  `Electronics`). Two topics shown under one name in the explorer are one.
+  *Review*: `AVEVA solution configuration and integration` is AVEVA; `scripting
+  or programming language (Python preferred) for network automation tasks` is
+  four; `Subject matter expertise`; `Degree or strong background in X, Y` is a
+  degree in each; `cross-functional and international project environments`
+  shares the tail and keeps the frame; `backed by ...`, `that ...`, `in
+  collaboration` aside; a permit or citizenship keeps its words beside the
+  country; `Windows/Mac/Linux` is three; `present X to Boards and executive
+  management` is present X; `specialization in` a field is a degree in it; one
+  named example in brackets is a requirement beside its category; `X mindset
+  with experience ...` is the mindset; `professional attitude`; `Highest level
+  of` keeps the level; `passed test of <name>` is the name; `ensuring
+  compliance with` is compliance; `Accurate and reliable work` two traits.
+  *Agents*: two items sharing a tail after a preposition or a gerund; a name in
+  front over a list of names (`SQL skills on DB2 and SQL Server`); `A & B`
+  between names with spaces; a slash chain and the slash inside a bracket's
+  examples, with more names (Git, GitHub, .NET, Agile, Scrum, Windows, Mac,
+  Linux, …); names win inside an activity phrase over a category name;
+  `, with practical experience building ...`; multi-word Title-Case names after
+  `including`. *Measured*: 17 of the 20 notes come out as written, 3 not
+  (`Engineering degree` stays a degree type by the convention of 0.4.7, one
+  alternative of a translated Chinese item, one where the note matched the
+  output); of the 80 right, 6 change, all by the approved merges. Batch 9
+  processed again: inspector 500 -> 328 flags (3.3% -> 2.1%). 3,000 random
+  items of batches 1-9: 191 change, all read; the regressions found were fixed.
 
 ## Dictionary
 

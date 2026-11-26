@@ -464,6 +464,7 @@ def _education(text: str) -> dict | None:
     # `(economic) computer science`, `Computer Science (or equivalent)`: the field is outside the brackets
     field = re.sub(r"\s{2,}", " ", re.sub(r"\s*\([^()]*\)\s*", " ", field)).strip()
     field = _DEGREE_NAME_RE.sub("", field)
+    field = _FIELD_NAMES.get(field.lower(), field)
     if re.fullmatch(atom._SCHOOL, field, re.I):
         # `Bac+4/5 in Business School` says where, not what (rules 0.4.2)
         field = ""
@@ -544,6 +545,7 @@ LEVEL_WORDS = {
     "full": "strong", "foundational": "basic", "confirmed": "", "specific": "", "direct": "",
     "showable": "", "actual": "", "additional": "", "recent": "", "recently": "",
     "meaningful": "good",
+    "highest": "expert",
     # rules 0.4.9, batch 7
     "mid-level": "good", "entry-level": "basic", "senior-level": "strong", "likely": "", "active": "good", "discrete": "basic", "production-level": "strong",
     "production-grade": "strong", "native-level": "expert", "consolidated": "", "well-founded": "good", "expert-level": "expert", "advanced-level": "strong",
@@ -577,7 +579,9 @@ _TERMS = {("real", "estate"), ("real", "time"), ("high", "availability"),
           ("operating", "systems"), ("operating", "system"), ("operating", "model"), ("operating", "models"),
           ("discrete", "mathematics"), ("discrete", "event"), ("deep", "learning"), ("deep", "reinforcement"),
           ("deep", "neural"), ("deep", "tech"), ("in-depth", "learning"), ("active", "directory"),
-          ("active", "listening"), ("active", "learning")}
+          ("active", "listening"), ("active", "learning"),
+          ("professional", "attitude"), ("professional", "demeanor"), ("professional", "demeanour"),
+          ("professional", "manner"), ("professional", "behavior"), ("professional", "behaviour")}
 
 
 _NUMBER_WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8,
@@ -745,7 +749,7 @@ _NOT_NAMES = {"IT", "HR", "OR", "AND"}
 # A setting or the people worked with, and nothing else (rules 0.4.9, the review of batch 7)
 _SETTING_ONLY_RE = re.compile(
     r"^(?:(?:an?|the|both)\s+)?(?:(?:multinational|international|global|large|corporate|matrix|fast[- ]paced|"
-    r"dynamic|regulated|similar|multicultural|diverse)\s+)+(?:compan(?:y|ies)\s+)?(?:environments?|compan(?:y|ies)|"
+    r"dynamic|regulated|similar|multicultural|diverse|cross-functional|project)\s+)+(?:compan(?:y|ies)\s+)?(?:environments?|compan(?:y|ies)|"
     r"organi[sz]ations?|settings?|contexts?)$", re.I)
 _PEOPLE_ONLY_RE = re.compile(
     r"^(?:both\s+)?(?:(?:in-house|external|internal|cross-functional|distributed|remote|international|global|"
@@ -848,6 +852,8 @@ _NAME_FOLLOWERS = _TECH_TAIL | {"software", "systems", "system", "workflows", "w
                                  "apis", "api", "tests", "testing", "tech", "technologies", "technology", "suite",
                                  "integration", "integrations", "deployment", "deployments",
                                  "interfaces", "interface", "modules", "module",
+                                 "solution", "solutions", "configuration", "implementation", "administration",
+                                 "customization", "customisation", "migration", "maintenance", "support",
                                  "datastores", "databases", "web", "services",
                                  "models", "concepts", "methodology", "methodologies", "language", "languages"}
 _NAME_PREPS = {"as", "in", "for", "with", "on", "of", "to", "at", "from", "using", "and", "or", "within", "across"}
@@ -1017,6 +1023,35 @@ def _review_045(core: str) -> tuple[str, str]:
     m = re.match(r"^(?P<x>.+?)\s+(?P<y>to\s+(?:support|enable|drive|improve|inform|deliver|help|power)\s+.+)$", c, re.I)
     if m and len(m.group("x").split()) <= 4 and not _name_runs(m.group("y")):
         c, moved = m.group("x"), moved + [m.group("y")]
+    # the user's review of batch 9 (rules 0.4.11):
+    # [71] `Highest level of technical expertise in` is the frame
+    c = re.sub(r"^(?:the\s+)?highest\s+level\s+of\s+(?=\S)", "", c, flags=re.I)
+    # [10] `Subject matter expertise in AML`
+    c = re.sub(r"^subject[- ]matter\s+(?=expert)", "", c, flags=re.I)
+    # [25] `AI backed by practical results`: what backs it is context
+    m = re.match(r"^(?P<x>.+?)\s+(?P<y>(?:backed|supported|proven|demonstrated|evidenced)\s+by\s+.+)$", c, re.I)
+    if m:
+        c, moved = m.group("x"), moved + [m.group("y")]
+    # [63] `Maintain a professional attitude that reflects the brand's values`
+    c = re.sub(r"^(?:maintain|keep|show|display|demonstrate)\s+(?:an?\s+)?(?=[\w-]+\s+(?:attitude|mindset|approach|"
+               r"demeanou?r|manner|behaviou?r)\b)", "", c, flags=re.I)
+    m = re.match(r"^(?P<x>.+?)\s+(?P<y>(?:that|which)\s+.+)$", c, re.I)
+    if m and len(m.group("x").split()) <= 4 and not _name_runs(m.group("y")):
+        c, moved = m.group("x"), moved + [m.group("y")]
+    # [87] `ensuring compliance with regulatory policy`: compliance
+    m = re.match(r"^ensur(?:e|ing)\s+(?P<x>compliance)\s+(?P<y>(?:with|to)\s+.+)$", c, re.I)
+    if m:
+        c, moved = m.group("x"), moved + [m.group("y")]
+    # `Possession of a valid working permit for the Netherlands`
+    c = re.sub(r"^possession\s+of\s+(?:an?\s+)?(?:valid\s+)?(?=\S)", "", c, flags=re.I)
+    # [81] `passed test of RWTH Aachen`: the name
+    c = re.sub(r"^(?:successfully\s+)?passed\s+(?:the\s+)?(?:[\w-]+\s+)?(?:test|exam|examination|assessment)\s+"
+               r"(?:of|at|from|by)\s+(?=[A-Z])", "", c)
+    # [28] `communication across non-technical stakeholders` is communication, who with aside
+    m = re.match(r"^communicat\w*(?:\s+clearly)?\s+(?:across|with|to)\s+(?:both\s+)?(?:technical\s+and\s+)?"
+                 r"(?P<y>non-technical\s+(?:stakeholders|audiences|teams|users|people))$", c, re.I)
+    if m:
+        c, moved = "communication", moved + [m.group("y")]
     # `Very good to good grades`
     c = re.sub(r"^(?:(?:very\s+)?good\s+)?to\s+(?=good\b)", "", c, flags=re.I)
     # `supporting production systems with high availability`: how, for `extra`
@@ -1203,6 +1238,7 @@ def decompose(text: str) -> dict:
     itself as the core (`Python`, `Team player`).
     """
     text = strip_required(strip_optional(text))
+    text = re.sub(r"^(?:the\s+)?highest\s+level\s+of\s+", "highest ", text, flags=re.I)      # rules 0.4.11
     # `a suitable combination of education, experience and training`: the
     # second route beside a degree, an experience with no object (rules 0.4.3)
     text = re.sub(r"^(?:an?\s+)?(?:suitable|equivalent|relevant|appropriate)\s+combination\s+of\s+.*$",
@@ -1490,6 +1526,8 @@ def decompose(text: str) -> dict:
         runs = _name_runs(out["core"])
         # `Infrastructure as Code with Bicep` is Bicep (review of batch 3)
         named = [r for r in runs if not _NAME_WITH_SMALL_WORD_RE.fullmatch(r)]
+        if len(named) > 1 and any(r not in _CATEGORY_NAMES for r in named):
+            named = [r for r in named if r not in _CATEGORY_NAMES]
         if len(runs) > 1 and len(named) == 1:
             runs = named
         bare = out["core"].strip(" ,.;:")
@@ -1505,6 +1543,8 @@ def decompose(text: str) -> dict:
                 and re.search(r"(?<![\w/&.+#-])[a-z]", bare) \
                 and not _NAME_WITH_SMALL_WORD_RE.fullmatch(bare) \
                 and not re.search(r"\blicen[cs]e\s+[A-Z]\b", bare) \
+                and not re.search(r"\b(?:permit|visa|citizenship|nationality|residency|residence|clearance|"
+                                  r"passport)s?\b", bare, re.I) \
                 and not _name_is_modifier(runs[0], bare) \
                 and not (runs[0] in _CATEGORY_NAMES
                          and re.search(rf"(?<![\w-])[a-z][\w-]*\s+{re.escape(runs[0])}(?!\w)", bare)
@@ -1694,12 +1734,72 @@ _SOFT_GROUPS = [
         r"problem\s+solving(?:\s+skill)?|problem\s+solver"),
      "problem solving"),
 ]
+# The merges the user approved on 2026-11-26, from the explorer's near-duplicates:
+# the same thing written another way takes the name that says it best (A); a
+# soft skill keeps its first spelling (B); a role is read as its field, since
+# requirements are what is counted (C). On the `canon` form, as `_SOFT_GROUPS`.
+_MERGES = [(re.compile(p), name) for p, name in [
+    (r"unix/linux|linux/unix", "Linux/Unix"),
+    (r"cyber\s+security|cybersecurity", "Cybersecurity"),
+    (r"iso\s*27001", "ISO 27001"),
+    (r"data\s*center|datacenter", "Data center"),
+    (r"sonar(?:qube)?", "SonarQube"),
+    (r"(?:microsoft\s+)?intune", "Microsoft Intune"),
+    (r"(?:sap\s+)?s/4\s*hana", "SAP S/4HANA"),
+    (r"spring(?:\s+framework)?", "Spring Framework"),
+    (r"ia", "AI"),
+    (r"eu|european", "EU"),
+    (r"full\s*stack(?:\s+development)?", "Full stack development"),
+    (r"front\s*end(?:\s+development)?", "Frontend development"),
+    (r"embedded(?:\s+system)?", "Embedded systems"),
+    (r"etl(?:\s+processe?)?", "ETL"),
+    (r"itil(?:\s+processe?)?", "ITIL"),
+    (r"mlops(?:\s+practice)?", "MLOps"),
+    (r"agile(?:\s+methodologie|\s+methodology)?", "Agile methodologies"),
+    (r"scripting(?:\s+language)?", "Scripting languages"),
+    (r"bi(?:\s+tool)?", "BI tools"),
+    (r"(?:category\s+b\s+)?driving\s+license(?:\s+b)?", "Driving licence"),
+    (r"(?:microsoft\s+)?azure(?:\s+(?:cloud\s+)?service)?", "Azure"),
+    (r"aws(?:\s+cloud)?(?:\s+service)?", "AWS"),
+    (r"rest(?:ful)?\s+api(?:\s+design)?|rest\s+apis", "REST APIs"),
+    (r"(?:data\s+)?visuali[sz]ation", "Data visualization"),
+    (r"(?:data\s+)?analytic", "Data analytics"),
+    (r"(?:network\s+)?protocol", "Network protocols"),
+    (r"vulnerabilitie|vulnerability\s+management", "Vulnerability management"),
+    (r"(?:software\s+)?testing", "Software testing"),
+    (r"(?:data\s+)?pipeline", "Data pipelines"),
+    (r"complex(?:\s+software)?\s+system", "Complex software systems"),
+    (r"take\s+initiative|high\s+level\s+of\s+initiative|self\s+initiative|initiative", "Initiative"),
+    (r"proactive(?:\s+mindset)?", "Proactive"),
+    (r"willingness\s+to\s+learn(?:\s+new\s+technologie)?", "Willingness to learn"),
+    (r"(?:learn\s+quickly|quickly\s+learn)(?:\s+new\s+technologie)?", "Learn quickly"),
+    (r"curiosity(?:\s+for\s+new\s+technologie)?", "Curiosity"),
+    (r"fun\s+with\s+teamwork", "teamwork"),
+    (r"(?:thrive\s+in\s+a\s+)?fast\s+paced\s+environment", "Fast-paced environment"),
+    (r"eye(?:\s+for\s+detail)?", "Eye for detail"),
+    (r"mentoring(?:\s+engineer)?", "Mentoring"),
+    (r"coordination(?:\s+of\s+interdisciplinary\s+team)?", "Coordination"),
+    (r"international(?:\s+environment)?", "International environment"),
+    (r"ai\s+(?:driven|powered|assisted)", "AI-driven"),
+    (r"data\s+engineer(?:ing)?", "Data engineering"),
+    (r"data\s+scien(?:tist|ce)", "Data science"),
+    (r"data\s+analy(?:st|sis)", "Data analysis"),
+    (r"software\s+engineer(?:ing)?", "Software engineering"),
+    (r"solution\s+architect(?:ure)?", "Solution architecture"),
+    (r"devops(?:\s+engineer)?", "DevOps"),
+    (r"product\s+manage(?:r|ment)", "Product management"),
+    (r"collaborat(?:e|ing)\s+with\s+(?:multiple|business|key|senior|internal)\s+stakeholder|"
+     r"stakeholder\s+management", "Stakeholder management"),
+]]
+# the field of a degree, its full name (C, 2026-11-26)
+_FIELD_NAMES = {"ai": "Artificial Intelligence", "ict": "Information Technology", "it": "Information Technology",
+                "electronics": "Electronic Engineering"}
 
 
 def soft_group(core: str) -> str:
     """The group's one name for a soft skill written another way, else the core."""
     c = canon(core)
-    for rx, name in _SOFT_GROUPS:
+    for rx, name in _SOFT_GROUPS + _MERGES:
         if rx.fullmatch(c):
             return name
     return core

@@ -51,7 +51,7 @@ def _keys(item: str) -> list[str]:
     ('Technical degree (preference in network system administration)',
      ['education: Degree in technical field']),
     ('Very good Python knowledge as well as experience with machine learning, statistics, data analysis and Databricks/Spark',
-     ['Python', 'machine learning', 'statistics', 'data analysis', 'Databricks', 'Spark']),  # rules 0.4.10, the user's review of batch 8: names split at the slash
+     ['Python', 'machine learning', 'statistics', 'Data analysis', 'Databricks', 'Spark']),  # rules 0.4.10, the user's review of batch 8: names split at the slash
     ('Self-motivated with a passion for renewable energy and sustainability',
      ['Self-motivated', 'renewable energy', 'passion for sustainability']),  # rules 0.4.10: two passions (the user, 2026-11-23)
     ("Bachelor's degree +5 in the field of Artificial Intelligence, Data Science, Computer Science or related discipline",
@@ -61,9 +61,9 @@ def _keys(item: str) -> list[str]:
     ('Hands-on experience working with both in-house teams and external agencies',
      ['experience with in-house teams and external agencies']),
     ('Strong stakeholder management and collaboration skills across teams and domains',
-     ['stakeholder management', 'teamwork']),  # rules 0.4.10: one group per soft skill (the user, 2026-11-24)
+     ['Stakeholder management', 'teamwork']),  # rules 0.4.10: one group per soft skill (the user, 2026-11-24)  # rules 0.4.11: the merges of 2026-11-26
     ('3–6 years as a software engineer, solutions engineer, or technical partner/integration role',
-     ['software engineer', 'solutions engineer', 'technical partner/integration role']),
+     ['Software engineering', 'solutions engineer', 'technical partner/integration role']),  # rules 0.4.11: the merges of 2026-11-26
     ('5+ years of experience as a Product Owner or in a similar role within Identity & Access Management (IAM)',
      ['Product Owner', 'Identity & Access Management']),
     ('Strong knowledge and experience in Linux development',
@@ -81,11 +81,11 @@ def _keys(item: str) -> list[str]:
     ('7 years+ experience in Oracle Forms',
      ['Oracle Forms']),
     ('7+ years across Data Science',
-     ['Data Science']),
+     ['Data science']),  # rules 0.4.11: the merges of 2026-11-26
     ('Minimum two-year experience in data engineering',
-     ['data engineering']),
+     ['Data engineering']),  # rules 0.4.11: the merges of 2026-11-26
     ('Minimum 4-year experience in Java / Javascript',
-     ['Java / Javascript']),
+     ['Java', 'Javascript']),  # rules 0.4.11: the merges of 2026-11-26
     ('4-year degree in Computer Science',
      ['education: Degree in Computer Science']),
     ('A clear understanding of data structures, algorithms and design patterns',
@@ -97,7 +97,7 @@ def _keys(item: str) -> list[str]:
     ('Interest and experience with Ubuntu Linux, Kubernetes and Ceph',
      ['Ubuntu Linux', 'Kubernetes', 'Ceph']),
     ('Experience applying thorough testing, observability and security practices',
-     ['testing', 'observability', 'security practices']),
+     ['Software testing', 'observability', 'security practices']),  # rules 0.4.11: the merges of 2026-11-26
     ('Skilled in using project management tools',
      ['project management tools']),
     ('Experience leveraging AI agents as a force multiplier',
@@ -113,7 +113,7 @@ def test_years_kept_in_their_column():
     d = normalise_req.decompose("At least 60 months of experience in software development")
     assert (d["key"], d["years_min"]) == ("software development", 5)
     d = normalise_req.decompose("Minimum two-year experience in data engineering")
-    assert (d["key"], d["years_min"]) == ("data engineering", 2)
+    assert (d["key"], d["years_min"]) == ("Data engineering", 2)  # rules 0.4.11: the merges of 2026-11-26
 
 
 def test_context_kept_aside():
@@ -139,7 +139,7 @@ def test_placeholder_never_leaks():
     ("Analytical spirit", "analytical skills"), ("analytical thinking", "analytical skills"),
     # not the same thing: leading a team, a product, a field
     ("leading teams", "leading teams"), ("team management", "team management"), ("Microsoft Teams", "Microsoft Teams"),
-    ("analytics", "analytics"), ("analytical problem-solving", "analytical problem-solving"),
+    ("analytics", "Data analytics"), ("analytical problem-solving", "analytical problem-solving"),  # rules 0.4.11: the merges of 2026-11-26
 ])
 def test_soft_skill_groups(core, group):
     assert normalise_req.soft_group(core) == group

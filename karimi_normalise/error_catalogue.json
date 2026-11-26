@@ -1,6 +1,6 @@
 {
   "about": "The archivist's catalogue: every kind of error found so far, why it happened, what fixed it and what guards it. Edited by a person; the archivist reads it on every run (archivist.py). No requirement text from Karimi's postings except the short examples a person chose.",
-  "updated": "2026-11-24",
+  "updated": "2026-11-26",
   "entries": [
     {
       "id": "degree_not_read",
@@ -1069,6 +1069,119 @@
       "title": "A named header glued onto each of its common-noun items",
       "cause": "'Header: a, b, c' under a named header was distributed like a frame; the items are its sub-topics.",
       "example": "Deep JVM internals: memory model, garbage collection -> 'JVM internals memory model'"
+    },
+    {
+      "stage": "normalisation",
+      "found": "2026-11-26",
+      "found_by": "review",
+      "status": "resolved",
+      "resolved_in": "0.4.11",
+      "guard": "tests/test_rules_0411.py::test_review_agents_and_merges_of_batch_9",
+      "rule_files": [
+        "karimi/normalise_req.py",
+        "karimi_normalise/explore.py"
+      ],
+      "id": "near_duplicates",
+      "detector": "soft_skill_ungrouped",
+      "title": "One requirement shown twice in the explorer under two spellings",
+      "cause": "Spellings of one thing (a hyphen, a plural, a role for its field, a short and a long name) made groups of their own; the user approved one name for each on 2026-11-26.",
+      "example": "Cyber Security beside Cybersecurity; Data Engineer beside Data engineering"
+    },
+    {
+      "stage": "splitting",
+      "found": "2026-11-26",
+      "found_by": "agent",
+      "status": "resolved",
+      "resolved_in": "0.4.11",
+      "guard": "tests/test_rules_0411.py::test_review_agents_and_merges_of_batch_9",
+      "rule_files": [
+        "karimi/atomise.py"
+      ],
+      "id": "tail_kept_by_last",
+      "detector": "shared_tail_lost",
+      "title": "Two items sharing a tail, only the last one keeps it",
+      "cause": "`hardware and software problems` was split before the tail was given back to the first item.",
+      "example": "solving hardware and software problems -> 'solving hardware' / 'software problems'"
+    },
+    {
+      "stage": "splitting",
+      "found": "2026-11-26",
+      "found_by": "agent",
+      "status": "resolved",
+      "resolved_in": "0.4.11",
+      "guard": "tests/test_rules_0411.py::test_review_agents_and_merges_of_batch_9",
+      "rule_files": [
+        "karimi/atomise.py"
+      ],
+      "id": "front_name_repeated",
+      "detector": "duplicate_key",
+      "title": "A name in front spread over the list of other names",
+      "cause": "`X skills on A and B` read the front name as the head of every item, so the same key came out twice.",
+      "example": "Strong SQL skills on two databases -> 'SQL' twice"
+    },
+    {
+      "stage": "splitting",
+      "found": "2026-11-26",
+      "found_by": "agent",
+      "status": "resolved",
+      "resolved_in": "0.4.11",
+      "guard": "tests/test_rules_0411.py::test_review_agents_and_merges_of_batch_9",
+      "rule_files": [
+        "karimi/atomise.py"
+      ],
+      "id": "ampersand_names",
+      "detector": "comma_in_key",
+      "title": "Two names joined by '&' kept as one",
+      "cause": "An ampersand was read as part of a name; between two names with spaces round it it is two.",
+      "example": "a runtime & its package manager -> one key"
+    },
+    {
+      "stage": "splitting",
+      "found": "2026-11-26",
+      "found_by": "agent",
+      "status": "resolved",
+      "resolved_in": "0.4.11",
+      "guard": "tests/test_rules_0411.py::test_review_agents_and_merges_of_batch_9",
+      "rule_files": [
+        "karimi/atomise.py"
+      ],
+      "id": "slash_chain_in_bracket",
+      "detector": "names_slashed",
+      "title": "A slash between names left whole inside a bracket or a chain of three",
+      "cause": "The slash rule ran before a bracket's examples were opened, and read pairs only.",
+      "example": "operating systems (three systems joined by slashes) -> one key"
+    },
+    {
+      "stage": "normalisation",
+      "found": "2026-11-26",
+      "found_by": "agent",
+      "status": "resolved",
+      "resolved_in": "0.4.11",
+      "guard": "tests/test_rules_0411.py::test_review_agents_and_merges_of_batch_9",
+      "rule_files": [
+        "karimi/normalise_req.py"
+      ],
+      "id": "names_in_activity",
+      "detector": "frame_left",
+      "title": "Names inside an activity phrase not taken",
+      "cause": "A category name beside the real names (`APIs`) stopped the rule that a name wins.",
+      "example": "building services and APIs using two languages -> the whole phrase as the key"
+    },
+    {
+      "stage": "splitting",
+      "found": "2026-11-26",
+      "found_by": "review",
+      "status": "resolved",
+      "resolved_in": "0.4.11",
+      "guard": "tests/test_rules_0411.py::test_review_agents_and_merges_of_batch_9",
+      "rule_files": [
+        "karimi/atomise.py"
+      ],
+      "id": "single_example_kept",
+      "detector": null,
+      "title": "One named example in brackets replaced its category",
+      "cause": "The rule of 2026-11-17 (named examples replace the category) is for a list; one example after e.g. is a requirement beside its category (the user's review of batch 9).",
+      "example": "GPU acceleration technologies (e.g. one product) -> only the product"
     }
   ]
 }

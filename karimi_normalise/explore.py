@@ -156,9 +156,23 @@ def keep(r: dict) -> str | None:
     return None
 
 
+def _merged(obj: str) -> str:
+    """The user's merges and soft-skill groups (2026-11-24, 2026-11-26), on runs made
+    before them too: `team spirit` and `teamwork` are one requirement in the explorer."""
+    from karimi import normalise_req
+
+    g = normalise_req.soft_group(obj)
+    return g.lower() if g != obj else obj
+
+
 def _req(r: dict) -> list:
-    return [obj_of(r["req_topic"]), r.get("req_group") or "", r.get("space") or "", r.get("head_group") or "",
-            r.get("core") or "", r.get("level") or "", r.get("degree") or ""]
+    core = r.get("core") or ""
+    if (r.get("space") or "") != "education":
+        from karimi import normalise_req
+
+        core = normalise_req.soft_group(core)
+    return [_merged(obj_of(r["req_topic"])), r.get("req_group") or "", r.get("space") or "",
+            r.get("head_group") or "", core, r.get("level") or "", r.get("degree") or ""]
 
 
 def gate(check_out: dict | None) -> tuple[bool, str]:
@@ -268,7 +282,7 @@ def unique(rows: list[dict]) -> list[dict]:
     return out
 
 
-def aggregate(rows: list[dict], categorise, source: dict) -> tuple[dict, list[dict]]:
+def aggregate(rows: list[dict], categorise, source: dict, _named_once: bool = False) -> tuple[dict, list[dict]]:
     """The explorer's index and one record per requirement shown, from advert rows.
 
     ``categorise(names, spaces) -> categories``; ``source`` goes into the index
@@ -310,6 +324,19 @@ def aggregate(rows: list[dict], categorise, source: dict) -> tuple[dict, list[di
     top = (pg.groupby(["obj", "req_space", "req_core"]).size().reset_index(name="n")
            .sort_values(["n", "req_core"], ascending=[False, True]).drop_duplicates("obj"))
     names = {o: normalise_req.display(sp, c) for o, sp, c in zip(top.obj, top.req_space, top.req_core)}
+    # Two topics shown under one name are one requirement to a reader (`Responsibility`
+    # twice, 2026-11-26): the smaller joins the larger, and the counts are made again.
+    first: dict[str, str] = {}
+    join: dict[str, str] = {}
+    for o in kept.index:
+        n = names.get(o, o).casefold()
+        if n in first:
+            join[o] = first[n]
+        else:
+            first[n] = o
+    if join and not _named_once:
+        rows = [{**r, "r": [[join.get(q[0], q[0]), *q[1:]] for q in r["r"]]} for r in rows]
+        return aggregate(rows, categorise, source, _named_once=True)
     space = dict(zip(top.obj, top.req_space))
     category = dict(zip(kept.index, categorise([names.get(o, o) for o in kept.index],
                                                [space.get(o, "") for o in kept.index])))

@@ -45,11 +45,11 @@ def _keys(item: str) -> list[str]:
     ("Strong verbal and written communication skills to interact with stakeholders and project owners",
      ["communication"]),  # 2026-11-23: the modes set aside; rules 0.4.9 drops `skills` too (batch 7)
     ("4-6 years of experience in testing domain, with a minimum of 3 years in test automation",
-     ["testing", "test automation"]),
+     ["Software testing", "test automation"]),  # rules 0.4.11: the merges of 2026-11-26
     # the name wins over a word that adds nothing
     ("Python software development experience with large projects", ["Python"]),
     ("Advanced command of SQL Domain", ["SQL"]),
-    ("Data Analytics Methodologies", ["Data Analytics"]),
+    ("Data Analytics Methodologies", ["Data analytics"]),  # rules 0.4.11: the merges of 2026-11-26
     ("IT affinity (SQL knowledge)", ["SQL"]),
     ("Experience with Jenkins and SonarQube for CI/CD and code quality", ["Jenkins", "SonarQube"]),
     ("Proficiency in orchestrating hybrid-cloud infrastructures (AWS, Azure, VMware)", ["AWS", "Azure", "VMware"]),
@@ -58,7 +58,7 @@ def _keys(item: str) -> list[str]:
      ["training machine learning models", "evaluating machine learning models"]),  # changed 2026-11-23: verbs kept, one per verb (the user's review of batch 6)
     ("Spirit of analysis", ["analysis"]),
     ("Easy contact with colleagues", ["teamwork"]),
-    ("Strong commitment and desire to learn and grow", ["commitment", "willingness to learn", "willingness to grow"]),
+    ("Strong commitment and desire to learn and grow", ["commitment", "Willingness to learn", "willingness to grow"]),  # rules 0.4.11: the merges of 2026-11-26
     ("AI literacy, including effective use of AI tools, prompt engineering, automation, and agent-based workflows",
      ["AI"]),
     # degrees
@@ -119,7 +119,7 @@ def test_the_items_years_reach_every_part():
 @pytest.mark.parametrize("item, keys", [
     ("Experience working as an Azure Cloud Architect, Lead Architect or Design Architect", ["Cloud Architect"]),
     ("3+ years of experience as a Senior Backend Developer or Software Engineer", ["Backend Developer"]),
-    ("Experience as a Data Engineer or Data Scientist", ["Data Engineer", "Data Scientist"]),
+    ("Experience as a Data Engineer or Data Scientist", ["Data engineering", "Data science"]),  # rules 0.4.11: the merges of 2026-11-26
     ("Experience as Product Owner or Business Analyst", ["Product Owner", "Business Analyst"]),
     ("Experience as a Salesforce Developer or Business Developer", ["Salesforce Developer", "Business Developer"]),
 ])

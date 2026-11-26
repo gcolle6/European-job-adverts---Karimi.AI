@@ -539,6 +539,19 @@ solo i nomi dei gruppi; Inspector sul lotto 8 rielaborato dal 4,7% al 2,0% (con
 i rilevatori nuovi); 162 dei 3.000 elementi di controllo cambiano, tutti letti.
 Il lotto 9 (offset 8000) misura la 0.4.10, primo con il giudice a 100 coppie.
 
+**Giro del lotto 9 → regole 0.4.11, dizionario 0.4.2 (2026-11-26).** Il lotto
+9 (regole 0.4.10) è **giallo**: 5,5%, con il giudice dei temi a 100 coppie (15%
+respinte, come sui nostri dati: la stima è più affidabile, non peggiore).
+Revisione della persona: **20 sbagliate su 100**; l'Inspector ne segnalava 4.
+Un agente sugli errori di split: circa l'11% degli elementi ne ha uno, i
+rilevatori ne vedono la metà. **Decisioni del responsabile**: unire i quasi
+doppioni di Explore (stessa cosa scritta diversamente: il nome più chiaro; soft
+skill: la prima forma; ruolo: il campo; titoli: nome completo del campo).
+"Security" viene da liste di qualità di un sistema: resta un gruppo a sé.
+Misure: 17 note su 20 escono come scritte; delle 80 giuste cambiano solo i nomi
+uniti; Inspector sul lotto 9 rielaborato dal 3,3% al 2,1%. Il lotto 10 (offset
+9000) misura la 0.4.11; dopo la sua revisione, il ritest dei lotti 6-10.
+
 ### Revisione umana e Curator (2026-11-17)
 
 * **Revisione di una persona**: l'unico numero che conta tutti gli errori,

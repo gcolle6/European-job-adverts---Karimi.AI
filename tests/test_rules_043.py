@@ -49,16 +49,16 @@ def _counted(item: str) -> list[bool]:
     ("Master's degree required; PhD strongly preferred in Biology, Genetics",
      ["education: Master (any field)", "education: PhD in Biology", "education: PhD in Genetics"]),
     ("Bachelor’s degree required, Master’s preferred, in Computer Science, IT",
-     ["education: Bachelor in Computer Science", "education: Bachelor in IT",
-      "education: Master in Computer Science", "education: Master in IT"]),
+     ["education: Bachelor in Computer Science", "education: Bachelor in Information Technology",  # rules 0.4.11: the merges of 2026-11-26
+      "education: Master in Computer Science", "education: Master in Information Technology"]),
     ("Bachelor’s or Master’s degree with deep technical knowledge on AI ML products",
      ["education: Bachelor (any field)", "education: Master (any field)", "AI ML products"]),
     ("Completed HBO or WO training in a technical direction, e.g. Electrical engineering or Technical Informatics",
      ["education: Bachelor in Electrical engineering", "education: Bachelor in Technical Informatics",
       "education: Degree in Electrical engineering", "education: Degree in Technical Informatics"]),
     ("Completed HBO or WW training in IT, Business Administration or a similar direction",
-     ["education: Bachelor in IT", "education: Bachelor in Business Administration",
-      "education: Degree in IT", "education: Degree in Business Administration"]),
+     ["education: Bachelor in Information Technology", "education: Bachelor in Business Administration",  # rules 0.4.11: the merges of 2026-11-26
+      "education: Degree in Information Technology", "education: Degree in Business Administration"]),
     ("HBO work and thinking level towards Electrical engineering, Mechatronics, or similar",
      ["education: Bachelor in Electrical engineering", "education: Bachelor in Mechatronics"]),
     ("HBO Technique or comparable level of work and thinking", ["education: Bachelor in Technique"]),
@@ -89,7 +89,7 @@ def _counted(item: str) -> list[bool]:
      ["education: Bachelor in business administration"]),
     ("Bachelor’s Degree or higher in Electrical & Electronics/ECE",
      ["education: Bachelor in Electrical & Electronics/ECE"]),
-    ("Bachelor's degree in IT or equivalent through experience", ["education: Bachelor in IT", ""]),
+    ("Bachelor's degree in IT or equivalent through experience", ["education: Bachelor in Information Technology", ""]),  # rules 0.4.11: the merges of 2026-11-26
 ])
 def test_degrees_from_batch_2(item, keys):
     assert _keys(item) == keys
@@ -126,7 +126,7 @@ def test_degrees_from_batch_2(item, keys):
      ["gathering functional requirements", "structuring functional requirements",
       "documenting functional requirements"]),  # changed 2026-11-23: verbs kept, one per verb (the user's review of batch 6)
     ("Practical knowledge about microservices and REST API", ["microservices", "REST APIs"]),
-    ("Qualifications/experience/knowledge of data science is a major advantage", ["data science"]),
+    ("Qualifications/experience/knowledge of data science is a major advantage", ["Data science"]),  # rules 0.4.11: the merges of 2026-11-26
     ("CATIA V6-Knowledge Advantageous", ["CATIA V6"]),
     ("At least five years of progressively responsible experience in software analysis, design, development and "
      "programming", ["software analysis", "design", "development", "programming"]),
@@ -141,7 +141,7 @@ def test_words_that_add_nothing_and_the_explorers_kinds(item, keys):
 
 @pytest.mark.parametrize("item, keys", [
     ("Visual Basic", ["Visual Basic"]),
-    ("Advanced analytics", ["analytics"]),          # a level in front, as before 0.4.3
+    ("Advanced analytics", ["Data analytics"]),          # a level in front, as before 0.4.3
     ("Willingness to travel when required", ["Willingness to travel when required"]),
     ("Competitive advantage analysis", ["Competitive advantage analysis"]),
     ("Experience with Kubernetes, ideally on AWS", ["Kubernetes"]),
